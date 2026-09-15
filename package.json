@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server/index.ts",
     "dev:web": "vite",
-    "build": "vite build && tsup src/server/index.ts src/integrations/mcp.ts --format esm --out-dir dist/server --external better-sqlite3",
+    "build": "vite build && tsup",
+    "test:smoke": "npm run build && node tests/smoke/runtime.mjs",
     "start": "node dist/server/index.js",
     "mcp": "tsx src/integrations/mcp.ts",
     "typecheck": "tsc --noEmit",
@@ -32,6 +33,9 @@
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
     "zod": "^4.6.5"
+  },
+  "overrides": {
+    "esbuild": "0.28.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

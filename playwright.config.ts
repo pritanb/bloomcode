@@ -3,7 +3,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const dataDir = mkdtempSync(join(tmpdir(), 'leetcode-tutor-e2e-'));
+// Playwright re-evaluates configuration in worker processes. Publish the one
+// temporary directory through inherited environment, not a fresh mkdtemp there.
+const dataDir = process.env.LEETCODE_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'leetcode-tutor-e2e-'));
+process.env.LEETCODE_E2E_DATA_DIR = dataDir;
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
