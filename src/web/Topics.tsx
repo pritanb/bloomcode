@@ -1,3 +1,4 @@
+import { ArrowLeft, BookOpen, History, ListChecks, Ruler } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -5,15 +6,177 @@ import type { Topic, TopicDetail as TopicData } from '../shared/contracts';
 import { api } from './api';
 import { TopicTable } from './Dashboard';
 import { ProblemTable } from './Library';
-import { AttemptList, dateLabel, duration, Empty, ErrorNotice, Field, Loading, MovementList, PageTitle } from './ui';
+import {
+  Icon,
+  SectionTitle,
+  AttemptList,
+  dateLabel,
+  duration,
+  Empty,
+  ErrorNotice,
+  Field,
+  Loading,
+  MovementList,
+  PageTitle,
+} from './ui';
 export function Topics() {
-  const query=useQuery({queryKey:['topics'],queryFn:()=>api.get<Topic[]>('/topics')});
-  return <><PageTitle title="Topic progress" description="Evidence-based proficiency, not a completion counter."/><section className="panel">{query.isPending?<Loading/>:query.isError?<ErrorNotice error={query.error} retry={()=>void query.refetch()}/>:<TopicTable topics={query.data}/>}</section><section className="scale-guide"><h2>The existing 1–5 scale</h2><ol><li><strong>Unfamiliar</strong><span>Learning the foundations</span></li><li><strong>Supported</strong><span>Needs substantial help</span></li><li><strong>Standard forms</strong><span>Solves familiar structures</span></li><li><strong>Unseen variants</strong><span>Transfers under pressure</span></li><li><strong>Mock-ready</strong><span>Reliable in mock interviews</span></li></ol><p className="small muted">Decimal scores are retained. Repeats alone don’t justify new scores above 3. Missed days never reduce a score.</p></section></>;
+  const query = useQuery({
+    queryKey: ['topics'],
+    queryFn: () => api.get<Topic[]>('/topics'),
+  });
+  return (
+    <>
+      <PageTitle
+        title="Topic progress"
+        description="Evidence-based proficiency, not a completion counter."
+      />
+      <section className="panel">
+        {query.isPending ? (
+          <Loading />
+        ) : query.isError ? (
+          <ErrorNotice error={query.error} retry={() => void query.refetch()} />
+        ) : (
+          <TopicTable topics={query.data} />
+        )}
+      </section>
+      <section className="scale-guide">
+        <SectionTitle icon={Ruler}>The existing 1–5 scale</SectionTitle>
+        <ol>
+          <li>
+            <strong>Unfamiliar</strong>
+            <span>Learning the foundations</span>
+          </li>
+          <li>
+            <strong>Supported</strong>
+            <span>Needs substantial help</span>
+          </li>
+          <li>
+            <strong>Standard forms</strong>
+            <span>Solves familiar structures</span>
+          </li>
+          <li>
+            <strong>Unseen variants</strong>
+            <span>Transfers under pressure</span>
+          </li>
+          <li>
+            <strong>Mock-ready</strong>
+            <span>Reliable in mock interviews</span>
+          </li>
+        </ol>
+        <p className="small muted">
+          Decimal scores are retained. Repeats alone don’t justify new scores
+          above 3. Missed days never reduce a score.
+        </p>
+      </section>
+    </>
+  );
 }
 export function TopicDetail() {
-  const {id}=useParams();const [evidence,setEvidence]=useState('');const [help,setHelp]=useState('');const [difficulty,setDifficulty]=useState('');
-  const query=useQuery({queryKey:['topic',id],queryFn:()=>api.get<TopicData>(`/topics/${id}`)});
-  if(query.isPending)return <Loading/>;if(query.isError)return <ErrorNotice error={query.error} retry={()=>void query.refetch()}/>;
-  const d=query.data;const attempts=d.attempts.filter(a=>(!evidence||a.evidence===evidence)&&(!help||a.help===help)&&(!difficulty||a.problem.difficulty===difficulty));
-  return <><Link className="back-link" to="/topics">Back to topic progress</Link><PageTitle title={d.topic.name} description={`Last reviewed: ${dateLabel(d.topic.lastReviewed)}${d.topic.provisional?' · Provisional evidence':''}`}><div className="detail-score"><strong>{d.topic.score??'Unrated'}</strong>{d.topic.score!==null&&<span> / 5</span>}</div></PageTitle>{d.topic.notes&&<p className="topic-notes preserve">{d.topic.notes}</p>}<div className="topic-insight"><div><strong>{d.stats.attemptCount}</strong><span>Recorded attempts</span></div><div><strong>{duration(d.stats.medianSeconds)}</strong><span>Median known active time</span></div><p className="small muted">{d.stats.knownTimeCount} of {d.stats.attemptCount} attempts have known times. Unknown durations are excluded. This summary includes different help and evidence types; compare like for like below.</p></div><section className="panel"><h2>Score history & rationale</h2><MovementList items={d.decisions}/></section><section className="panel"><h2>Practice history</h2><div className="row history-filters"><Field label="Evidence type"><select value={evidence} onChange={e=>setEvidence(e.target.value)}><option value="">All evidence</option>{['retention','near_transfer','unseen','mock'].map(v=><option key={v} value={v}>{v.replaceAll('_',' ')}</option>)}</select></Field><Field label="Help filter"><select value={help} onChange={e=>setHelp(e.target.value)}><option value="">All help levels</option>{['none','small','major','solution','unknown'].map(v=><option key={v}>{v}</option>)}</select></Field><Field label="Question difficulty filter"><select value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="">All difficulties</option>{['Easy','Medium','Hard'].map(v=><option key={v}>{v}</option>)}</select></Field></div><AttemptList items={attempts}/></section><section className="panel"><h2>Related questions</h2><p className="small muted">Selecting a related question is targeted practice, not an unseen assessment.</p>{d.problems.length?<ProblemTable problems={d.problems}/>:<Empty>No questions are linked to this topic yet.</Empty>}</section></>;
+  const { id } = useParams();
+  const [evidence, setEvidence] = useState('');
+  const [help, setHelp] = useState('');
+  const [difficulty, setDifficulty] = useState('');
+  const query = useQuery({
+    queryKey: ['topic', id],
+    queryFn: () => api.get<TopicData>(`/topics/${id}`),
+  });
+  if (query.isPending) return <Loading />;
+  if (query.isError)
+    return (
+      <ErrorNotice error={query.error} retry={() => void query.refetch()} />
+    );
+  const d = query.data;
+  const attempts = d.attempts.filter(
+    (a) =>
+      (!evidence || a.evidence === evidence) &&
+      (!help || a.help === help) &&
+      (!difficulty || a.problem.difficulty === difficulty),
+  );
+  return (
+    <>
+      <Link className="back-link" to="/topics">
+        <Icon icon={ArrowLeft} />
+        Back to topic progress
+      </Link>
+      <PageTitle
+        title={d.topic.name}
+        description={`Last reviewed: ${dateLabel(d.topic.lastReviewed)}${d.topic.provisional ? ' · Provisional evidence' : ''}`}
+      >
+        <div className="detail-score">
+          <strong>{d.topic.score ?? 'Unrated'}</strong>
+          {d.topic.score !== null && <span> / 5</span>}
+        </div>
+      </PageTitle>
+      {d.topic.notes && <p className="topic-notes preserve">{d.topic.notes}</p>}
+      <div className="topic-insight">
+        <div>
+          <strong>{d.stats.attemptCount}</strong>
+          <span>Recorded attempts</span>
+        </div>
+        <div>
+          <strong>{duration(d.stats.medianSeconds)}</strong>
+          <span>Median known active time</span>
+        </div>
+        <p className="small muted">
+          {d.stats.knownTimeCount} of {d.stats.attemptCount} attempts have known
+          times. Unknown durations are excluded. This summary includes different
+          help and evidence types; compare like for like below.
+        </p>
+      </div>
+      <section className="panel">
+        <SectionTitle icon={ListChecks}>Score history & rationale</SectionTitle>
+        <MovementList items={d.decisions} />
+      </section>
+      <section className="panel">
+        <SectionTitle icon={History}>Practice history</SectionTitle>
+        <div className="row history-filters">
+          <Field label="Evidence type">
+            <select
+              value={evidence}
+              onChange={(e) => setEvidence(e.target.value)}
+            >
+              <option value="">All evidence</option>
+              {['retention', 'near_transfer', 'unseen', 'mock'].map((v) => (
+                <option key={v} value={v}>
+                  {v.replaceAll('_', ' ')}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Help filter">
+            <select value={help} onChange={(e) => setHelp(e.target.value)}>
+              <option value="">All help levels</option>
+              {['none', 'small', 'major', 'solution', 'unknown'].map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Question difficulty filter">
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+            >
+              <option value="">All difficulties</option>
+              {['Easy', 'Medium', 'Hard'].map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <AttemptList items={attempts} />
+      </section>
+      <section className="panel">
+        <SectionTitle icon={BookOpen}>Related questions</SectionTitle>
+        <p className="small muted">
+          Selecting a related question is targeted practice, not an unseen
+          assessment.
+        </p>
+        {d.problems.length ? (
+          <ProblemTable problems={d.problems} />
+        ) : (
+          <Empty>No questions are linked to this topic yet.</Empty>
+        )}
+      </section>
+    </>
+  );
 }

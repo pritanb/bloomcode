@@ -1,0 +1,120 @@
+@font-face {
+  font-family: 'Plus Jakarta Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+/* Corporate Trust. All colour decisions live here; components use semantic roles.
+   Local variable type, a 1.25 type scale, and restrained indigo elevation.
+   Success green is decorative; success-text supplies accessible text contrast. */
+:root {
+  color-scheme: light;
+  --canvas: #f8fafc;
+  --surface: #ffffff;
+  --primary: #4f46e5;
+  --secondary: #7c3aed;
+  --text: #0f172a;
+  --muted: #64748b;
+  --text-on-soft: #475569;
+  --border: #e2e8f0;
+  --success: #10b981;
+  --success-text: #047857;
+  --success-soft: #ecfdf5;
+  --success-border: #a7f3d0;
+  --danger-text: #b42336;
+  --danger-soft: #fff1f2;
+  --danger-border: #fecdd3;
+  --warning-text: #854d0e;
+  --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+  --surface-soft: #f1f5f9;
+  --brand-soft: #eef2ff;
+  --brand-border: #c7d2fe;
+  --link: #4338ca;
+  --on-primary: #ffffff;
+  --border-hover: #a5b4fc;
+  --focus: #4f46e5;
+  --editor-gutter: #f8fafc;
+  --editor-active: #eef2ff;
+  --primary-gradient: linear-gradient(115deg, var(--primary), var(--secondary));
+  --atmosphere:
+    radial-gradient(
+      ellipse at 88% 0%,
+      rgba(124, 58, 237, 0.055),
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 30% 0%,
+      rgba(79, 70, 229, 0.045),
+      transparent 50%
+    );
+  --shadow-card: 0 4px 20px -2px rgba(79, 70, 229, 0.08);
+  --shadow-hover:
+    0 10px 25px -5px rgba(79, 70, 229, 0.15),
+    0 8px 10px -6px rgba(79, 70, 229, 0.1);
+  --shadow-button: 0 4px 14px 0 rgba(79, 70, 229, 0.25);
+  --font-body:
+    'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-code: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --text-xs: 0.8rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953125rem;
+  --text-3xl: 2.4414rem;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+  --touch-target: 44px;
+  --content-width: 1280px;
+  --duration: 180ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --canvas: #0f172a;
+    --surface: #172238;
+    --text: #f1f5f9;
+    --muted: #a8b6cb;
+    --text-on-soft: #cbd5e1;
+    --border: #334155;
+    --success-text: #6ee7b7;
+    --success-soft: #14362f;
+    --success-border: #27634d;
+    --danger-text: #fda4af;
+    --danger-soft: #3c2333;
+    --danger-border: #7d3c50;
+    --warning-text: #fde68a;
+    --warning-soft: #382f22;
+    --warning-border: #786335;
+    --surface-soft: #1e2c43;
+    --brand-soft: #252a50;
+    --brand-border: #494e87;
+    --link: #c4b5fd;
+    --border-hover: #818cf8;
+    --focus: #a5b4fc;
+    --editor-gutter: #172238;
+    --editor-active: #252a50;
+    --atmosphere: radial-gradient(
+      ellipse at 88% 0%,
+      rgba(124, 58, 237, 0.1),
+      transparent 50%
+    );
+    --shadow-card: 0 4px 20px -2px rgba(9, 11, 44, 0.24);
+    --shadow-hover: 0 10px 25px -5px rgba(79, 70, 229, 0.22);
+  }
+}
