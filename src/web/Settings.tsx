@@ -1,3 +1,8 @@
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { NativeSelectOption } from '@/components/ui/native-select';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { CalendarDays, Database, Download, Save } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -74,7 +79,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
   }
   return (
     <div className="settings-grid">
-      <section className="panel">
+      <Card className="panel">
         <SectionTitle icon={CalendarDays}>Study rhythm</SectionTitle>
         <p className="muted">
           Changes guide new daily plans. Existing active work stays in place.
@@ -87,7 +92,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           }}
         >
           <Field label="Study timezone">
-            <input
+            <Input
               required
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
@@ -105,12 +110,12 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
                 'Asia/Kolkata',
                 'UTC',
               ].map((z) => (
-                <option key={z}>{z}</option>
+                <NativeSelectOption key={z}>{z}</NativeSelectOption>
               ))}
             </datalist>
           </Field>
           <Field label="Daily budget (minutes)">
-            <input
+            <Input
               required
               type="number"
               min="5"
@@ -122,7 +127,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           </Field>
           <div className="form-grid">
             <Field label="Primary questions">
-              <input
+              <Input
                 required
                 type="number"
                 min="1"
@@ -133,7 +138,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
               />
             </Field>
             <Field label="Optional questions">
-              <input
+              <Input
                 required
                 type="number"
                 min="0"
@@ -146,10 +151,10 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           </div>
           <ErrorNotice error={save.error} />
           <div className="row">
-            <button className="primary" disabled={save.isPending}>
+            <Button variant="default" disabled={save.isPending}>
               <Icon icon={Save} />
               {save.isPending ? 'Saving…' : 'Save settings'}
-            </button>
+            </Button>
             {save.isSuccess && (
               <span className="positive" role="status">
                 Settings saved.
@@ -157,8 +162,8 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
             )}
           </div>
         </form>
-      </section>
-      <section className="panel">
+      </Card>
+      <Card className="panel">
         <SectionTitle icon={Database}>Your data</SectionTitle>
         <dl className="data-status">
           <div>
@@ -180,17 +185,17 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           history as JSON. Keep this file private: it contains your study
           records.
         </p>
-        <button disabled={exporting} onClick={() => void download()}>
+        <Button variant="outline" disabled={exporting} onClick={() => void download()}>
           <Icon icon={Download} />
           {exporting ? 'Preparing export…' : 'Download export'}
-        </button>
+        </Button>
         {exported && (
           <p className="positive" role="status">
             Export prepared for download.
           </p>
         )}
         <ErrorNotice error={error} retry={() => void download()} />
-        <hr />
+        <Separator />
         <h3>Backup & restore</h3>
         <p>
           Local database backups and restore use the authenticated command-line
@@ -200,13 +205,13 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           See the project’s operations guide for the verified commands. Browser
           sessions cannot access the administrative token.
         </p>
-        <hr />
+        <Separator />
         <h3>Migration stays explicit</h3>
         <p className="small muted">
           This app never writes to your source spreadsheet. Import and
           source-of-truth cutover require a separate, approved operation.
         </p>
-      </section>
+      </Card>
     </div>
   );
 }

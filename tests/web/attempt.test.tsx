@@ -8,9 +8,11 @@ import type { Attempt } from '../../src/shared/contracts';
 import { App } from '../../src/web/App';
 const initial:Attempt={id:'a1',problemId:'p1',problem:{id:'p1',title:'A hidden question',url:'https://leetcode.com/problems/two-sum/',difficulty:'Easy'},planItemId:null,status:'active',version:1,language:'python',code:'',notes:'',activeSeconds:42,startedAt:new Date().toISOString(),finishedAt:null,studyDate:'2026-09-16',runningSince:new Date().toISOString(),lastHeartbeatAt:new Date().toISOString(),needsGapDecision:false,outcome:null,help:'unknown',evidence:'unseen',confidence:null,feedback:null,reviewedAt:null,nextReviewDate:null};
 function mount() { return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MemoryRouter initialEntries={['/attempts/a1']}><App/></MemoryRouter></QueryClientProvider>); }
-afterEach(()=>{cleanup();vi.restoreAllMocks();});
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 
 it('locks an uncertain finish and retries the identical idempotent payload after a lost response',async()=>{
+  // jsdom has no layout observer; Radix Checkbox measures its form input.
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
   let a={...initial};const finishes:{body:string,key:string|null}[]=[];
   vi.spyOn(globalThis,'fetch').mockImplementation(async(url,init)=>{
     const path=String(url);if(path==='/api/session')return Response.json({csrfToken:'csrf'});if(init?.method==='GET')return Response.json(a);

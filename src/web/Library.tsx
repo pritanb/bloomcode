@@ -1,3 +1,12 @@
+import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import {
   ArrowLeft,
   CalendarDays,
@@ -103,14 +112,14 @@ export function ProblemForm({
     <form onSubmit={submit} className="stack">
       <div className="form-grid">
         <Field label="Question title">
-          <input
+          <Input
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </Field>
         <Field label="LeetCode URL">
-          <input
+          <Input
             type="url"
             required
             readOnly={!!problem}
@@ -120,19 +129,19 @@ export function ProblemForm({
           />
         </Field>
         <Field label="LeetCode difficulty">
-          <select
+          <NativeSelect
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value)}
           >
-            <option value="">Unknown</option>
+            <NativeSelectOption value="">Unknown</NativeSelectOption>
             {['Easy', 'Medium', 'Hard'].map((v) => (
-              <option key={v}>{v}</option>
+              <NativeSelectOption key={v}>{v}</NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </Field>
       </div>
       <Field label="Question notes">
-        <textarea
+        <Textarea
           rows={3}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -145,7 +154,7 @@ export function ProblemForm({
           topic score.
         </p>
         <Field label="Find a tag">
-          <input
+          <Input
             value={tagSearch}
             onChange={(e) => setTagSearch(e.target.value)}
           />
@@ -159,14 +168,13 @@ export function ProblemForm({
             )
             .map((t) => (
               <div className="tag-choice" key={t.id}>
-                <label>
-                  <input
-                    type="checkbox"
+                <Label>
+                  <Checkbox
                     checked={t.id in selectedTags}
-                    onChange={(e) =>
+                    onCheckedChange={(checked) =>
                       setTags((old) => {
                         const next = { ...old };
-                        if (e.target.checked) next[t.id] = null;
+                        if (checked === true) next[t.id] = null;
                         else delete next[t.id];
                         return next;
                       })
@@ -174,9 +182,9 @@ export function ProblemForm({
                   />
                   {t.name}
                   {t.archived ? ' (archived)' : ''}
-                </label>
+                </Label>
                 {t.id in selectedTags && (
-                  <input
+                  <Input
                     aria-label={`${t.name} difficulty (1–10)`}
                     type="number"
                     min="1"
@@ -206,20 +214,19 @@ export function ProblemForm({
         <legend>List membership</legend>
         <div className="tag-choices">
           {lists.map((l) => (
-            <label className="check" key={l.id}>
-              <input
-                type="checkbox"
+            <Label className="check" key={l.id}>
+              <Checkbox
                 checked={listIds.includes(l.id)}
-                onChange={(e) =>
+                onCheckedChange={(checked) =>
                   setListIds(
-                    e.target.checked
+                    checked === true
                       ? [...listIds, l.id]
                       : listIds.filter((id) => id !== l.id),
                   )
                 }
               />
               {l.name}
-            </label>
+            </Label>
           ))}
         </div>
         {!lists.length && (
@@ -230,12 +237,12 @@ export function ProblemForm({
       </fieldset>
       <ErrorNotice error={error} />
       <div className="row">
-        <button className="primary" disabled={pending}>
+        <Button variant="default" disabled={pending}>
           {pending ? 'Saving…' : 'Save question'}
-        </button>
-        <button type="button" onClick={onCancel} disabled={pending}>
+        </Button>
+        <Button variant="outline" type="button" onClick={onCancel} disabled={pending}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -251,7 +258,7 @@ export function ProblemTable({ problems }: { problems: Problem[] }) {
   return (
     <ResponsiveTable headers={problemHeaders} className="problem-table">
       {problems.map((p) => (
-        <tr role="row" key={p.id}>
+        <TableRow role="row" key={p.id}>
           <TableCell label={problemHeaders[0]}>
             <Link className="problem-link" to={`/library/${p.id}`}>
               {p.title}
@@ -269,17 +276,17 @@ export function ProblemTable({ problems }: { problems: Problem[] }) {
           <TableCell label={problemHeaders[1]}>
             <div className="chips">
               {p.tags.map((t) => (
-                <span key={t.id} className="chip">
+                <Badge variant="secondary" key={t.id} className="chip">
                   {t.name}
                   {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
-                </span>
+                </Badge>
               ))}
             </div>
           </TableCell>
           <TableCell label={problemHeaders[2]}>
-            <span className={`level ${p.difficulty?.toLowerCase()}`}>
+            <Badge variant="secondary" className={`level ${p.difficulty?.toLowerCase()}`}>
               {p.difficulty ?? 'Unknown'}
-            </span>
+            </Badge>
           </TableCell>
           <TableCell label={problemHeaders[3]}>
             {duration(p.lastSolveSeconds)}
@@ -294,7 +301,7 @@ export function ProblemTable({ problems }: { problems: Problem[] }) {
           <TableCell label={problemHeaders[4]}>
             {p.nextReviewDate ? dateLabel(p.nextReviewDate) : 'Not scheduled'}
           </TableCell>
-        </tr>
+        </TableRow>
       ))}
     </ResponsiveTable>
   );
@@ -331,18 +338,18 @@ export function Library() {
         description="Keep your questions, patterns and practice history together."
       >
         <div className="row">
-          <Link className="button" to="/library/manage">
+          <Button asChild variant="outline"><Link  to="/library/manage">
             <Icon icon={Tags} />
             Manage tags & lists
-          </Link>
-          <button className="primary" onClick={() => setAdding(true)}>
+          </Link></Button>
+          <Button variant="default" onClick={() => setAdding(true)}>
             <Icon icon={Plus} />
             Add question
-          </button>
+          </Button>
         </div>
       </PageTitle>
       {adding && (
-        <section className="panel editor-panel" aria-label="Add question">
+        <Card className="panel editor-panel" aria-label="Add question">
           <SectionTitle icon={Plus}>Add a question</SectionTitle>
           <ProblemForm
             tags={tags.data ?? []}
@@ -352,11 +359,11 @@ export function Library() {
             onCancel={() => setAdding(false)}
             onSave={(data) => add.mutate(data)}
           />
-        </section>
+        </Card>
       )}
-      <section className="panel filters">
+      <Card className="panel filters">
         <Field label="Search questions">
-          <input
+          <Input
             type="search"
             placeholder="Search title or URL"
             value={params.get('search') ?? ''}
@@ -373,34 +380,34 @@ export function Library() {
             ['direction', 'Sort direction'],
           ].map(([key, label]) => (
             <Field key={key} label={label}>
-              <select
+              <NativeSelect
                 value={params.get(key) ?? filterOptions[key][0]}
                 onChange={(e) => filter(key, e.target.value)}
               >
                 {filterOptions[key].map((v) => (
-                  <option key={v} value={v}>
+                  <NativeSelectOption key={v} value={v}>
                     {v || 'Any'}
                     {key === 'timeBucket' && v && v !== 'unknown' ? ' min' : ''}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </Field>
           ))}
           <Field label="List">
-            <select
+            <NativeSelect
               value={params.get('listId') ?? ''}
               onChange={(e) => filter('listId', e.target.value)}
             >
-              <option value="">All lists</option>
+              <NativeSelectOption value="">All lists</NativeSelectOption>
               {lists.data?.map((l) => (
-                <option key={l.id} value={l.id}>
+                <NativeSelectOption key={l.id} value={l.id}>
                   {l.name}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
           <Field label="Tag difficulty minimum">
-            <input
+            <Input
               type="number"
               min="1"
               max="10"
@@ -410,7 +417,7 @@ export function Library() {
             />
           </Field>
           <Field label="Tag difficulty maximum">
-            <input
+            <Input
               type="number"
               min="1"
               max="10"
@@ -429,17 +436,16 @@ export function Library() {
                   .split(',')
                   .filter(Boolean);
                 return (
-                  <label
+                  <Label
                     key={t.id}
                     className={`filter-chip ${selected.includes(t.id) ? 'selected' : ''}`}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selected.includes(t.id)}
-                      onChange={(e) =>
+                      onCheckedChange={(checked) =>
                         filter(
                           'tags',
-                          (e.target.checked
+                          (checked === true
                             ? [...selected, t.id]
                             : selected.filter((id) => id !== t.id)
                           ).join(','),
@@ -447,13 +453,13 @@ export function Library() {
                       }
                     />
                     {t.name}
-                  </label>
+                  </Label>
                 );
               })}
           </div>
-          <button className="quiet" onClick={() => setParams({})}>
+          <Button variant="ghost" onClick={() => setParams({})}>
             Reset filters
-          </button>
+          </Button>
         </div>
         <ErrorNotice
           error={tags.error ?? lists.error}
@@ -462,8 +468,8 @@ export function Library() {
             void lists.refetch();
           }}
         />
-      </section>
-      <section className="panel library-results">
+      </Card>
+      <Card className="panel library-results">
         {query.isPending ? (
           <Loading />
         ) : query.isError ? (
@@ -487,25 +493,25 @@ export function Library() {
               </Empty>
             )}
             <div className="pagination">
-              <button
+              <Button variant="outline"
                 disabled={query.data.page <= 1}
                 onClick={() => filter('page', String(query.data.page - 1))}
               >
                 Previous
-              </button>
+              </Button>
               <span>Page {query.data.page}</span>
-              <button
+              <Button variant="outline"
                 disabled={
                   query.data.page * query.data.pageSize >= query.data.total
                 }
                 onClick={() => filter('page', String(query.data.page + 1))}
               >
                 Next
-              </button>
+              </Button>
             </div>
           </>
         )}
-      </section>
+      </Card>
     </>
   );
 }
@@ -529,21 +535,21 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
     >
       <div className="row">
         <Field label="Review scheduling">
-          <select
+          <NativeSelect
             value={action}
             onChange={(e) =>
               setAction(e.target.value as ReviewTarget['action'])
             }
           >
-            <option value="recommended">Use recommendation</option>
-            <option value="manual">Choose date</option>
-            <option value="snooze">Snooze until</option>
-            <option value="none">No scheduled review</option>
-          </select>
+            <NativeSelectOption value="recommended">Use recommendation</NativeSelectOption>
+            <NativeSelectOption value="manual">Choose date</NativeSelectOption>
+            <NativeSelectOption value="snooze">Snooze until</NativeSelectOption>
+            <NativeSelectOption value="none">No scheduled review</NativeSelectOption>
+          </NativeSelect>
         </Field>
         {(action === 'manual' || action === 'snooze') && (
           <Field label="Review date">
-            <input
+            <Input
               required
               type="date"
               value={date}
@@ -551,7 +557,7 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
             />
           </Field>
         )}
-        <button disabled={save.isPending}>Save review date</button>
+        <Button variant="outline" disabled={save.isPending}>Save review date</Button>
       </div>
       <p className="small muted">
         Recommended:{' '}
@@ -614,30 +620,30 @@ export function ProblemDetail() {
         description="Library-selected practice is targeted, not a hidden assessment."
       >
         <div className="row">
-          <button onClick={() => setEditing(!editing)}>
+          <Button variant="outline" onClick={() => setEditing(!editing)}>
             <Icon icon={Pencil} />
             Edit question
-          </button>
-          <button
-            className="primary"
+          </Button>
+          <Button
+            variant="default"
             disabled={start.isPending}
             onClick={() => start.mutate()}
           >
             <Icon icon={Play} />
             Start targeted practice
-          </button>
+          </Button>
         </div>
       </PageTitle>
       <ErrorNotice error={start.error} />
-      <section className="panel">
+      <Card className="panel">
         <div className="row between">
           <a href={p.url} target="_blank" rel="noreferrer">
             <Icon icon={ExternalLink} />
             Open in LeetCode
           </a>
-          <span className={`level ${p.difficulty?.toLowerCase()}`}>
+          <Badge variant="secondary" className={`level ${p.difficulty?.toLowerCase()}`}>
             {p.difficulty ?? 'Unknown difficulty'}
-          </span>
+          </Badge>
         </div>
         {editing ? (
           <ProblemForm
@@ -655,21 +661,21 @@ export function ProblemDetail() {
             <p className="preserve">{p.notes || 'No question notes yet.'}</p>
             <div className="chips">
               {p.tags.map((t) => (
-                <span key={t.id} className="chip">
+                <Badge variant="secondary" key={t.id} className="chip">
                   {t.name}
                   {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
-                </span>
+                </Badge>
               ))}
               {p.lists.map((l) => (
-                <span className="badge" key={l.id}>
+                <Badge variant="secondary" className="badge" key={l.id}>
                   {l.name}
-                </span>
+                </Badge>
               ))}
             </div>
           </>
         )}
-      </section>
-      <section className="panel">
+      </Card>
+      <Card className="panel">
         <SectionTitle icon={CalendarDays}>Review schedule</SectionTitle>
         {query.data.reviews.length ? (
           query.data.reviews.map((r) => (
@@ -681,11 +687,11 @@ export function ProblemDetail() {
             attempt.
           </Empty>
         )}
-      </section>
-      <section className="panel">
+      </Card>
+      <Card className="panel">
         <SectionTitle icon={History}>Practice history</SectionTitle>
         <AttemptList items={query.data.attempts} />
-      </section>
+      </Card>
     </>
   );
 }

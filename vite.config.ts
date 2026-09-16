@@ -1,5 +1,7 @@
 import { defineConfig, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { fileURLToPath } from 'node:url';
 
 // Keep Fastify's strict Host/Origin checks; translate only a request that was
 // same-origin at Vite's boundary. Never launder an arbitrary browser Origin.
@@ -15,7 +17,8 @@ const localApiProxy: ProxyOptions = {
   },
 };
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: { alias: { '@': fileURLToPath(new URL('./src/web', import.meta.url)) } },
   build: { outDir: 'dist/web' },
   server: { host: '127.0.0.1', proxy: { '/api': localApiProxy, '/health': localApiProxy } },
 });

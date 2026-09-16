@@ -1,3 +1,5 @@
+import { Card } from '@/components/ui/card';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { ArrowLeft, BookOpen, History, ListChecks, Ruler } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -30,7 +32,7 @@ export function Topics() {
         title="Topic progress"
         description="Evidence-based proficiency, not a completion counter."
       />
-      <section className="panel">
+      <Card className="panel">
         {query.isPending ? (
           <Loading />
         ) : query.isError ? (
@@ -38,7 +40,7 @@ export function Topics() {
         ) : (
           <TopicTable topics={query.data} />
         )}
-      </section>
+      </Card>
       <section className="scale-guide">
         <SectionTitle icon={Ruler}>The existing 1–5 scale</SectionTitle>
         <ol>
@@ -123,49 +125,49 @@ export function TopicDetail() {
           help and evidence types; compare like for like below.
         </p>
       </div>
-      <section className="panel">
+      <Card className="panel">
         <SectionTitle icon={ListChecks}>Score history & rationale</SectionTitle>
         <MovementList items={d.decisions} />
-      </section>
-      <section className="panel">
+      </Card>
+      <Card className="panel">
         <SectionTitle icon={History}>Practice history</SectionTitle>
         <div className="row history-filters">
           <Field label="Evidence type">
-            <select
+            <NativeSelect
               value={evidence}
               onChange={(e) => setEvidence(e.target.value)}
             >
-              <option value="">All evidence</option>
+              <NativeSelectOption value="">All evidence</NativeSelectOption>
               {['retention', 'near_transfer', 'unseen', 'mock'].map((v) => (
-                <option key={v} value={v}>
+                <NativeSelectOption key={v} value={v}>
                   {v.replaceAll('_', ' ')}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
           <Field label="Help filter">
-            <select value={help} onChange={(e) => setHelp(e.target.value)}>
-              <option value="">All help levels</option>
+            <NativeSelect value={help} onChange={(e) => setHelp(e.target.value)}>
+              <NativeSelectOption value="">All help levels</NativeSelectOption>
               {['none', 'small', 'major', 'solution', 'unknown'].map((v) => (
-                <option key={v}>{v}</option>
+                <NativeSelectOption key={v}>{v}</NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
           <Field label="Question difficulty filter">
-            <select
+            <NativeSelect
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
             >
-              <option value="">All difficulties</option>
+              <NativeSelectOption value="">All difficulties</NativeSelectOption>
               {['Easy', 'Medium', 'Hard'].map((v) => (
-                <option key={v}>{v}</option>
+                <NativeSelectOption key={v}>{v}</NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
         </div>
         <AttemptList items={attempts} />
-      </section>
-      <section className="panel">
+      </Card>
+      <Card className="panel">
         <SectionTitle icon={BookOpen}>Related questions</SectionTitle>
         <p className="small muted">
           Selecting a related question is targeted practice, not an unseen
@@ -176,7 +178,7 @@ export function TopicDetail() {
         ) : (
           <Empty>No questions are linked to this topic yet.</Empty>
         )}
-      </section>
+      </Card>
     </>
   );
 }

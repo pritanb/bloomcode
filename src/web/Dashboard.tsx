@@ -1,3 +1,8 @@
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 import {
   ChartNoAxesCombined,
   CalendarCheck,
@@ -53,10 +58,10 @@ export function TopicTable({
       <div className="section-heading">
         <SectionTitle icon={ChartNoAxesCombined}>Topic scores</SectionTitle>
         <Field label="Sort topics">
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="score">Lowest score first</option>
-            <option value="recent">Recent movement</option>
-          </select>
+          <NativeSelect value={sort} onChange={(e) => setSort(e.target.value)}>
+            <NativeSelectOption value="score">Lowest score first</NativeSelectOption>
+            <NativeSelectOption value="recent">Recent movement</NativeSelectOption>
+          </NativeSelect>
         </Field>
       </div>
       <p className="small muted">
@@ -140,21 +145,21 @@ function PlanRow({ item }: { item: PlanItem }) {
       <div className="plan-content">
         <div className="row between">
           <h3>{item.title}</h3>
-          <span className="badge">{item.status}</span>
+          <Badge variant="secondary" className="badge">{item.status}</Badge>
         </div>
         <p className="muted small">
           Suggested window: {item.suggestedMinutes} min
         </p>
         <div className="row">
           {item.attemptId && available ? (
-            <Link className="button primary" to={`/attempts/${item.attemptId}`}>
+            <Button asChild variant="default"><Link  to={`/attempts/${item.attemptId}`}>
               Resume
-            </Link>
+            </Link></Button>
           ) : (
             available &&
             item.problemId && (
-              <button
-                className={item.status === 'active' ? 'primary' : ''}
+              <Button
+                variant={item.status === 'active' ? 'default' : 'outline'}
                 disabled={action.isPending}
                 onClick={() =>
                   action.mutate(
@@ -164,30 +169,30 @@ function PlanRow({ item }: { item: PlanItem }) {
               >
                 <Icon icon={Play} />
                 {item.status === 'optional' ? 'Make next' : 'Start attempt'}
-              </button>
+              </Button>
             )
           )}
           {available && (
             <>
-              <button
+              <Button variant="outline"
                 disabled={action.isPending}
                 onClick={() => action.mutate('swap')}
               >
                 Swap
-              </button>
-              <button
+              </Button>
+              <Button variant="outline"
                 disabled={action.isPending}
                 onClick={() => setSnoozing(!snoozing)}
               >
                 Snooze
-              </button>
-              <button
-                className="quiet"
+              </Button>
+              <Button
+                variant="ghost"
                 disabled={action.isPending}
                 onClick={() => action.mutate('skip')}
               >
                 Skip
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -200,14 +205,14 @@ function PlanRow({ item }: { item: PlanItem }) {
             }}
           >
             <Field label="Snooze until">
-              <input
+              <Input
                 type="date"
                 required
                 value={until}
                 onChange={(e) => setUntil(e.target.value)}
               />
             </Field>
-            <button disabled={action.isPending}>Save snooze</button>
+            <Button variant="outline" disabled={action.isPending}>Save snooze</Button>
           </form>
         )}
         <ErrorNotice error={action.error} />
@@ -243,7 +248,7 @@ export function Dashboard() {
         </Link>
       </PageTitle>
       <div className="dashboard-grid">
-        <section className="panel plan-panel">
+        <Card className="panel plan-panel">
           <div className="section-heading">
             <SectionTitle icon={CalendarCheck}>Today’s plan</SectionTitle>
             <span className="small muted">
@@ -256,12 +261,11 @@ export function Dashboard() {
                 <strong>Pick up where you left off</strong>
                 <p>{d.activeAttempt.problem.title}</p>
               </div>
-              <Link
-                className="button primary"
+              <Button asChild variant="default"><Link
                 to={`/attempts/${d.activeAttempt.id}`}
               >
                 Resume attempt
-              </Link>
+              </Link></Button>
             </div>
           )}
           {d.plan?.items.length ? (
@@ -277,25 +281,25 @@ export function Dashboard() {
                 Add questions to your library, or import your existing study
                 records. Your plan will use your saved budget.
               </p>
-              <Link className="button primary" to="/library">
+              <Button asChild variant="default"><Link  to="/library">
                 Open library
-              </Link>
+              </Link></Button>
             </Empty>
           )}
           <p className="panel-footnote">
             Skipped days don’t create catch-up quotas. Optional work stays
             optional.
           </p>
-        </section>
-        <section className="panel">
+        </Card>
+        <Card className="panel">
           <TopicTable topics={d.topics} limit={6} />
           {d.topics.length > 6 && (
             <Link className="back-link" to="/topics">
               View all {d.topics.length} topics
             </Link>
           )}
-        </section>
-        <section className="panel">
+        </Card>
+        <Card className="panel">
           <div className="section-heading">
             <SectionTitle icon={ListChecks}>
               Recent score decisions
@@ -308,8 +312,8 @@ export function Dashboard() {
               <MovementList items={d.movements.slice(3)} />
             </details>
           )}
-        </section>
-        <section className="panel recent-practice">
+        </Card>
+        <Card className="panel recent-practice">
           <div className="section-heading">
             <SectionTitle icon={History}>Recent practice</SectionTitle>
           </div>
@@ -320,7 +324,7 @@ export function Dashboard() {
               <AttemptList items={d.recentAttempts.slice(5)} />
             </details>
           )}
-        </section>
+        </Card>
       </div>
     </>
   );

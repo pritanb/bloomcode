@@ -1,3 +1,7 @@
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell as TablePrimitiveCell } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Children,
   cloneElement,
@@ -68,7 +72,7 @@ export function ErrorNotice({
       <span>
         {error instanceof Error ? error.message : 'Something went wrong.'}
       </span>
-      {retry && <button onClick={retry}>Retry</button>}
+      {retry && <Button variant="outline" onClick={retry}>Retry</Button>}
     </div>
   );
 }
@@ -90,15 +94,14 @@ export function Field({
 }) {
   const id = useId();
   return (
-    <label className="field">
-      <span id={id}>{label}</span>
+    <div className="field">
+      <Label id={id} htmlFor={`${id}-control`}>{label}</Label>
       {Children.map(children, (child) =>
-        isValidElement<Record<string, unknown>>(child) &&
-        ['input', 'select', 'textarea'].includes(String(child.type))
-          ? cloneElement(child, { 'aria-labelledby': id })
+        isValidElement<Record<string, unknown>>(child)
+          ? cloneElement(child, { id: `${id}-control`, 'aria-labelledby': id })
           : child,
       )}
-    </label>
+    </div>
   );
 }
 
@@ -114,18 +117,18 @@ export function ResponsiveTable({
 }) {
   return (
     <div className="table-scroll">
-      <table role="table" className={`responsive-table ${className}`}>
-        <thead role="rowgroup">
-          <tr role="row">
+      <Table role="table" className={`responsive-table ${className}`}>
+        <TableHeader role="rowgroup">
+          <TableRow role="row">
             {headers.map((header) => (
-              <th key={header} role="columnheader" scope="col">
+              <TableHead key={header} role="columnheader" scope="col">
                 {header}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody role="rowgroup">{children}</tbody>
-      </table>
+          </TableRow>
+        </TableHeader>
+        <TableBody role="rowgroup">{children}</TableBody>
+      </Table>
     </div>
   );
 }
@@ -138,12 +141,12 @@ export function TableCell({
   children: ReactNode;
 }) {
   return (
-    <td role="cell">
+    <TablePrimitiveCell role="cell">
       <span className="cell-label" aria-hidden="true">
         {label}
       </span>
       {children}
-    </td>
+    </TablePrimitiveCell>
   );
 }
 
@@ -223,7 +226,7 @@ export function AttemptList({ items }: { items: Attempt[] }) {
   return (
     <ResponsiveTable headers={attemptHeaders}>
       {items.map((a) => (
-        <tr role="row" key={a.id}>
+        <TableRow role="row" key={a.id}>
           <TableCell label={attemptHeaders[0]}>
             <Link to={`/attempts/${a.id}`}>{a.problem.title}</Link>
             <small>{dateLabel(a.finishedAt ?? a.startedAt)}</small>
@@ -245,7 +248,7 @@ export function AttemptList({ items }: { items: Attempt[] }) {
                 ? 'Awaiting tutor review'
                 : 'In progress'}
           </TableCell>
-        </tr>
+        </TableRow>
       ))}
     </ResponsiveTable>
   );
@@ -273,7 +276,7 @@ export function CopyButton({
   const [state, setState] = useState('');
   return (
     <>
-      <button
+      <Button variant="outline"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
@@ -287,14 +290,14 @@ export function CopyButton({
       >
         <Icon icon={Copy} />
         {children}
-      </button>
+      </Button>
       {state && (
         <span role="status" className="small">
           {state}
         </span>
       )}
       {state.startsWith('Clipboard') && (
-        <textarea readOnly value={text} aria-label="Text to copy" />
+        <Textarea readOnly value={text} aria-label="Text to copy" />
       )}
     </>
   );

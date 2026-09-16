@@ -78,6 +78,10 @@ If Chromium is missing: `npx playwright install chromium`. **Use the lightweight
 
 The Vite development proxy translates legitimate local same-origin requests while preserving the backend's Host, Origin and CSRF checks. The production app serves its own static UI and binds only to loopback. This is a personal single-user application, not a publicly deployable multi-user service.
 
+## UI
+
+The UI uses the actual shadcn/ui Radix Nova registry components, Tailwind CSS v4, a neutral palette and system sans-serif text. It follows the system light/dark preference. See [UI design system](docs/design-system.md) for component and layout conventions.
+
 ## Repository map
 
 | Path | Responsibility |

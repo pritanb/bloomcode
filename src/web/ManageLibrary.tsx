@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { ArrowLeft, List, Plus, Tags } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -30,37 +34,37 @@ function TagRow({ tag }: { tag: Tag }) {
       >
         <div className="form-grid">
           <Field label={`Name for ${tag.name}`}>
-            <input
+            <Input
               value={name}
               required
               onChange={(e) => setName(e.target.value)}
             />
           </Field>
           <Field label={`Description for ${tag.name}`}>
-            <input
+            <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </Field>
         </div>
         <div className="row">
-          <button
+          <Button variant="outline"
             disabled={
               edit.isPending ||
               (name === tag.name && description === tag.description)
             }
           >
             Save tag
-          </button>
-          <button
+          </Button>
+          <Button variant="outline"
             type="button"
             aria-label={`${tag.archived ? 'Restore' : 'Archive'} ${tag.name}`}
             disabled={edit.isPending}
             onClick={() => edit.mutate({ archived: !tag.archived })}
           >
             {tag.archived ? 'Restore tag' : 'Archive tag'}
-          </button>
-          {tag.archived && <span className="badge">Archived</span>}
+          </Button>
+          {tag.archived && <Badge variant="secondary" className="badge">Archived</Badge>}
         </div>
         <ErrorNotice error={edit.error} />
       </form>
@@ -112,7 +116,7 @@ export function ManageLibrary() {
         description="Organise questions without duplicating them. Tags do not create proficiency scores."
       />
       <div className="management-grid">
-        <section className="panel">
+        <Card className="panel">
           <SectionTitle icon={Tags}>Pattern tags</SectionTitle>
           <form
             className="stack inset"
@@ -122,22 +126,22 @@ export function ManageLibrary() {
             }}
           >
             <Field label="New tag name">
-              <input
+              <Input
                 required
                 value={tagName}
                 onChange={(e) => setTagName(e.target.value)}
               />
             </Field>
             <Field label="Tag description">
-              <input
+              <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </Field>
-            <button className="primary" disabled={addTag.isPending}>
+            <Button variant="default" disabled={addTag.isPending}>
               <Icon icon={Plus} />
               Create tag
-            </button>
+            </Button>
             <ErrorNotice error={addTag.error} />
           </form>
           <p className="small muted">
@@ -157,8 +161,8 @@ export function ManageLibrary() {
           ) : (
             <Empty>No pattern tags yet.</Empty>
           )}
-        </section>
-        <section className="panel">
+        </Card>
+        <Card className="panel">
           <SectionTitle icon={List}>Question lists</SectionTitle>
           <form
             className="stack inset"
@@ -168,29 +172,29 @@ export function ManageLibrary() {
             }}
           >
             <Field label="New list name">
-              <input
+              <Input
                 required
                 value={listName}
                 onChange={(e) => setListName(e.target.value)}
               />
             </Field>
             <Field label="Source URL (optional)">
-              <input
+              <Input
                 type="url"
                 value={sourceUrl}
                 onChange={(e) => setSourceUrl(e.target.value)}
               />
             </Field>
             <Field label="Source version (optional)">
-              <input
+              <Input
                 value={sourceVersion}
                 onChange={(e) => setSourceVersion(e.target.value)}
               />
             </Field>
-            <button className="primary" disabled={addList.isPending}>
+            <Button variant="default" disabled={addList.isPending}>
               <Icon icon={Plus} />
               Create list
-            </button>
+            </Button>
             <ErrorNotice error={addList.error} />
           </form>
           <p className="small muted">
@@ -238,7 +242,7 @@ export function ManageLibrary() {
           ) : (
             <Empty>No lists yet.</Empty>
           )}
-        </section>
+        </Card>
       </div>
     </>
   );

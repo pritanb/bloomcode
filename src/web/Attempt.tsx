@@ -1,3 +1,11 @@
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowLeft,
   Check,
@@ -242,15 +250,14 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
         </span>
       </div>
       <PageTitle title={attempt.problem.title}>
-        <a
-          className="button"
+        <Button asChild variant="outline"><a
           href={attempt.problem.url}
           target="_blank"
           rel="noreferrer"
         >
           <Icon icon={ExternalLink} />
           Open in LeetCode
-        </a>
+        </a></Button>
       </PageTitle>
       <ErrorNotice
         error={error}
@@ -270,14 +277,14 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             <CopyButton text={`${draft.code}\n\n${draft.notes}`}>
               Copy unsaved answer
             </CopyButton>
-            <button onClick={() => void reloadSaved()}>
+            <Button variant="outline" onClick={() => void reloadSaved()}>
               Reload saved version
-            </button>
+            </Button>
           </div>
         </div>
       )}
       {completed ? (
-        <section className="completion panel">
+        <Card className="completion panel">
           <div className="row between">
             <div>
               <h2>
@@ -315,44 +322,44 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             >
               Copy Hermes review prompt
             </CopyButton>
-            <button onClick={() => void reloadSaved()}>
+            <Button variant="outline" onClick={() => void reloadSaved()}>
               <Icon icon={RefreshCw} />
               Refresh feedback
-            </button>
-            <Link className="button primary" to="/">
+            </Button>
+            <Button asChild variant="default"><Link  to="/">
               Done for now
-            </Link>
+            </Link></Button>
           </div>
           <p className="small muted">
             Copying does not start Hermes. Send the prompt in your own chat; the
             configured model may receive this attempt’s code and context.
           </p>
-        </section>
+        </Card>
       ) : (
-        <section className="workspace-toolbar">
+        <Card className="workspace-toolbar">
           <Field label="Language">
-            <select
+            <NativeSelect
               disabled={closing || submitting}
               value={draft.language}
               onChange={(e) => setDraft({ ...draft, language: e.target.value })}
             >
-              <option value="python">Python</option>
-              <option value="java">Java</option>
-              <option value="javascript">JavaScript</option>
-              <option value="typescript">TypeScript</option>
-              <option value="cpp">C++</option>
-              <option value="other">Other</option>
-            </select>
+              <NativeSelectOption value="python">Python</NativeSelectOption>
+              <NativeSelectOption value="java">Java</NativeSelectOption>
+              <NativeSelectOption value="javascript">JavaScript</NativeSelectOption>
+              <NativeSelectOption value="typescript">TypeScript</NativeSelectOption>
+              <NativeSelectOption value="cpp">C++</NativeSelectOption>
+              <NativeSelectOption value="other">Other</NativeSelectOption>
+            </NativeSelect>
           </Field>
           <div className="timer">
             <span>Active time</span>
             <strong aria-label="Elapsed active time">
               {duration(activeTime(attempt, now))}
             </strong>
-            <span className="badge">{attempt.status}</span>
+            <Badge variant="secondary" className="badge">{attempt.status}</Badge>
           </div>
           <div className="row">
-            <button
+            <Button variant="outline"
               disabled={
                 timerBusy || closing || !!error || attempt.needsGapDecision
               }
@@ -362,9 +369,9 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             >
               <Icon icon={attempt.status === 'active' ? Pause : Play} />
               {attempt.status === 'active' ? 'Pause' : 'Resume timer'}
-            </button>
-            <button
-              className="primary"
+            </Button>
+            <Button
+              variant="default"
               disabled={
                 closing || submitting || !!error || attempt.needsGapDecision
               }
@@ -372,9 +379,9 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             >
               <Icon icon={Flag} />
               Finish attempt
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
       )}
       {attempt.needsGapDecision && !completed && (
         <div className="warning">
@@ -384,22 +391,22 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             gap before resuming or finishing.
           </p>
           <div className="row">
-            <button
+            <Button variant="outline"
               disabled={timerBusy}
               onClick={() => void timer('resume', false)}
             >
               Exclude the gap
-            </button>
-            <button
+            </Button>
+            <Button variant="outline"
               disabled={timerBusy}
               onClick={() => void timer('resume', true)}
             >
               Include the gap
-            </button>
+            </Button>
           </div>
         </div>
       )}
-      <section className="code-panel">
+      <Card className="code-panel">
         <div className="code-heading">
           <SectionTitle icon={CodeXml}>
             {completed ? 'Saved answer' : 'Your answer'}
@@ -436,10 +443,10 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
                     : 'Draft saved'}
           </span>
         </div>
-      </section>
-      <section className="panel notes-panel">
+      </Card>
+      <Card className="panel notes-panel">
         <Field label="Attempt notes">
-          <textarea
+          <Textarea
             rows={4}
             placeholder="Approach, edge cases, or a submission link (optional)"
             value={draft.notes}
@@ -447,7 +454,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
           />
         </Field>
-      </section>
+      </Card>
       {closing && !completed && (
         <FinishForm
           attempt={attempt}
@@ -511,7 +518,7 @@ function FinishForm({
   const [date, setDate] = useState('');
   const [confidence, setConfidence] = useState('');
   return (
-    <section className="panel finish-panel">
+    <Card className="panel finish-panel">
       <SectionTitle icon={Flag}>Finish attempt</SectionTitle>
       <p className="muted">
         Record what happened. An unfinished solution still counts as practice.
@@ -535,29 +542,29 @@ function FinishForm({
         <fieldset disabled={busy || locked}>
           <div className="form-grid">
             <Field label="Outcome">
-              <select
+              <NativeSelect
                 value={outcome}
                 onChange={(e) => setOutcome(e.target.value as Outcome)}
               >
-                <option value="solved">Solved (self-reported)</option>
-                <option value="not_solved">Not solved</option>
-                <option value="stopped">Stopped</option>
-              </select>
+                <NativeSelectOption value="solved">Solved (self-reported)</NativeSelectOption>
+                <NativeSelectOption value="not_solved">Not solved</NativeSelectOption>
+                <NativeSelectOption value="stopped">Stopped</NativeSelectOption>
+              </NativeSelect>
             </Field>
             <Field label="Help used">
-              <select
+              <NativeSelect
                 value={help}
                 onChange={(e) => setHelp(e.target.value as Help)}
               >
-                <option value="unknown">Unknown</option>
-                <option value="none">None</option>
-                <option value="small">Small hint</option>
-                <option value="major">Major help</option>
-                <option value="solution">Solution viewed</option>
-              </select>
+                <NativeSelectOption value="unknown">Unknown</NativeSelectOption>
+                <NativeSelectOption value="none">None</NativeSelectOption>
+                <NativeSelectOption value="small">Small hint</NativeSelectOption>
+                <NativeSelectOption value="major">Major help</NativeSelectOption>
+                <NativeSelectOption value="solution">Solution viewed</NativeSelectOption>
+              </NativeSelect>
             </Field>
             <Field label="Active time (seconds)">
-              <input
+              <Input
                 required={!unknown}
                 disabled={unknown}
                 type="number"
@@ -567,27 +574,26 @@ function FinishForm({
                 onChange={(e) => setSeconds(e.target.value)}
               />
             </Field>
-            <label className="check">
-              <input
-                type="checkbox"
+            <Label className="check">
+              <Checkbox
                 checked={unknown}
-                onChange={(e) => setUnknown(e.target.checked)}
+                onCheckedChange={(checked) => setUnknown(checked === true)}
               />
               Time unknown
-            </label>
+            </Label>
             <Field label="Next review">
-              <select
+              <NativeSelect
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
               >
-                <option value="recommended">Use recommended date</option>
-                <option value="manual">Choose date</option>
-                <option value="none">No scheduled review</option>
-              </select>
+                <NativeSelectOption value="recommended">Use recommended date</NativeSelectOption>
+                <NativeSelectOption value="manual">Choose date</NativeSelectOption>
+                <NativeSelectOption value="none">No scheduled review</NativeSelectOption>
+              </NativeSelect>
             </Field>
             {review === 'manual' && (
               <Field label="Review date">
-                <input
+                <Input
                   type="date"
                   required
                   value={date}
@@ -599,7 +605,7 @@ function FinishForm({
           <details>
             <summary>Optional details</summary>
             <Field label="Confidence (1–5)">
-              <input
+              <Input
                 type="number"
                 min="1"
                 max="5"
@@ -611,14 +617,14 @@ function FinishForm({
           </details>
         </fieldset>
         <div className="row">
-          <button className="primary" disabled={busy || locked}>
+          <Button variant="default" disabled={busy || locked}>
             {busy ? 'Saving attempt…' : 'Save attempt'}
-          </button>
-          <button type="button" disabled={busy || locked} onClick={onCancel}>
+          </Button>
+          <Button variant="outline" type="button" disabled={busy || locked} onClick={onCancel}>
             Back to draft
-          </button>
+          </Button>
         </div>
       </form>
-    </section>
+    </Card>
   );
 }
