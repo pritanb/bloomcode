@@ -177,22 +177,22 @@ describe('loopback authentication',()=> {
   });
 });
 
-it('filters confidence by the latest completed attempt and combines it with unknown solve time', async () => {
+it('filters by the latest recorded confidence and retains it after an unrated attempt', async () => {
  const p=(await request('POST','/api/problems',{title:'Confidence',url:'https://leetcode.com/problems/confidence/'})).json();
  await request('POST','/api/problems',{title:'Unrated',url:'https://leetcode.com/problems/unrated/'});
- for(const confidence of [1,2,3,4,5,null]){
+ for(const confidence of [1,2,2.5,3,3.5,4,4.5,5,null]){
   now=new Date(now.getTime()+1000);
   const a=(await request('POST','/api/attempts',{problemId:p.id,context:'targeted'})).json();
   const finished=await request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'solved',help:'none',activeSeconds:null,confidence},{'idempotency-key':`confidence-${confidence}`});
   expect(finished.statusCode).toBe(200);
-  const expected=confidence===null?'unknown':confidence<=2?'low':confidence===3?'medium':'high';
+  const expected=confidence===null?'high':confidence<3?'low':confidence<4?'medium':'high';
   for(const bucket of ['low','medium','high','unknown']){
    const result=await request('GET',`/api/problems?search=confidence&confidence=${bucket}&timeBucket=unknown`);
    expect(result.statusCode).toBe(200);
    expect(result.json().total).toBe(bucket===expected?1:0);
   }
  }
- expect((await request('GET','/api/problems?confidence=unknown')).json().total).toBe(2);
+ expect((await request('GET','/api/problems?confidence=unknown')).json().total).toBe(1);
  expect((await request('GET','/api/problems?confidence=invalid')).statusCode).toBe(400);
 });
 
@@ -229,6 +229,7 @@ it('honors the daily question target without a budget cap and preserves existing
  expect((await request('GET','/api/settings')).json().questionsPerDay).toBe(20);
 });
 
+
 it('imports explicit decimal confidence without inventing missing ratings', async () => {
  const payload=imported();
  payload.attempts[0]!.confidence=4.5;
@@ -237,4 +238,19 @@ it('imports explicit decimal confidence without inventing missing ratings', asyn
  expect(found.total).toBe(1);
  const detail=(await request('GET',`/api/problems/${found.items[0].id}`)).json();
  expect(detail.attempts[0].confidence).toBe(4.5);
+});
+
+
+it('shows submission fields without code and retains the latest recorded confidence', async () => {
+ const p=(await request('POST','/api/problems',{title:'Summary',url:'https://leetcode.com/problems/summary/'})).json();
+ for (const confidence of [4.5,null]) {
+  now=new Date(now.getTime()+1000);
+  const a=(await request('POST','/api/attempts',{problemId:p.id,context:'targeted',language:'java'})).json();
+  await request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'not_solved',help:'small',activeSeconds:90,confidence,notes:'Submission notes',code:'private code',reviewAction:'manual',reviewDate:'2026-10-01'},{'idempotency-key':`summary-${confidence}`});
+ }
+ const row=(await request('GET','/api/problems?search=summary')).json().items[0];
+ expect(row.latestConfidence).toBe(4.5);
+ expect(row.latestSubmission).toMatchObject({outcome:'not_solved',help:'small',language:'java',activeSeconds:90,confidence:null,notes:'Submission notes',nextReviewDate:'2026-10-01'});
+ expect(row.latestSubmission).not.toHaveProperty('code');
+ expect(row.nextReviewDate).toBe('2026-10-01');
 });

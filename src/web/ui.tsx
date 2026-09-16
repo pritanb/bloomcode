@@ -111,7 +111,9 @@ export function ResponsiveTable({
   headers,
   children,
   className = '',
+  sorting,
 }: {
+  sorting?: { active: string; direction: 'asc' | 'desc'; onSort: (header: string) => void; labels: Record<string, string> };
   headers: readonly string[];
   children: ReactNode;
   className?: string;
@@ -122,8 +124,10 @@ export function ResponsiveTable({
         <TableHeader role="rowgroup">
           <TableRow role="row">
             {headers.map((header) => (
-              <TableHead key={header} role="columnheader" scope="col">
-                {header}
+              <TableHead key={header} role="columnheader" scope="col" aria-sort={sorting?.active === header ? (sorting.direction === 'asc' ? 'ascending' : 'descending') : undefined}>
+                {sorting?.labels[header] ? <button type="button" className="table-sort" onClick={() => sorting.onSort(header)} aria-label={`Sort by ${sorting.labels[header]}, ${sorting.active === header && sorting.direction === 'asc' ? 'descending' : 'ascending'}`}>
+                  {header}<span aria-hidden="true">{sorting.active === header ? (sorting.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button> : header}
               </TableHead>
             ))}
           </TableRow>

@@ -1,3 +1,6 @@
+import { Dialog } from 'radix-ui';
+import { tagColour } from './tag-colour';
+import { enumLabel, helpLabel, languageLabel } from './labels';
 import { DateField } from '@/components/date-field';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -20,7 +23,7 @@ import {
   Plus,
   Tags,
 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Link,
@@ -53,7 +56,7 @@ import {
   useAction,
 } from './ui';
 const filterOptions: Record<string, string[]> = {
-  status: ['all', 'completed', 'attempted'],
+  status: ['all', 'solved', 'not_solved', 'stopped', 'not_submitted'],
   tagMode: ['any', 'all'],
   difficulty: ['', 'Easy', 'Medium', 'Hard'],
   timeBucket: ['', '0-10', '10-20', '20-30', '30-45', '45+', 'unknown'],
@@ -183,7 +186,7 @@ export function ProblemForm({
                       })
                     }
                   />
-                  {t.name}
+                  <span className="tag-colour tag-label" style={tagColour(t)}>{t.name}</span>
                   {t.archived ? ' (archived)' : ''}
                 </Label>
                 {t.id in selectedTags && (
@@ -252,34 +255,39 @@ export function ProblemForm({
 }
 const problemHeaders = [
   'Question',
-  'Patterns',
-  'Level',
-  'Latest solve',
+  'Tags',
+  'Difficulty',
+  'Latest submission',
+  'LeetCode time',
+  'Confidence',
   'Next review',
+  'Attempt notes',
 ] as const;
-export function ProblemTable({ problems }: { problems: Problem[] }) {
+const problemSortKeys: Record<string, string> = {
+  Question: 'title', Tags: 'tagDifficulty', Difficulty: 'difficulty',
+  'Latest submission': 'lastAttempt', 'LeetCode time': 'solveTime',
+  Confidence: 'confidence', 'Next review': 'reviewDate',
+};
+export function ProblemTable({ problems, sort = 'title', direction = 'asc', onSort }: {
+  problems: Problem[]; sort?: string; direction?: 'asc' | 'desc'; onSort?: (key: string) => void;
+}) {
   return (
-    <ResponsiveTable headers={problemHeaders} className="problem-table">
+    <ResponsiveTable headers={problemHeaders} className={`problem-table${onSort ? ' sortable-table' : ''}`} sorting={onSort ? {
+      active: Object.keys(problemSortKeys).find(header => problemSortKeys[header] === sort) ?? '',
+      direction, onSort: header => onSort(problemSortKeys[header]),
+      labels: { Question: 'question title', Tags: 'tag rating', Difficulty: 'difficulty', 'Latest submission': 'last attempt', 'LeetCode time': 'solve time', Confidence: 'confidence', 'Next review': 'next review' },
+    } : undefined}>
       {problems.map((p) => (
         <TableRow role="row" key={p.id}>
           <TableCell label={problemHeaders[0]}>
-            <Link className="problem-link" to={`/library/${p.id}`}>
+            <Link className="problem-link" to={`/library/${p.id}`} title={`Open ${p.title}`} >
               {p.title}
             </Link>
-            <small>
-              {p.lastOutcome === 'solved'
-                ? 'Reported solved'
-                : p.legacyCompleted
-                  ? 'Legacy checklist completed'
-                  : p.attemptCount
-                    ? `${p.attemptCount} attempt${p.attemptCount === 1 ? '' : 's'}`
-                    : 'Not attempted'}
-            </small>
           </TableCell>
           <TableCell label={problemHeaders[1]}>
             <div className="chips">
               {p.tags.map((t) => (
-                <Badge variant="secondary" key={t.id} className="chip">
+                <Badge variant="secondary" key={t.id} style={tagColour(t)} title={`${t.name}${t.difficulty !== null ? ` ${t.difficulty}/10` : ''}`} className="tag-colour chip library-tag">
                   {t.name}
                   {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
                 </Badge>
@@ -292,10 +300,38 @@ export function ProblemTable({ problems }: { problems: Problem[] }) {
             </Badge>
           </TableCell>
           <TableCell label={problemHeaders[3]}>
-            {duration(p.lastSolveSeconds)}
+            {p.latestSubmission ? <>
+              <Link to={`/attempts/${p.latestSubmission.id}`}>{enumLabel(p.latestSubmission.outcome)}</Link>
+              <small>{helpLabel(p.latestSubmission.help)} · {languageLabel(p.latestSubmission.language)}</small>
+              <small>{dateLabel(p.latestSubmission.finishedAt)}</small>
+            </> : 'Not submitted'}
           </TableCell>
           <TableCell label={problemHeaders[4]}>
+            {duration(p.latestSubmission?.activeSeconds ?? null)}
+          </TableCell>
+          <TableCell label={problemHeaders[5]}>
+            {p.latestConfidence != null ? `${p.latestConfidence} / 5` : 'Not rated'}
+            {p.latestSubmission?.confidence == null && p.latestConfidence != null && <small>Earlier submission</small>}
+          </TableCell>
+          <TableCell label={problemHeaders[6]}>
             {p.nextReviewDate ? dateLabel(p.nextReviewDate) : 'Not scheduled'}
+            {p.reviewAction && p.reviewAction !== 'none' && <small>{p.reviewAction === 'manual' ? 'Chosen date' : p.reviewAction === 'snooze' ? 'Snoozed' : 'Recommended'}</small>}
+          </TableCell>
+          <TableCell label={problemHeaders[7]}>
+            {p.latestSubmission?.notes ? <Dialog.Root>
+              <Dialog.Trigger asChild>
+                <Button variant="link" className="h-auto p-0">View notes</Button>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="notes-dialog-overlay" />
+                <Dialog.Content className="notes-dialog">
+                  <Dialog.Title>Attempt notes</Dialog.Title>
+                  <Dialog.Description className="muted">{p.title}</Dialog.Description>
+                  <div className="notes-dialog-body preserve">{p.latestSubmission.notes}</div>
+                  <Dialog.Close asChild><Button variant="outline">Close</Button></Dialog.Close>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root> : 'No notes'}
           </TableCell>
         </TableRow>
       ))}
@@ -304,13 +340,22 @@ export function ProblemTable({ problems }: { problems: Problem[] }) {
 }
 export function Library() {
   const [params, setParams] = useSearchParams();
+  // Older library links used overlapping practice-history filters.
+  useEffect(() => {
+    const status = params.get('status');
+    if (status !== 'completed' && status !== 'attempted' && status !== 'unsolved') return;
+    const next = new URLSearchParams(params);
+    next.set('status', status === 'completed' ? 'solved' : status === 'unsolved' ? 'not_submitted' : 'all');
+    next.set('page', '1');
+    setParams(next, { replace: true });
+  }, [params, setParams]);
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [tagsOpen, setTagsOpen] = useState(false);
   const selectedTags = (params.get('tags') ?? '').split(',').filter(Boolean);
   const activeFilters = [...params.entries()].filter(([key, value]) =>
-    !['page', 'pageSize', 'search', 'tagDifficultyMin', 'tagDifficultyMax'].includes(key) && value &&
+    !['page', 'pageSize', 'search', 'sort', 'direction', 'tagDifficultyMin', 'tagDifficultyMax'].includes(key) && value &&
     value !== (filterOptions[key]?.[0] ?? '')
   ).length;
   const hasFilters = activeFilters > 0 || !!params.get('search');
@@ -384,16 +429,18 @@ export function Library() {
         </div>
         <div id="library-filters" className="library-filter-details">
           <div className="library-filter-grid">
-            <Field label="Status">
+            <Field label="Latest submission">
               <SelectField value={params.get('status') ?? 'all'} onValueChange={value => filter('status', value)}>
                 <SelectOption value="all">All questions</SelectOption>
-                <SelectOption value="completed">Completed</SelectOption>
-                <SelectOption value="attempted">Attempted</SelectOption>
+                <SelectOption value="solved">Solved</SelectOption>
+                <SelectOption value="not_solved">Not solved</SelectOption>
+                <SelectOption value="stopped">Stopped</SelectOption>
+                <SelectOption value="not_submitted">Not submitted</SelectOption>
               </SelectField>
             </Field>
             <Field label="Difficulty">
               <SelectField value={params.get('difficulty') ?? ''} onValueChange={value => filter('difficulty', value)}>
-                <SelectOption value="">All levels</SelectOption>
+                <SelectOption value="">All difficulties</SelectOption>
                 {['Easy', 'Medium', 'Hard'].map(level => <SelectOption key={level}>{level}</SelectOption>)}
               </SelectField>
             </Field>
@@ -411,7 +458,7 @@ export function Library() {
                       {tags.data?.filter(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase())).map(t => (
                         <Label className="tag-filter-option" key={t.id}>
                           <Checkbox checked={selectedTags.includes(t.id)} onCheckedChange={checked => filter('tags', (checked === true ? [...selectedTags, t.id] : selectedTags.filter(id => id !== t.id)).join(','))} />
-                          {t.name}
+                          <span className="tag-colour tag-label" style={tagColour(t)}>{t.name}</span>
                         </Label>
                       ))}
                       {tags.data && !tags.data.some(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase())) && <p className="muted">No matching tags.</p>}
@@ -433,38 +480,28 @@ export function Library() {
                 {lists.data?.map(l => <SelectOption key={l.id} value={l.id}>{l.name}</SelectOption>)}
               </SelectField>
             </Field>
-            <Field label="Order">
-              <SelectField value={`${params.get('sort') ?? 'title'}:${params.get('direction') ?? 'asc'}`} onValueChange={value => {
-                const [sort, direction] = value.split(':');
-                const next = new URLSearchParams(params);
-                next.set('sort', sort); next.set('direction', direction); next.set('page', '1');
-                setParams(next, { replace: true });
-              }}>
-                {[
-                  ['title:asc', 'Title: A–Z'], ['title:desc', 'Title: Z–A'],
-                  ['lastAttempt:desc', 'Last attempt: newest first'], ['lastAttempt:asc', 'Last attempt: oldest first'],
-                  ['solveTime:asc', 'Solve time: shortest first'], ['solveTime:desc', 'Solve time: longest first'],
-                  ['reviewDate:asc', 'Review: earliest first'], ['reviewDate:desc', 'Review: latest first'],
-                  ['tagDifficulty:asc', 'Tag rating: lowest first'], ['tagDifficulty:desc', 'Tag rating: highest first'],
-                ].map(([value, label]) => <SelectOption key={value} value={value}>{label}</SelectOption>)}
-              </SelectField>
-            </Field>
             <Field label="Solve time">
               <SelectField value={params.get('timeBucket') ?? ''} onValueChange={value => filter('timeBucket', value)}>
                 {filterOptions.timeBucket.map(value => <SelectOption key={value} value={value}>{value === '' ? 'Any time' : value === 'unknown' ? 'Unknown' : `${value} min`}</SelectOption>)}
               </SelectField>
             </Field>
-            <Field label="Confidence">
-              <SelectField value={params.get('confidence') ?? ''} onValueChange={value => filter('confidence', value)} title="Confidence from your latest completed attempt">
+            <Field label="Attempt confidence">
+              <SelectField value={params.get('confidence') ?? ''} onValueChange={value => filter('confidence', value)} title="Latest recorded confidence rating">
                 <SelectOption value="">Any confidence</SelectOption>
-                <SelectOption value="low">Low (1–2)</SelectOption>
-                <SelectOption value="medium">Medium (3)</SelectOption>
+                <SelectOption value="low">Low (below 3)</SelectOption>
+                <SelectOption value="medium">Medium (3 to under 4)</SelectOption>
                 <SelectOption value="high">High (4–5)</SelectOption>
                 <SelectOption value="unknown">Not recorded</SelectOption>
               </SelectField>
             </Field>
           </div>
         </div>
+        {params.get('confidence') && (
+          <p className="small muted">
+            Confidence uses your latest recorded rating, not a topic score.
+            Unrated attempts do not replace an earlier rating. “Not recorded” means no rating has been saved.
+          </p>
+        )}
         <ErrorNotice
           error={tags.error ?? lists.error}
           retry={() => {
@@ -484,11 +521,22 @@ export function Library() {
               </h2>
             </div>
             {query.data.items.length ? (
-              <ProblemTable problems={query.data.items} />
+              <ProblemTable problems={query.data.items} sort={params.get('sort') ?? 'title'} direction={params.get('direction') === 'desc' ? 'desc' : 'asc'} onSort={sort => {
+                const next = new URLSearchParams(params);
+                next.set('sort', sort);
+                next.set('direction', (params.get('sort') ?? 'title') === sort && (params.get('direction') ?? 'asc') === 'asc' ? 'desc' : 'asc');
+                next.set('page', '1');
+                setParams(next, { replace: true });
+              }} />
             ) : (
               <Empty>
-                <h3>No questions found</h3>
-                <p>Add a question or reset your filters to see more.</p>
+                <h3>{params.get('confidence') ? 'No questions match this confidence filter' : 'No questions found'}</h3>
+                {params.get('confidence') ? (
+                  <>
+                    <p>Only the latest recorded rating is used. Other active filters also apply.</p>
+                    <Button variant="outline" onClick={() => filter('confidence', '')}>Clear confidence filter</Button>
+                  </>
+                ) : <p>Add a question or reset your filters to see more.</p>}
               </Empty>
             )}
             <div className="pagination">
@@ -659,7 +707,7 @@ export function ProblemDetail() {
             <p className="preserve">{p.notes || 'No question notes yet.'}</p>
             <div className="chips">
               {p.tags.map((t) => (
-                <Badge variant="secondary" key={t.id} className="chip">
+                <Badge variant="secondary" key={t.id} style={tagColour(t)} className="tag-colour chip">
                   {t.name}
                   {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
                 </Badge>

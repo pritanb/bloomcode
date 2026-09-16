@@ -1,8 +1,12 @@
 export type Help = 'none' | 'small' | 'major' | 'solution' | 'unknown';
 export type Outcome = 'solved' | 'not_solved' | 'stopped';
-export interface Tag { id: string; name: string; description: string; archived: boolean }
+export interface Tag { hue?: number; id: string; name: string; description: string; archived: boolean }
 export interface ProblemList { id: string; name: string; sourceUrl: string | null; sourceVersion: string | null }
+export type SubmissionSummary = Pick<Attempt, 'id' | 'outcome' | 'help' | 'language' | 'activeSeconds' | 'confidence' | 'notes' | 'finishedAt' | 'nextReviewDate'>;
 export interface Problem {
+  latestSubmission?: SubmissionSummary | null;
+  latestConfidence?: number | null;
+  reviewAction?: ReviewTarget['action'] | null;
   id: string; title: string; url: string; slug: string; difficulty: string | null; notes: string;
   tags: (Tag & { difficulty: number | null })[]; lists: ProblemList[];
   legacyCompleted: boolean; exposed: boolean;

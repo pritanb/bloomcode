@@ -1,3 +1,4 @@
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ import {
 function TagRow({ tag }: { tag: Tag }) {
   const [name, setName] = useState(tag.name);
   const [description, setDescription] = useState(tag.description);
+  const [hue, setHue] = useState(tag.hue ?? 0);
   const edit = useAction((data: Partial<Tag>) =>
     api.send<Tag>(`/tags/${tag.id}`, 'PATCH', data),
   );
@@ -29,7 +31,7 @@ function TagRow({ tag }: { tag: Tag }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          edit.mutate({ name, description });
+          edit.mutate({ name, description, hue });
         }}
       >
         <div className="form-grid">
@@ -51,7 +53,7 @@ function TagRow({ tag }: { tag: Tag }) {
           <Button variant="outline"
             disabled={
               edit.isPending ||
-              (name === tag.name && description === tag.description)
+              (name === tag.name && description === tag.description && hue === (tag.hue ?? 0))
             }
           >
             Save tag
@@ -64,6 +66,17 @@ function TagRow({ tag }: { tag: Tag }) {
           >
             {tag.archived ? 'Restore tag' : 'Archive tag'}
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="tag-colour-swatch" aria-label={`Edit colour for ${tag.name}`} title="Edit tag colour" style={{ backgroundColor: `hsl(${hue} 65% 55%)` }} />
+            </PopoverTrigger>
+            <PopoverContent align="end">
+              <Field label={`Colour for ${tag.name}`}>
+                <input type="range" min="0" max="359" step="1" value={hue} onChange={e => setHue(Number(e.target.value))} className="tag-hue-picker" />
+              </Field>
+              <p className="small muted">Choose a colour, then Save tag.</p>
+            </PopoverContent>
+          </Popover>
           {tag.archived && <Badge variant="secondary" className="badge">Archived</Badge>}
         </div>
         <ErrorNotice error={edit.error} />
@@ -155,7 +168,7 @@ export function ManageLibrary() {
           ) : tags.data.length ? (
             <ul className="plain-list">
               {tags.data.map((t) => (
-                <TagRow key={`${t.id}-${t.name}-${t.archived}`} tag={t} />
+                <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}`} tag={t} />
               ))}
             </ul>
           ) : (

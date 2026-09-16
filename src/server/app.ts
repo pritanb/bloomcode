@@ -65,6 +65,7 @@ export async function createApp(options:AppOptions) {
    db.orm.update(settings).set({data}).run(); return data;
  });
  const store=new Store(db.sqlite);
+ store.transaction(()=>{for(const tag of store.all<{id:string;hue?:number}>('tags'))if(tag.hue===undefined)store.put('tags',tag);});
  registerCatalogue(app,store,clock);
  registerAttempts(app,store,clock);
  registerCloseout(app,store,clock);
