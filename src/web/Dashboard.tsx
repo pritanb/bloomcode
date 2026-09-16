@@ -1,18 +1,12 @@
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { enumLabel } from './labels';
+import { DateField } from '@/components/date-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import {
-  ChartNoAxesCombined,
   CalendarCheck,
-  Clock3,
   History,
   ListChecks,
-  Play,
-  Check,
-  Circle,
-  ChevronRight,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -22,7 +16,6 @@ import type {
   Dashboard as DashboardData,
   DailyPlan,
   PlanItem,
-  Topic,
 } from '../shared/contracts';
 import { api } from './api';
 import {
@@ -34,76 +27,9 @@ import {
   ErrorNotice,
   Field,
   Loading,
-  MovementList,
   PageTitle,
   useAction,
 } from './ui';
-export function TopicTable({
-  topics,
-  limit,
-}: {
-  topics: Topic[];
-  limit?: number;
-}) {
-  const [sort, setSort] = useState('score');
-  const sorted = [...topics].sort((a, b) =>
-    sort === 'score'
-      ? (a.score ?? 6) - (b.score ?? 6)
-      : (b.lastMovement?.recordedAt ?? '').localeCompare(
-          a.lastMovement?.recordedAt ?? '',
-        ),
-  );
-  return (
-    <>
-      <div className="section-heading">
-        <SectionTitle icon={ChartNoAxesCombined}>Topic scores</SectionTitle>
-        <Field label="Sort topics">
-          <NativeSelect value={sort} onChange={(e) => setSort(e.target.value)}>
-            <NativeSelectOption value="score">Lowest score first</NativeSelectOption>
-            <NativeSelectOption value="recent">Recent movement</NativeSelectOption>
-          </NativeSelect>
-        </Field>
-      </div>
-      <p className="small muted">
-        Your proficiency, on the existing 1–5 scale. Not question difficulty.
-      </p>
-      {sorted.length ? (
-        <div className="topic-table">
-          {sorted.slice(0, limit).map((t) => (
-            <Link className="topic-row" key={t.id} to={`/topics/${t.id}`}>
-              <div>
-                <strong>{t.name}</strong>
-                <small>
-                  {t.provisional ? 'Provisional · ' : ''}Reviewed{' '}
-                  {dateLabel(t.lastReviewed)}
-                </small>
-              </div>
-              <div className="topic-score">
-                <strong>{t.score ?? 'Unrated'}</strong>
-                {t.score !== null && <span> / 5</span>}
-                <div className="score-track" aria-hidden="true">
-                  <i style={{ width: `${((t.score ?? 0) / 5) * 100}%` }} />
-                </div>
-                {t.lastMovement && (
-                  <small>
-                    {t.lastMovement.oldScore === t.lastMovement.newScore
-                      ? 'No change'
-                      : `${t.lastMovement.oldScore} → ${t.lastMovement.newScore}`}
-                  </small>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <Empty>
-          No topic scores yet. Import your existing records or save an
-          evidence-based tutor review.
-        </Empty>
-      )}
-    </>
-  );
-}
 function PlanRow({ item }: { item: PlanItem }) {
   const navigate = useNavigate();
   const [snoozing, setSnoozing] = useState(false);
@@ -131,26 +57,12 @@ function PlanRow({ item }: { item: PlanItem }) {
   const available = !['completed', 'skipped'].includes(item.status);
   return (
     <li className={`plan-row ${item.status}`}>
-      <span className="plan-indicator" aria-hidden="true">
-        <Icon
-          icon={
-            item.status === 'completed'
-              ? Check
-              : item.status === 'active'
-                ? ChevronRight
-                : Circle
-          }
-        />
-      </span>
       <div className="plan-content">
         <div className="row between">
           <h3>{item.title}</h3>
-          <Badge variant="secondary" className="badge">{item.status}</Badge>
+          <Badge variant="secondary" className="badge">{enumLabel(item.status)}</Badge>
         </div>
-        <p className="muted small">
-          Suggested window: {item.suggestedMinutes} min
-        </p>
-        <div className="row">
+        <div className="plan-actions">
           {item.attemptId && available ? (
             <Button asChild variant="default"><Link  to={`/attempts/${item.attemptId}`}>
               Resume
@@ -167,12 +79,11 @@ function PlanRow({ item }: { item: PlanItem }) {
                   )
                 }
               >
-                <Icon icon={Play} />
                 {item.status === 'optional' ? 'Make next' : 'Start attempt'}
               </Button>
             )
           )}
-          {available && (
+          {available && !item.attemptId && (
             <>
               <Button variant="outline"
                 disabled={action.isPending}
@@ -187,7 +98,7 @@ function PlanRow({ item }: { item: PlanItem }) {
                 Snooze
               </Button>
               <Button
-                variant="ghost"
+                variant="outline"
                 disabled={action.isPending}
                 onClick={() => action.mutate('skip')}
               >
@@ -205,11 +116,10 @@ function PlanRow({ item }: { item: PlanItem }) {
             }}
           >
             <Field label="Snooze until">
-              <Input
-                type="date"
+              <DateField
                 required
                 value={until}
-                onChange={(e) => setUntil(e.target.value)}
+                onValueChange={(value) => setUntil(value)}
               />
             </Field>
             <Button variant="outline" disabled={action.isPending}>Save snooze</Button>
@@ -220,6 +130,32 @@ function PlanRow({ item }: { item: PlanItem }) {
     </li>
   );
 }
+function RecentPractice({ items }: { items: Attempt[] }) {
+  const [page, setPage] = useState(0);
+  const pageSize = 3;
+  const pages = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(page, pages - 1);
+  const start = currentPage * pageSize;
+  return (
+    <>
+      <AttemptList items={items.slice(start, start + pageSize)} />
+      {pages > 1 && (
+        <nav className="row between" aria-label="Recent practice pages">
+          <span className="small muted" role="status">
+            {start + 1}–{Math.min(start + pageSize, items.length)} of {items.length} attempts · Page {currentPage + 1} of {pages}
+          </span>
+          <div className="row">
+            <Button variant="outline" disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}>Previous</Button>
+            <Button variant="outline" disabled={currentPage === pages - 1}
+              onClick={() => setPage(currentPage + 1)}>Next</Button>
+          </div>
+        </nav>
+      )}
+    </>
+  );
+}
+
 export function Dashboard() {
   const query = useQuery({
     queryKey: ['dashboard'],
@@ -239,12 +175,12 @@ export function Dashboard() {
     <>
       <PageTitle
         title="Your study desk"
-        description="A manageable plan. Evidence that stays with you."
+        description="Your questions for today, ready when you are."
       >
         <Link className="budget" to="/settings">
-          <Icon icon={Clock3} />
-          <strong>{d.settings.budgetMinutes} min</strong>
-          <span>Daily budget</span>
+          <Icon icon={ListChecks} />
+          <strong>{d.settings.questionsPerDay ?? d.settings.primaryCount + d.settings.optionalCount}</strong>
+          <span>Questions per day</span>
         </Link>
       </PageTitle>
       <div className="dashboard-grid">
@@ -255,7 +191,7 @@ export function Dashboard() {
               {dateLabel(d.plan?.date ?? null)}
             </span>
           </div>
-          {d.activeAttempt && (
+          {d.activeAttempt && !d.plan?.items.some(item => item.attemptId === d.activeAttempt?.id) && (
             <div className="resume-banner">
               <div>
                 <strong>Pick up where you left off</strong>
@@ -279,51 +215,20 @@ export function Dashboard() {
               <h3>Your next question starts here</h3>
               <p>
                 Add questions to your library, or import your existing study
-                records. Your plan will use your saved budget.
+                records. Your plan will use your daily question target.
               </p>
               <Button asChild variant="default"><Link  to="/library">
                 Open library
               </Link></Button>
             </Empty>
           )}
-          <p className="panel-footnote">
-            Skipped days don’t create catch-up quotas. Optional work stays
-            optional.
-          </p>
-        </Card>
-        <Card className="panel">
-          <TopicTable topics={d.topics} limit={6} />
-          {d.topics.length > 6 && (
-            <Link className="back-link" to="/topics">
-              View all {d.topics.length} topics
-            </Link>
-          )}
-        </Card>
-        <Card className="panel">
-          <div className="section-heading">
-            <SectionTitle icon={ListChecks}>
-              Recent score decisions
-            </SectionTitle>
-          </div>
-          <MovementList items={d.movements.slice(0, 3)} />
-          {d.movements.length > 3 && (
-            <details>
-              <summary>More score decisions</summary>
-              <MovementList items={d.movements.slice(3)} />
-            </details>
-          )}
         </Card>
         <Card className="panel recent-practice">
           <div className="section-heading">
             <SectionTitle icon={History}>Recent practice</SectionTitle>
+            <Link className="small" to="/topics">View topic progress <span aria-hidden="true">→</span></Link>
           </div>
-          <AttemptList items={d.recentAttempts.slice(0, 5)} />
-          {d.recentAttempts.length > 5 && (
-            <details>
-              <summary>More recent practice</summary>
-              <AttemptList items={d.recentAttempts.slice(5)} />
-            </details>
-          )}
+          <RecentPractice items={d.recentAttempts} />
         </Card>
       </div>
     </>
