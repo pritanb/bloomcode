@@ -1,5 +1,7 @@
+import { DateField } from '@/components/date-field';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { SelectField, SelectOption } from '@/components/select-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
   ArrowLeft,
+  ChevronDown,
   CalendarDays,
   ExternalLink,
   History,
@@ -129,15 +132,15 @@ export function ProblemForm({
           />
         </Field>
         <Field label="LeetCode difficulty">
-          <NativeSelect
+          <SelectField
             value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
+            onValueChange={(value) => setDifficulty(value)}
           >
-            <NativeSelectOption value="">Unknown</NativeSelectOption>
+            <SelectOption value="">Unknown</SelectOption>
             {['Easy', 'Medium', 'Hard'].map((v) => (
-              <NativeSelectOption key={v}>{v}</NativeSelectOption>
+              <SelectOption key={v}>{v}</SelectOption>
             ))}
-          </NativeSelect>
+          </SelectField>
         </Field>
       </div>
       <Field label="Question notes">
@@ -290,13 +293,6 @@ export function ProblemTable({ problems }: { problems: Problem[] }) {
           </TableCell>
           <TableCell label={problemHeaders[3]}>
             {duration(p.lastSolveSeconds)}
-            <small>
-              {p.lastSolveHelp
-                ? p.lastSolveHelp === 'none'
-                  ? 'No help'
-                  : `${p.lastSolveHelp} help`
-                : 'Help unknown'}
-            </small>
           </TableCell>
           <TableCell label={problemHeaders[4]}>
             {p.nextReviewDate ? dateLabel(p.nextReviewDate) : 'Not scheduled'}
@@ -310,8 +306,18 @@ export function Library() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const selectedTags = (params.get('tags') ?? '').split(',').filter(Boolean);
+  const activeFilters = [...params.entries()].filter(([key, value]) =>
+    !['page', 'pageSize', 'search', 'tagDifficultyMin', 'tagDifficultyMax'].includes(key) && value &&
+    value !== (filterOptions[key]?.[0] ?? '')
+  ).length;
+  const hasFilters = activeFilters > 0 || !!params.get('search');
   const { tags, lists } = useCatalogue();
   const queryParams = new URLSearchParams(params);
+  queryParams.delete('tagDifficultyMin');
+  queryParams.delete('tagDifficultyMax');
   if (!queryParams.has('page')) queryParams.set('page', '1');
   if (!queryParams.has('pageSize')) queryParams.set('pageSize', '25');
   const query = useQuery({
@@ -320,6 +326,8 @@ export function Library() {
   });
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
+    next.delete('tagDifficultyMin');
+    next.delete('tagDifficultyMax');
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== 'page') next.set('page', '1');
@@ -361,105 +369,101 @@ export function Library() {
           />
         </Card>
       )}
-      <Card className="panel filters">
-        <Field label="Search questions">
+      <Card className="panel library-results">
+        <div className="library-toolbar">
+          <div className="library-search">
           <Input
             type="search"
-            placeholder="Search title or URL"
+            aria-label="Search questions"
+            placeholder="Search questions by title or URL…"
             value={params.get('search') ?? ''}
             onChange={(e) => filter('search', e.target.value)}
           />
-        </Field>
-        <div className="filter-grid">
-          {[
-            ['status', 'Practice status'],
-            ['tagMode', 'Tag match'],
-            ['difficulty', 'LeetCode level'],
-            ['timeBucket', 'Solve time'],
-            ['sort', 'Sort by'],
-            ['direction', 'Sort direction'],
-          ].map(([key, label]) => (
-            <Field key={key} label={label}>
-              <NativeSelect
-                value={params.get(key) ?? filterOptions[key][0]}
-                onChange={(e) => filter(key, e.target.value)}
-              >
-                {filterOptions[key].map((v) => (
-                  <NativeSelectOption key={v} value={v}>
-                    {v || 'Any'}
-                    {key === 'timeBucket' && v && v !== 'unknown' ? ' min' : ''}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </Field>
-          ))}
-          <Field label="List">
-            <NativeSelect
-              value={params.get('listId') ?? ''}
-              onChange={(e) => filter('listId', e.target.value)}
-            >
-              <NativeSelectOption value="">All lists</NativeSelectOption>
-              {lists.data?.map((l) => (
-                <NativeSelectOption key={l.id} value={l.id}>
-                  {l.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Tag difficulty minimum">
-            <Input
-              type="number"
-              min="1"
-              max="10"
-              value={params.get('tagDifficultyMin') ?? ''}
-              onChange={(e) => filter('tagDifficultyMin', e.target.value)}
-              placeholder="1"
-            />
-          </Field>
-          <Field label="Tag difficulty maximum">
-            <Input
-              type="number"
-              min="1"
-              max="10"
-              value={params.get('tagDifficultyMax') ?? ''}
-              onChange={(e) => filter('tagDifficultyMax', e.target.value)}
-              placeholder="10"
-            />
-          </Field>
-        </div>
-        <div className="row between">
-          <div className="chips" aria-label="Filter by tags">
-            {tags.data
-              ?.filter((t) => !t.archived)
-              .map((t) => {
-                const selected = (params.get('tags') ?? '')
-                  .split(',')
-                  .filter(Boolean);
-                return (
-                  <Label
-                    key={t.id}
-                    className={`filter-chip ${selected.includes(t.id) ? 'selected' : ''}`}
-                  >
-                    <Checkbox
-                      checked={selected.includes(t.id)}
-                      onCheckedChange={(checked) =>
-                        filter(
-                          'tags',
-                          (checked === true
-                            ? [...selected, t.id]
-                            : selected.filter((id) => id !== t.id)
-                          ).join(','),
-                        )
-                      }
-                    />
-                    {t.name}
-                  </Label>
-                );
-              })}
           </div>
-          <Button variant="ghost" onClick={() => setParams({})}>
-            Reset filters
-          </Button>
+          {hasFilters && <Button variant="ghost" onClick={() => setParams({})}>Reset filters</Button>}
+        </div>
+        <div id="library-filters" className="library-filter-details">
+          <div className="library-filter-grid">
+            <Field label="Status">
+              <SelectField value={params.get('status') ?? 'all'} onValueChange={value => filter('status', value)}>
+                <SelectOption value="all">All questions</SelectOption>
+                <SelectOption value="completed">Completed</SelectOption>
+                <SelectOption value="attempted">Attempted</SelectOption>
+              </SelectField>
+            </Field>
+            <Field label="Difficulty">
+              <SelectField value={params.get('difficulty') ?? ''} onValueChange={value => filter('difficulty', value)}>
+                <SelectOption value="">All levels</SelectOption>
+                {['Easy', 'Medium', 'Hard'].map(level => <SelectOption key={level}>{level}</SelectOption>)}
+              </SelectField>
+            </Field>
+            <div className="field">
+              <Label htmlFor="tag-filter-trigger">Tags</Label>
+              <Popover open={tagsOpen} onOpenChange={setTagsOpen}>
+                <PopoverTrigger asChild>
+                  <Button id="tag-filter-trigger" variant="outline" className="tag-filter-trigger">
+                    {selectedTags.length ? `${selectedTags.length} selected` : 'All tags'}<Icon icon={ChevronDown} />
+                  </Button>
+                </PopoverTrigger>
+                  <PopoverContent className="tag-filter-popover" align="start" sideOffset={6} aria-label="Filter by tags">
+                    <Input aria-label="Find a tag" placeholder="Find a tag…" value={tagSearch} onChange={e => setTagSearch(e.target.value)} />
+                    <div className="tag-filter-options">
+                      {tags.data?.filter(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase())).map(t => (
+                        <Label className="tag-filter-option" key={t.id}>
+                          <Checkbox checked={selectedTags.includes(t.id)} onCheckedChange={checked => filter('tags', (checked === true ? [...selectedTags, t.id] : selectedTags.filter(id => id !== t.id)).join(','))} />
+                          {t.name}
+                        </Label>
+                      ))}
+                      {tags.data && !tags.data.some(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase())) && <p className="muted">No matching tags.</p>}
+                    </div>
+                    <div className="tag-filter-actions">
+                      <SelectField aria-label="Match selected tags" value={params.get('tagMode') ?? 'any'} onValueChange={value => filter('tagMode', value)}>
+                        <SelectOption value="any">Match any tag</SelectOption>
+                        <SelectOption value="all">Match all tags</SelectOption>
+                      </SelectField>
+                      <Button variant="ghost" disabled={!selectedTags.length} onClick={() => filter('tags', '')}>Clear</Button>
+                      <Button variant="outline" onClick={() => setTagsOpen(false)}>Done</Button>
+                    </div>
+                  </PopoverContent>
+              </Popover>
+            </div>
+            <Field label="List">
+              <SelectField value={params.get('listId') ?? ''} onValueChange={value => filter('listId', value)}>
+                <SelectOption value="">All lists</SelectOption>
+                {lists.data?.map(l => <SelectOption key={l.id} value={l.id}>{l.name}</SelectOption>)}
+              </SelectField>
+            </Field>
+            <Field label="Order">
+              <SelectField value={`${params.get('sort') ?? 'title'}:${params.get('direction') ?? 'asc'}`} onValueChange={value => {
+                const [sort, direction] = value.split(':');
+                const next = new URLSearchParams(params);
+                next.set('sort', sort); next.set('direction', direction); next.set('page', '1');
+                setParams(next, { replace: true });
+              }}>
+                {[
+                  ['title:asc', 'Title: A–Z'], ['title:desc', 'Title: Z–A'],
+                  ['lastAttempt:desc', 'Last attempt: newest first'], ['lastAttempt:asc', 'Last attempt: oldest first'],
+                  ['solveTime:asc', 'Solve time: shortest first'], ['solveTime:desc', 'Solve time: longest first'],
+                  ['reviewDate:asc', 'Review: earliest first'], ['reviewDate:desc', 'Review: latest first'],
+                  ['tagDifficulty:asc', 'Tag rating: lowest first'], ['tagDifficulty:desc', 'Tag rating: highest first'],
+                ].map(([value, label]) => <SelectOption key={value} value={value}>{label}</SelectOption>)}
+              </SelectField>
+            </Field>
+            <Field label="Solve time">
+              <SelectField value={params.get('timeBucket') ?? ''} onValueChange={value => filter('timeBucket', value)}>
+                {filterOptions.timeBucket.map(value => <SelectOption key={value} value={value}>{value === '' ? 'Any time' : value === 'unknown' ? 'Unknown' : `${value} min`}</SelectOption>)}
+              </SelectField>
+            </Field>
+            <Field label="Confidence">
+              <SelectField value={params.get('confidence') ?? ''} onValueChange={value => filter('confidence', value)} title="Confidence from your latest completed attempt">
+                <SelectOption value="">Any confidence</SelectOption>
+                <SelectOption value="low">Low (1–2)</SelectOption>
+                <SelectOption value="medium">Medium (3)</SelectOption>
+                <SelectOption value="high">High (4–5)</SelectOption>
+                <SelectOption value="unknown">Not recorded</SelectOption>
+              </SelectField>
+            </Field>
+          </div>
         </div>
         <ErrorNotice
           error={tags.error ?? lists.error}
@@ -468,8 +472,6 @@ export function Library() {
             void lists.refetch();
           }}
         />
-      </Card>
-      <Card className="panel library-results">
         {query.isPending ? (
           <Loading />
         ) : query.isError ? (
@@ -480,9 +482,6 @@ export function Library() {
               <h2>
                 {query.data.total} question{query.data.total === 1 ? '' : 's'}
               </h2>
-              <span className="small muted">
-                Times are self-reported. Unknown stays unknown.
-              </span>
             </div>
             {query.data.items.length ? (
               <ProblemTable problems={query.data.items} />
@@ -535,25 +534,24 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
     >
       <div className="row">
         <Field label="Review scheduling">
-          <NativeSelect
+          <SelectField
             value={action}
-            onChange={(e) =>
-              setAction(e.target.value as ReviewTarget['action'])
+            onValueChange={(value) =>
+              setAction(value as ReviewTarget['action'])
             }
           >
-            <NativeSelectOption value="recommended">Use recommendation</NativeSelectOption>
-            <NativeSelectOption value="manual">Choose date</NativeSelectOption>
-            <NativeSelectOption value="snooze">Snooze until</NativeSelectOption>
-            <NativeSelectOption value="none">No scheduled review</NativeSelectOption>
-          </NativeSelect>
+            <SelectOption value="recommended">Use recommendation</SelectOption>
+            <SelectOption value="manual">Choose date</SelectOption>
+            <SelectOption value="snooze">Snooze until</SelectOption>
+            <SelectOption value="none">No scheduled review</SelectOption>
+          </SelectField>
         </Field>
         {(action === 'manual' || action === 'snooze') && (
           <Field label="Review date">
-            <Input
+            <DateField
               required
-              type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onValueChange={setDate}
             />
           </Field>
         )}

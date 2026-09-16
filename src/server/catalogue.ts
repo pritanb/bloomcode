@@ -41,8 +41,12 @@ export function registerCatalogue(app:FastifyInstance,s:Store,clock:()=>Date){
  app.get<{Params:{id:string}}>('/api/problems/:id',req=>{assertMetadataVisible(s,req.params.id);return s.transaction(()=>({problem:discloseProblem(s,problemView(s,s.get<Problem>('problems',req.params.id)),clock),attempts:s.all<AttemptRecord>('attempts').filter(a=>a.problemId===req.params.id).sort(newestAttempt).map(attemptView),reviews:s.all<ReviewTarget>('review_targets').filter(r=>r.problemId===req.params.id)}));});
  app.get('/api/problems',req=>{
   const hidden=new Set(s.all<AttemptRecord>('attempts').filter(a=>a.context==='mixed'&&a.status!=='completed').map(a=>a.problemId));
-  const q=z.object({search:z.string().optional(),status:z.enum(['all','completed','attempted']).default('all'),tags:z.string().optional(),tagMode:z.enum(['any','all']).default('any'),tagDifficultyMin:z.coerce.number().int().min(1).max(10).optional(),tagDifficultyMax:z.coerce.number().int().min(1).max(10).optional(),listId:z.string().optional(),difficulty:z.enum(['Easy','Medium','Hard']).optional(),timeBucket:z.enum(['0-10','10-20','20-30','30-45','45+','unknown']).optional(),sort:z.enum(['title','lastAttempt','solveTime','reviewDate','tagDifficulty']).default('title'),direction:z.enum(['asc','desc']).default('asc'),page:z.coerce.number().int().min(1).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(25)}).strict().parse(req.query);
+  const q=z.object({search:z.string().optional(),status:z.enum(['all','completed','attempted']).default('all'),tags:z.string().optional(),tagMode:z.enum(['any','all']).default('any'),tagDifficultyMin:z.coerce.number().int().min(1).max(10).optional(),tagDifficultyMax:z.coerce.number().int().min(1).max(10).optional(),listId:z.string().optional(),difficulty:z.enum(['Easy','Medium','Hard']).optional(),confidence:z.enum(['low','medium','high','unknown']).optional(),timeBucket:z.enum(['0-10','10-20','20-30','30-45','45+','unknown']).optional(),sort:z.enum(['title','lastAttempt','solveTime','reviewDate','tagDifficulty']).default('title'),direction:z.enum(['asc','desc']).default('asc'),page:z.coerce.number().int().min(1).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(25)}).strict().parse(req.query);
   if(q.tagDifficultyMin!==undefined&&q.tagDifficultyMax!==undefined&&q.tagDifficultyMin>q.tagDifficultyMax)throw new ApiError(400,'VALIDATION','Minimum tag difficulty must not exceed maximum');
+  const latestConfidence=new Map<string,number|null>();
+  if(q.confidence)for(const attempt of s.all<AttemptRecord>('attempts').filter(a=>a.status==='completed').sort(newestAttempt)){
+   if(!latestConfidence.has(attempt.problemId))latestConfidence.set(attempt.problemId,attempt.confidence??null);
+  }
   const wanted=q.tags?.split(',').filter(Boolean)??[];
   let items=s.all<Problem>('problems').filter(p=>!hidden.has(p.id)).map(p=>problemView(s,p)).filter(p=>{
    if(q.search&&!`${p.title} ${p.url}`.toLowerCase().includes(q.search.toLowerCase()))return false;
@@ -53,6 +57,11 @@ export function registerCatalogue(app:FastifyInstance,s:Store,clock:()=>Date){
    const matching=p.tags.filter(t=>(q.tagDifficultyMin===undefined||(t.difficulty!==null&&t.difficulty>=q.tagDifficultyMin))&&(q.tagDifficultyMax===undefined||(t.difficulty!==null&&t.difficulty<=q.tagDifficultyMax)));
    if(wanted.length&&(q.tagMode==='all'?!wanted.every(id=>matching.some(t=>t.id===id)):!matching.some(t=>wanted.includes(t.id))))return false;
    if(!wanted.length&&(q.tagDifficultyMin!==undefined||q.tagDifficultyMax!==undefined)&&!matching.length)return false;
+   if(q.confidence){
+    const confidence=latestConfidence.get(p.id)??null;
+    if(q.confidence==='unknown'){if(confidence!==null)return false;}
+    else if(confidence===null||(q.confidence==='low'?confidence>2:q.confidence==='medium'?confidence!==3:confidence<4))return false;
+   }
    if(q.timeBucket){const n=p.lastSolveSeconds;if(q.timeBucket==='unknown')return n===null;if(n===null)return false;const ranges:Record<string,[number,number]>={'0-10':[0,600],'10-20':[600,1200],'20-30':[1200,1800],'30-45':[1800,2700],'45+':[2700,Infinity]};const [min,max]=ranges[q.timeBucket]!;if(n<min||n>=max)return false;}
    return true;
   });

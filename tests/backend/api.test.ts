@@ -176,3 +176,22 @@ describe('loopback authentication',()=> {
     expect((await app.inject({method:'PATCH',url:'/api/settings',headers:{cookie,'x-csrf-token':session.json().csrfToken},payload:{budgetMinutes:60}})).statusCode).toBe(200);
   });
 });
+
+it('filters confidence by the latest completed attempt and combines it with unknown solve time', async () => {
+ const p=(await request('POST','/api/problems',{title:'Confidence',url:'https://leetcode.com/problems/confidence/'})).json();
+ await request('POST','/api/problems',{title:'Unrated',url:'https://leetcode.com/problems/unrated/'});
+ for(const confidence of [1,2,3,4,5,null]){
+  now=new Date(now.getTime()+1000);
+  const a=(await request('POST','/api/attempts',{problemId:p.id,context:'targeted'})).json();
+  const finished=await request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'solved',help:'none',activeSeconds:null,confidence},{'idempotency-key':`confidence-${confidence}`});
+  expect(finished.statusCode).toBe(200);
+  const expected=confidence===null?'unknown':confidence<=2?'low':confidence===3?'medium':'high';
+  for(const bucket of ['low','medium','high','unknown']){
+   const result=await request('GET',`/api/problems?search=confidence&confidence=${bucket}&timeBucket=unknown`);
+   expect(result.statusCode).toBe(200);
+   expect(result.json().total).toBe(bucket===expected?1:0);
+  }
+ }
+ expect((await request('GET','/api/problems?confidence=unknown')).json().total).toBe(2);
+ expect((await request('GET','/api/problems?confidence=invalid')).statusCode).toBe(400);
+});
