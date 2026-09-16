@@ -13,7 +13,7 @@ This is a personal, single-user study app. Keep tests proportional to the risk o
 - Local API authentication/CSRF, browser mutation ordering and lost-response retry.
 - One real MCP protocol flow and verified-list ingestion.
 
-`npm run test:e2e` runs one browser flow: start practice, enter code, autosave, reload, pause/resume, finish, and verify the saved result. It uses a disposable database. Build first if application code has changed.
+`npm run test:e2e` runs one browser flow: open a result report, enter notes and required solution code, autosave, reload, enter LeetCode solve time, and verify the saved result. It uses a disposable database. Build first if application code has changed.
 
 The reduced suites were exercised in 6.87 seconds (functions) and 5.5 seconds (browser, including startup) on this Mac. These are observations, not performance guarantees.
 

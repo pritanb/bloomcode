@@ -55,16 +55,16 @@ export async function currentAttempt(page: Page, api: BrowserApi): Promise<Attem
 export async function startTargeted(page: Page, problem: Problem) {
   await page.goto(`/library/${problem.id}`);
   await page.getByRole('button', { name: 'Start targeted practice', exact: true }).click();
-  await expect(page.locator('.cm-content')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeEnabled();
+  await expect(page.getByRole('heading', { name: 'Report result', exact: true })).toBeVisible();
 }
 export async function finish(page: Page, options: { seconds: number | null; review: 'none' | 'manual'; date?: string }) {
-  await page.getByRole('button', { name: 'Finish attempt', exact: true }).click();
-  await page.getByLabel('Outcome', { exact: true }).selectOption('solved');
-  await page.getByLabel('Help used', { exact: true }).selectOption('none');
-  if (options.seconds === null) await page.getByLabel('Time unknown', { exact: true }).check();
-  else await page.getByLabel('Active time (seconds)', { exact: true }).fill(String(options.seconds));
-  await page.getByLabel('Next review', { exact: true }).selectOption(options.review);
+  await page.getByRole('combobox', { name: 'Outcome', exact: true }).click();
+  await page.getByRole('option', { name: 'Solved', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Help used', exact: true }).click();
+  await page.getByRole('option', { name: 'None', exact: true }).click();
+  await page.getByLabel('LeetCode time', { exact: true }).fill(options.seconds === null ? '' : `${Math.floor(options.seconds / 60)}:${String(options.seconds % 60).padStart(2, '0')}`);
+  await page.getByRole('combobox', { name: 'Next review', exact: true }).click();
+  await page.getByRole('option', { name: options.review === 'none' ? 'No scheduled review' : 'Choose date', exact: true }).click();
   if (options.review === 'manual') await page.getByLabel('Review date', { exact: true }).fill(options.date!);
   await page.getByRole('button', { name: 'Save attempt', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Awaiting tutor review', exact: true })).toBeVisible();
