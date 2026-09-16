@@ -1,11 +1,13 @@
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   BookOpen,
   ChartNoAxesCombined,
   CodeXml,
   LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings2,
 } from 'lucide-react';
 import { Dashboard } from './Dashboard';
@@ -14,6 +16,8 @@ import { ManageLibrary } from './ManageLibrary';
 import { Icon, Loading } from './ui';
 import { Topics, TopicDetail } from './Topics';
 import { Settings } from './Settings';
+import { ThemeSwitch } from './theme';
+import { Button } from '@/components/ui/button';
 
 const AttemptPage = lazy(() =>
   import('./Attempt').then((module) => ({ default: module.AttemptPage })),
@@ -26,6 +30,7 @@ const navigation = [
 ];
 
 export function App() {
+  const [collapsed, setCollapsed] = useState(false);
   const focused = useLocation().pathname.startsWith('/attempts/');
   if (focused) {
     return (
@@ -44,35 +49,35 @@ export function App() {
     );
   }
   return (
-    <div className="app">
+    <div className={`app${collapsed ? ' sidebar-collapsed' : ''}`}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <aside className="sidebar">
-        <NavLink to="/" className="brand">
+        <div className="sidebar-header">
+        <NavLink to="/" className="brand" aria-label="LeetCode Tutor" title={collapsed ? 'LeetCode Tutor' : undefined}>
           <span className="brand-mark" aria-hidden="true">
             <Icon icon={CodeXml} />
           </span>
-          <span>
+          <span className="sidebar-label">
             LeetCode<strong>Tutor</strong>
           </span>
         </NavLink>
-        <nav aria-label="Main navigation">
+
+        </div>
+        <nav id="sidebar-navigation" aria-label="Main navigation">
           {navigation.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/'}>
+            <NavLink key={item.to} to={item.to} end={item.to === '/'} aria-label={item.label} title={collapsed ? item.label : undefined}>
               <Icon icon={item.icon} />
-              {item.label}
+              <span className="sidebar-label">{item.label}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-note">
-          <span className="local-dot" aria-hidden="true" /> Local study
-          workspace
-          <p>
-            Your answers, your history.
-            <br />
-            One question at a time.
-          </p>
+        <div className="sidebar-footer">
+          <ThemeSwitch />
+        <Button variant="ghost" size="icon" className="sidebar-toggle" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="sidebar-navigation" onClick={() => setCollapsed(value => !value)}>
+          <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
+        </Button>
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
