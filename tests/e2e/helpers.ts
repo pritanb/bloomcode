@@ -1,8 +1,5 @@
-import { test as base, expect, type Page, type TestInfo } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve, sep } from 'node:path';
-import type { Attempt, ImportPayload, ImportReport, Problem } from '../../src/shared/contracts';
+import { test as base, expect, type Page } from '@playwright/test';
+import type { Attempt, Problem } from '../../src/shared/contracts';
 
 /** Observe the UI's actual session. Never call /session a second time behind its back. */
 export class BrowserApi {
@@ -71,33 +68,4 @@ export async function finish(page: Page, options: { seconds: number | null; revi
   if (options.review === 'manual') await page.getByLabel('Review date', { exact: true }).fill(options.date!);
   await page.getByRole('button', { name: 'Save attempt', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Awaiting tutor review', exact: true })).toBeVisible();
-}
-
-/** Only fixture imports use the generated test server's bearer, never a user's credential. */
-export async function importFixture(page: Page, info: TestInfo, payload: ImportPayload) {
-  const dataDir = info.config.webServer?.env?.DATA_DIR;
-  expect(typeof dataDir, 'Playwright webServer must expose its disposable DATA_DIR').toBe('string');
-  let absolute = resolve(dataDir!);
-  expect(absolute).toBe(resolve(process.env.LEETCODE_E2E_DATA_DIR!));
-  expect(info.config.webServer?.reuseExistingServer).toBe(false);
-  // macOS resolves /var to /private/var; compare real paths on both sides.
-  const { realpath } = await import('node:fs/promises');
-  absolute = await realpath(absolute);
-  expect(absolute.startsWith(await realpath(tmpdir()) + sep)).toBeTruthy();
-  expect(absolute.split(sep).at(-1)).toMatch(/^leetcode-tutor-e2e-/);
-  const token = (await readFile(join(absolute, 'api-token'), 'utf8')).trim();
-  const response = await page.request.post('/api/import', { data: payload, headers: { Authorization: `Bearer ${token}` } });
-  expect(response.ok(), `Test fixture import: ${await response.text()}`).toBeTruthy();
-  const result = await response.json() as ImportReport;
-  expect(result.unresolved).toEqual([]);
-  return result;
-}
-export async function capture(page: Page, info: TestInfo, name: string) {
-  const path = info.outputPath(`${name}.png`);
-  await page.screenshot({ path, fullPage: true });
-  await info.attach(name, { path, contentType: 'image/png' });
-}
-export async function noHorizontalOverflow(page: Page) {
-  const dimensions = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth }));
-  expect(dimensions.scroll, 'The document must not scroll sideways; tables may scroll inside their wrapper').toBeLessThanOrEqual(dimensions.width + 1);
 }

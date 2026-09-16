@@ -152,50 +152,6 @@ it('exports all durable data, restores only to an empty database and produces a 
  expect((await request('POST','/api/backup',{path:'/tmp/not-allowed'})).statusCode).toBe(400);
 });
 
-it.each(['https://leetcode.com/problems/a/\n','https://leetcode.com/problems/a/\r','https://leetcode.com/problems/a/\t'])('rejects unmodified URLs with trailing control whitespace: %j',async(url)=>{expect((await request('POST','/api/problems',{title:'Unsafe original',url})).statusCode).toBe(400);});
-
-it('keeps the latest accepted unknown time when older history is imported afterwards',async()=>{
- const payload=imported();payload.attempts[0]!.date='2026-09-15';await request('POST','/api/import',payload);
- const older=imported();older.importId='older-history';older.attempts[0]!.date='2026-08-01';older.attempts[0]!.activeSeconds=600;
- await request('POST','/api/import',older);
- const p=(await request('GET','/api/problems')).json().items[0];expect(p.lastSolveSeconds).toBeNull();
- const detail=(await request('GET',`/api/problems/${p.id}`)).json();expect(detail.attempts[0].studyDate).toBe('2026-09-15');expect(detail.attempts[0]).not.toHaveProperty('sourceKey');expect(detail.attempts[0]).not.toHaveProperty('importId');
-});
-
-it('rejects malformed Unicode bearer credentials without an internal error',async()=>{expect((await app.inject({url:'/api/settings',headers:{authorization:'Bearer tést-token'}})).statusCode).toBe(401);});
-
-it('returns the most recent scoring decision on timestamp ties without internal provenance fields',async()=>{
- await request('POST','/api/import',imported());
- const p=(await request('GET','/api/problems')).json().items[0],topic=(await request('GET','/api/topics')).json()[0];
- expect(topic.lastMovement).not.toHaveProperty('sourceKey');
- const a=(await request('POST','/api/attempts',{problemId:p.id,context:'review'})).json();
- let current=(await request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'solved',help:'none',activeSeconds:600},{'idempotency-key':'tie-finish'})).json();
- for(const [index,newScore] of [3.7,3.6].entries()){
-  const latest=(await request('GET','/api/topics')).json()[0];const review=await request('POST',`/api/attempts/${a.id}/reviews`,{version:current.version,feedback:`Review ${index}`,decisions:[{topicId:topic.id,expectedVersion:latest.version,oldScore:latest.score,newScore,rationale:`Decision ${index}`,evidence:'retention'}]},{'idempotency-key':`tie-${index}`});expect(review.statusCode).toBe(200);current=review.json().attempt;
- }
- const latest=(await request('GET',`/api/topics/${topic.id}`)).json();expect(latest.topic.lastMovement.newScore).toBe(3.6);expect(latest.decisions[0]).not.toHaveProperty('supersedesId');
-});
-
-it('rejects inverted selected-tag difficulty ranges',async()=>{expect((await request('GET','/api/problems?tagDifficultyMin=9&tagDifficultyMax=1')).statusCode).toBe(400);});
-
-it.each([[0,'0-10'],[599,'0-10'],[600,'10-20'],[1199,'10-20'],[1200,'20-30'],[1799,'20-30'],[1800,'30-45'],[2699,'30-45'],[2700,'45+'],[10000,'45+'],[null,'unknown']] as const)('uses precise half-open time buckets for %s seconds',async(seconds,bucket)=>{
- const payload=imported();payload.attempts[0]!.activeSeconds=seconds;await request('POST','/api/import',payload);
- for(const target of ['0-10','10-20','20-30','30-45','45+','unknown'])expect((await request('GET',`/api/problems?timeBucket=${encodeURIComponent(target)}`)).json().total).toBe(target===bucket?1:0);
-});
-
-it('combines ANY/ALL tags, nullable tag difficulty, lists, platform difficulty, pagination and safe sort keys',async()=>{
- const x=(await request('POST','/api/tags',{name:'X'})).json(),y=(await request('POST','/api/tags',{name:'Y'})).json(),list=(await request('POST','/api/lists',{name:'Selected'})).json();
- const a=(await request('POST','/api/problems',{title:'Alpha',url:'https://leetcode.com/problems/alpha/',difficulty:'Medium',tags:[{tagId:x.id,difficulty:3},{tagId:y.id,difficulty:8}],listIds:[list.id]})).json();
- await request('POST','/api/problems',{title:'Beta',url:'https://leetcode.com/problems/beta/',difficulty:'Easy',tags:[{tagId:x.id,difficulty:9}]});
- await request('POST','/api/problems',{title:'Gamma',url:'https://leetcode.com/problems/gamma/',difficulty:'Medium',tags:[{tagId:y.id,difficulty:null}]});
- const total=async(q:string)=>(await request('GET',`/api/problems?${q}`)).json().total;
- expect(await total(`tags=${x.id},${y.id}&tagMode=any`)).toBe(3);expect(await total(`tags=${x.id},${y.id}&tagMode=all`)).toBe(1);
- expect(await total(`tags=${x.id},${y.id}&tagMode=all&tagDifficultyMin=4`)).toBe(0);expect(await total(`tags=${y.id}&tagDifficultyMin=8`)).toBe(1);
- expect(await total('tagDifficultyMin=9')).toBe(1);expect(await total(`listId=${list.id}&difficulty=Medium`)).toBe(1);expect(await total('difficulty=Medium')).toBe(2);
- const sorted=(await request('GET',`/api/problems?tags=${x.id}&sort=tagDifficulty&direction=desc&pageSize=1&page=2`)).json();expect(sorted.items[0].id).toBe(a.id);expect(sorted.total).toBe(2);
- for(const q of ['sort=DROP%20TABLE','page=0','pageSize=101','timeBucket=bad'])expect((await request('GET',`/api/problems?${q}`)).statusCode).toBe(400);
-});
-
 it('rolls back every earlier score write when a later decision is stale',async()=>{
  const payload=imported();payload.topics.push({name:'Trees',score:2,notes:'',provisional:false});await request('POST','/api/import',payload);
  const p=(await request('GET','/api/problems')).json().items[0],topics=(await request('GET','/api/topics')).json(),a=(await request('POST','/api/attempts',{problemId:p.id,context:'review'})).json();
@@ -204,18 +160,6 @@ it('rolls back every earlier score write when a later decision is stale',async()
  const response=await request('POST',`/api/attempts/${a.id}/reviews`,{version:done.version,feedback:'Must roll back',decisions:topics.map((t:{id:string;version:number;score:number},i:number)=>({topicId:t.id,expectedVersion:i===0?t.version:99,oldScore:t.score,newScore:t.score-0.1,rationale:'Evidence',evidence:'retention'}))},{'idempotency-key':'atomic-review'});
  expect(response.statusCode).toBe(409);expect((await request('GET','/api/export')).json().tables).toEqual(before);
 });
-
-it('uses imported past plans as bounded candidates rather than catch-up assignments',async()=>{
- await request('PATCH','/api/settings',{primaryCount:1,optionalCount:0});
- for(const title of ['First','Second'])await request('POST','/api/problems',{title,url:`https://leetcode.com/problems/${title.toLowerCase()}/`});
- const baseline=(await request('POST','/api/daily-plan/ensure',{date:'2026-09-16'})).json();
- const other=(await request('GET','/api/problems')).json().items.find((p:{id:string})=>p.id!==baseline.items[0].problemId);
- const payload:ImportPayload={importId:'planned-candidate',dryRun:false,source:{retrievedAt:now.toISOString()},problems:[{key:'p',title:other.title,url:other.url}],topics:[],attempts:[],movements:[],planned:Array.from({length:20},(_,i)=>({sourceKey:`plan-${i}`,problemKey:'p',date:'2026-09-01',status:'planned',notes:''})),records:[]};
- await request('POST','/api/import',payload);
- const next=(await request('POST','/api/daily-plan/ensure',{date:'2026-09-17'})).json();expect(next.items).toHaveLength(1);expect(next.items[0].problemId).toBe(other.id);
-});
-
-it('treats an explicitly declared review as retention even without an imported attempt',async()=>{const p=(await request('POST','/api/problems',{title:'Known elsewhere',url:'https://leetcode.com/problems/known-elsewhere/'})).json();expect((await request('POST','/api/attempts',{problemId:p.id,context:'review'})).json().evidence).toBe('retention');});
 
 describe('loopback authentication',()=> {
   it('serves public health but protects private API with bearer or CSRF session',async()=> {

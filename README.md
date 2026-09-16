@@ -74,7 +74,7 @@ npm run test:smoke  # Builds, boots production server and checks real runtime
 npm run test:e2e    # Playwright user journeys against the build
 ```
 
-If Chromium is missing: `npx playwright install chromium`. Browser tests use an isolated temporary database and port 4318; they refuse to reuse another running server. Unit/integration tests cover the real SQLite domain, HTTP API, import/export, MCP protocol and browser-facing components. Optional online provenance verification: `node tests/smoke/verify-neetcode-source.mjs`.
+If Chromium is missing: `npx playwright install chromium`. **Use the lightweight workflow in [Testing policy](docs/testing.md):** 36 critical function tests and one optional browser solve/save/reload flow. Cosmetic changes need an affected-screen check, not the entire suite. Browser tests use an isolated temporary database and port 4318; they refuse to reuse another running server.
 
 The Vite development proxy translates legitimate local same-origin requests while preserving the backend's Host, Origin and CSRF checks. The production app serves its own static UI and binds only to loopback. This is a personal single-user application, not a publicly deployable multi-user service.
 

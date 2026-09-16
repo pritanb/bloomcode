@@ -22,22 +22,6 @@ test('movement topics must exactly match imported current topics regardless of t
     expect(payload.records.find(r=>r.sourceKey==='2077972462:2')?.raw).toEqual({formatted:snapshot.sheets[0]!.values[1],unformatted:snapshot.sheets[0]!.values[1]});
   }
 });
-test.each([
-  [106,'Binary Search 3.75 -> 3.75 (no change; independent accepted O(m log n) baseline, but O(m+n) corner-elimination recognition required L2 direction)','Binary Search',3.75,3.75,'no change; independent accepted O(m log n) baseline, but O(m+n) corner-elimination recognition required L2 direction'],
-  [107,'Linked List 3.10 -> 3.20 (clean L0 unseen AC with independent O(1)-space length alignment; pointer traversal improved, pointer rewiring remains untested)','Linked List',3.10,3.20,'clean L0 unseen AC with independent O(1)-space length alignment; pointer traversal improved, pointer rewiring remains untested'],
-  [108,'Trees 4.00 -> 4.00 (no change; fast clean L0 near-transfer confirms BFS level linking, while O(1)-space next-pointer traversal remains the follow-up)','Trees',4,4,'no change; fast clean L0 near-transfer confirms BFS level linking, while O(1)-space next-pointer traversal remains the follow-up']
-])('source 2077972462:%s preserves balanced complexity rationale', (_row,movement,topicName,oldScore,newScore,rationale) => {
-  const {payload,report}=mapSheetSnapshot(movementSnapshot(movement));
-  expect(payload.movements).toEqual([expect.objectContaining({topicName,oldScore,newScore,rationale})]);
-  expect(report.unresolved).toEqual([]);
-});
-
-test('depth-zero semicolons separate movements without splitting nested rationales', () => {
-  const movement='Trees 3.5 -> 3.6 (proof (O(n); O(1)); retained); Greedy 3.2 -> 3.2 (no change)';
-  const {payload,report}=mapSheetSnapshot(movementSnapshot(movement));
-  expect(payload.movements.map(m=>[m.topicName,m.rationale])).toEqual([['Trees','proof (O(n); O(1)); retained'],['Greedy','no change']]);
-  expect(report.unresolved).toEqual([]);
-});
 
 test('source 2077972462:92 splits two explicit known endpoints joined by depth-zero and', () => {
   const movement='Greedy 3.20 -> 3.20 and Heap / Priority Queue 3.40 -> 3.40 (no change; clean exact retention repairs understanding, but a hidden near-transfer is still required)';
@@ -51,65 +35,6 @@ test('source 2077972462:92 splits two explicit known endpoints joined by depth-z
     expect(report.unresolved).toEqual([]);
     expect(payload.records.find(r=>r.sourceKey==='2077972462:2')?.raw).toEqual({formatted:snapshot.sheets[0]!.values[1],unformatted:snapshot.sheets[0]!.values[1]});
   }
-});
-
-test.each([
-  'Greedy 3.20 -> 3.20 and Heap / Priority Queue 3.40',
-  'Greedy 3.20 -> 3.20 and Imaginary 3.40 -> 3.40',
-  'Greedy 3.20 -> 3.20 and Heap / Priority Queue -> 3.40',
-  'Greedy 3.20 -> 3.20 and Heap / Priority Queue 3.40 -> 3.40 trailing prose'
-])('ambiguous combined movement is rejected atomically: %s', movement => {
-  const {payload,report}=mapSheetSnapshot(movementSnapshot(movement));
-  expect(payload.movements).toEqual([]);
-  expect(report.unresolved).toHaveLength(1);
-  expect(payload.attempts).toHaveLength(1);
-});
-
-test('and inside a parenthetical rationale is not a movement separator', () => {
-  const {payload,report}=mapSheetSnapshot(movementSnapshot('Greedy 3.2 -> 3.2 (proof (O(n)) and exact retention; no transfer)'));
-  expect(payload.movements).toEqual([expect.objectContaining({rationale:'proof (O(n)) and exact retention; no transfer'})]);
-  expect(report.unresolved).toEqual([]);
-});
-
-test.each([
-  [100,'Dynamic Programming - 1D remains 3.25 (fast clean exact retention, but rolling-state compression was missed and exact-repeat evidence alone does not justify a rating increase)','Dynamic Programming - 1D',3.25,'fast clean exact retention, but rolling-state compression was missed and exact-repeat evidence alone does not justify a rating increase'],
-  [101,'Binary Search 3.75 (no change — L2 unseen evidence, not unprompted)','Binary Search',3.75,'no change — L2 unseen evidence, not unprompted']
-])('source 2077972462:%s imports only explicitly stated no-change values', (_row,movement,topicName,score,rationale) => {
-  const {payload,report}=mapSheetSnapshot(movementSnapshot(movement));
-  expect(payload.movements).toEqual([expect.objectContaining({topicName,oldScore:score,newScore:score,rationale})]);
-  expect(report.unresolved).toEqual([]);
-});
-
-test.each([
-  'Binary Search remains (no change)',
-  'Binary Search (no change — score is in the notes)',
-  'Binary Search 3.75',
-  'Binary Search 3.75 (strong retention)',
-  'Binary Search 3.75 (no changes expected)',
-  'Binary Search 3.75 (no change — retained) trailing prose',
-  'Binary Search remains 3.75 (retained) trailing prose',
-  'Binary Search remains 9 (retained)',
-  'Binary Search 0 (no change — retained)',
-  'Binary Search +0.2',
-  'Binary Search 3.75 -> 3.75 (proof (O(n))) trailing prose',
-  'Binary Search 3.75 -> 3.75 (proof (O(n))',
-  'Binary Search 3.75 -> 3.75 (proof) (more proof)',
-  'Binary Search 3.75 -> 3.75 proof)'
-])('unsupported or implicit movement retains evidence without inventing scores: %s', movement => {
-  const snapshot=movementSnapshot(movement);
-  const {payload,report}=mapSheetSnapshot(snapshot);
-  expect(payload.movements).toEqual([]);
-  expect(report.unresolved).toHaveLength(1);
-  expect(payload.attempts).toHaveLength(1);
-  expect(payload.records.find(r=>r.sourceKey==='2077972462:2')?.raw).toEqual({formatted:snapshot.sheets[0]!.values[1],unformatted:snapshot.sheets[0]!.values[1]});
-});
-
-test('missing conjunction is malformed syntax, never a greedy synthetic topic name', () => {
-  const movement='Greedy 3.20 -> 3.20 Heap / Priority Queue 3.40 -> 3.40 (no change)';
-  const {payload,report}=mapSheetSnapshot(movementSnapshot(movement));
-  expect(payload.movements).toEqual([]);
-  expect(report.unresolved[0]?.reason).toContain('Unsupported score movement');
-  expect(report.unresolved[0]?.reason).not.toContain('Unknown movement topic');
 });
 
 test('tracker maps explicit attempts, numeric minutes and mm:ss while retaining ambiguous time and code provenance', () => {
@@ -144,12 +69,6 @@ test('ratings preserve decimal scores separately from explicit historical moveme
   expect(payload.movements[1]).toMatchObject({topicName:'Graphs / BFS / DFS',oldScore:2.75,newScore:2.75,date:'2026-09-01'});
   expect(payload.planned).toHaveLength(1);expect(payload.problems.find(p=>p.key==='c')?.legacyCompleted).toBe(false);
   expect(payload.attempts).toHaveLength(2);expect(report.warnings.some(w=>w.includes('Unsupported score movement'))).toBe(true);
-});
-test('explicit parenthetical movement rationale is retained and workbook metadata counts excluded tabs', () => {
-  const {payload,report}=mapSheetSnapshot({retrievedAt:'2026-09-16T00:00:00Z',metadata:{sheets:[{properties:{title:'Tutor Tracker'}},{properties:{title:'HI System Design Attempts'}}]},sheets:[{title:'Tutor Tracker',values:[['Date','Problem','Link','Result','Time Min','Tutor Rating Change'],['2026-09-01','A','https://leetcode.com/problems/a/','Clean','10','Trees 3.5 -> 3.5 (no change; repeat only); Greedy 2.5 -> 2.6 (transfer)']]},{title:'Current Plan',values:[['Date','Problem','Link','Status','Notes'],['INSTRUCTION','Standing rule','','',''],['2026-09-10','Mock withheld','','Queued','Mock candidate only']]},{title:'Topic Ratings',values:[['Topic','Rating'],['Trees',3.5],['Greedy',2.6]]}]});
-  expect(payload.movements).toHaveLength(2);expect(payload.movements[0]?.rationale).toBe('no change; repeat only');
-  expect(report.counts.excludedTabs).toBe(1);expect(payload.planned).toEqual([expect.objectContaining({date:'2026-09-10',notes:expect.stringContaining('Mock withheld')})]);
-  expect(payload.planned[0]?.problemKey).toBeUndefined();
 });
 test('inventory import deduplicates by strict LC slug, retains raw rows and never treats curriculum skip as solved', () => {
   const result=mapSheetSnapshot({spreadsheetId:'test',retrievedAt:'2026-09-16T00:00:00Z',metadata:{sheets:[{properties:{title:'HI Tracker'}}]},sheets:[

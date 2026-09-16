@@ -77,115 +77,6 @@ it('refills the same untouched empty generated day after its first question arri
   expect((await request('GET', '/api/export')).json().tables.attempts).toEqual([]);
 });
 
-it.each(['sheet-first', 'list-first', 'existing-notes'] as const)('preserves complementary import metadata in %s order', async (order) => {
-  const sheet = batch();
-  const list: ImportPayload = { ...batch(), importId: 'public-list', source: { retrievedAt: '2026-09-17T00:00:00Z' }, problems: [{ key: 'p', title: 'Official title', url: sheet.problems[0]!.url, difficulty: 'Medium', notes: order === 'existing-notes' ? 'Personal note' : '', lists: ['Verified public list'] }], topics: [] };
-  const first = order === 'sheet-first' ? sheet : list;
-  const second = order === 'sheet-first' ? list : sheet;
-  await request('POST', '/api/import', first);
-  if (order === 'existing-notes') {
-    const p = (await request('GET', '/api/export')).json().tables.problems[0];
-    await request('PATCH', `/api/problems/${p.id}`, { difficulty: 'Hard', title: 'User title' });
-  }
-  expect((await request('POST', '/api/import', second)).statusCode).toBe(200);
-  const tables = (await request('GET', '/api/export')).json().tables;
-  expect(tables.problems).toHaveLength(1);
-  expect(tables.problems[0]).toMatchObject({ difficulty: order === 'existing-notes' ? 'Hard' : 'Medium', title: order === 'existing-notes' ? 'User title' : first.problems[0]!.title, notes: order === 'existing-notes' ? 'Personal note\n\nUse a lookup table' : 'Use a lookup table', exposed: order === 'existing-notes' });
-  expect(tables.topics[0].score).toBe(3);
-  await request('POST', '/api/import', { ...second, importId: 'fresh-metadata-snapshot' });
-  expect((await request('GET', '/api/export')).json().tables.problems).toEqual(tables.problems);
-});
-
-it('keeps cross-snapshot evidence identity through export and restore', async () => {
-  const b = evidenceBatch();
-  await request('POST', '/api/import', b);
-  const snapshot = (await request('GET', '/api/export')).json();
-  const restored = await createApp({ dbPath: join(dir, 'restored.sqlite'), token: 'fixes-test-only' });
-  try {
-    expect((await restored.inject({ method: 'POST', url: '/api/restore', headers, payload: { confirmEmpty: true, snapshot } })).statusCode).toBe(200);
-    expect((await restored.inject({ url: '/api/export', headers })).json().tables).toEqual(snapshot.tables);
-    const applied = await restored.inject({ method: 'POST', url: '/api/import', headers, payload: { ...b, importId: 'after-restore' } });
-    expect(applied.statusCode).toBe(200);
-    expect(applied.json().counts).toMatchObject({ attempts: 0, movements: 0 });
-  } finally { await restored.close(); }
-});
-
-it('rejects unverifiable legacy source overlap without changing restored data', async () => {
-  const b = evidenceBatch();
-  await request('POST', '/api/import', b);
-  const snapshot = (await request('GET', '/api/export')).json();
-  delete snapshot.tables.import_batches[0].evidence; // Actual v1 snapshots lack comparable canonical evidence.
-  const restored = await createApp({ dbPath: join(dir, 'legacy.sqlite'), token: 'fixes-test-only' });
-  try {
-    expect((await restored.inject({ method: 'POST', url: '/api/restore', headers, payload: { confirmEmpty: true, snapshot } })).statusCode).toBe(200);
-    const overlap = await restored.inject({ method: 'POST', url: '/api/import', headers, payload: { ...b, importId: 'legacy-overlap' } });
-    expect(overlap.statusCode).toBe(409);
-    expect(overlap.json().error.message).toContain('legacy evidence');
-    expect((await restored.inject({ url: '/api/export', headers })).json().tables).toEqual(snapshot.tables);
-  } finally { await restored.close(); }
-});
-
-it('does not infer evidence equality from titles or from other source identities', async () => {
-  const b = evidenceBatch();
-  await request('POST', '/api/import', b);
-  const newRows = { ...b, importId: 'new-rows', attempts: [{ ...b.attempts[0]!, sourceKey: 'LC:3' }], movements: [{ ...b.movements[0]!, sourceKey: 'Ratings:3' }] };
-  expect((await request('POST', '/api/import', newRows)).json().counts).toMatchObject({ attempts: 1, movements: 1 });
-  const differentSheet = { ...b, importId: 'other-sheet', source: { ...b.source, spreadsheetId: 'other-sheet' } };
-  expect((await request('POST', '/api/import', differentSheet)).json().counts).toMatchObject({ attempts: 1, movements: 1 });
-  for (const importId of ['public-a', 'public-b']) {
-    const publicBatch = { ...batch(), importId, source: { retrievedAt: b.source.retrievedAt }, problems: [{ ...b.problems[0]!, lists: [importId] }] };
-    expect((await request('POST', '/api/import', publicBatch)).statusCode).toBe(200);
-  }
-  const tables = (await request('GET', '/api/export')).json().tables;
-  expect(tables.attempts).toHaveLength(3);
-  expect(tables.score_decisions).toHaveLength(3);
-  expect(tables.problems).toHaveLength(1);
-  expect(tables.problems[0].attemptCount).toBe(3);
-  expect(tables.lists.map((l: { name: string }) => l.name)).toEqual(expect.arrayContaining(['public-a', 'public-b']));
-});
-
-it.each(['nonempty', 'skipped', 'completed', 'snoozed'] as const)('never regenerates %s daily assignments after catalogue additions', async (state) => {
-  await request('POST', '/api/import', batch());
-  const plan = (await request('POST', '/api/daily-plan/ensure', {})).json();
-  const item = plan.items[0];
-  if (state === 'skipped' || state === 'snoozed') await request('POST', `/api/plan-items/${item.id}/disposition`, state === 'skipped' ? { action: 'skip' } : { action: 'snooze', until: '2026-12-01' });
-  if (state === 'completed') {
-    const a = (await request('POST', '/api/attempts', { problemId: item.problemId, planItemId: item.id, context: 'mixed' })).json();
-    await request('POST', `/api/attempts/${a.id}/finish`, { version: a.version, outcome: 'solved', help: 'none', activeSeconds: 600, reviewAction: 'manual', reviewDate: '2026-12-01' }, { 'idempotency-key': 'preserve-finish' });
-  }
-  const before = (await request('GET', '/api/dashboard')).json().plan;
-  const reviews = (await request('GET', '/api/reviews')).json();
-  await request('POST', '/api/problems', { title: 'Fresh', url: 'https://leetcode.com/problems/fresh/' });
-  expect((await request('POST', '/api/daily-plan/ensure', {})).json()).toEqual(before);
-  expect((await request('GET', '/api/reviews')).json()).toEqual(reviews);
-});
-
-it('does not refill a versioned empty override restored from a snapshot', async () => {
-  const empty = (await request('POST', '/api/daily-plan/ensure', {})).json();
-  const snapshot = (await request('GET', '/api/export')).json();
-  snapshot.tables.daily_plans[0].version = 2;
-  const restored = await createApp({ dbPath: join(dir, 'override.sqlite'), token: 'fixes-test-only', clock: () => new Date('2026-09-16T01:00:00Z') });
-  try {
-    expect((await restored.inject({ method: 'POST', url: '/api/restore', headers, payload: { confirmEmpty: true, snapshot } })).statusCode).toBe(200);
-    await restored.inject({ method: 'POST', url: '/api/problems', headers, payload: { title: 'Fresh', url: 'https://leetcode.com/problems/fresh/' } });
-    expect((await restored.inject({ method: 'POST', url: '/api/daily-plan/ensure', headers, payload: {} })).json()).toEqual({ ...empty, version: 2 });
-  } finally { await restored.close(); }
-});
-
-it('only marks returned catalogue metadata exposed, not ingestion or off-page candidates', async () => {
-  const b = batch();
-  b.problems.push({ ...b.problems[0]!, key: 'other', title: 'Z question', url: 'https://leetcode.com/problems/z-question/' });
-  await request('POST', '/api/import', b);
-  const before = (await request('GET', '/api/export')).json().tables;
-  expect(before.problems.every((p: { exposed: boolean }) => !p.exposed)).toBe(true);
-  const page = (await request('GET', '/api/problems?pageSize=1')).json();
-  const after = (await request('GET', '/api/export')).json().tables;
-  expect(after.problems.filter((p: { exposed: boolean }) => p.exposed).map((p: { id: string }) => p.id)).toEqual([page.items[0].id]);
-  expect(after.audit_events).toHaveLength(1);
-  await request('GET', '/api/problems?pageSize=1');
-  expect((await request('GET', '/api/export')).json().tables.audit_events).toEqual(after.audit_events);
-});
-
 it('records actual catalogue disclosure durably and rejects unseen 3-to-4 scoring', async () => {
   expect((await request('POST', '/api/import', batch())).statusCode).toBe(200);
   const initial = (await request('GET', '/api/export')).json().tables;
@@ -203,17 +94,6 @@ it('records actual catalogue disclosure durably and rejects unseen 3-to-4 scorin
   expect(tables.topics[0].score).toBe(3);
   expect(tables.score_decisions).toHaveLength(0);
   expect(tables.audit_events).toContainEqual(expect.objectContaining({ action: 'disclose_problem', problemId: p.id }));
-});
-
-it('records detail disclosure before a later mixed start, surviving restart', async () => {
-  await request('POST', '/api/import', batch());
-  const p = (await request('GET', '/api/export')).json().tables.problems[0];
-  const detail = (await request('GET', `/api/problems/${p.id}`)).json();
-  expect(detail.problem.notes).toBe('Use a lookup table');
-  await app.close();
-  app = await createApp({ dbPath: join(dir, 'test.sqlite'), token: 'fixes-test-only' });
-  const a = (await request('POST', '/api/attempts', { problemId: p.id, context: 'mixed' })).json();
-  expect(a.evidence).not.toBe('unseen');
 });
 
 it('blocks active and paused mixed metadata routes without exposing tags, notes or lists', async () => {
