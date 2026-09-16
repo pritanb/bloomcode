@@ -65,8 +65,8 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
         <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Score</TableHead><TableHead>Change</TableHead></TableRow></TableHeader>
         <TableBody>{(showAll ? rows : rows.slice(0, 5)).map(d => <TableRow key={d.id}>
           <TableCell className="whitespace-nowrap">{dateLabel(d.date)}</TableCell>
-          <TableCell className="whitespace-nowrap">{d.oldScore === d.newScore ? `${d.newScore} · No change` : `${d.oldScore} → ${d.newScore}`}</TableCell>
-          <TableCell>{d.newScore === d.oldScore ? '—' : `${d.newScore > d.oldScore ? '+' : ''}${Math.round((d.newScore - d.oldScore) * 100) / 100}`}</TableCell>
+          <TableCell className="whitespace-nowrap">{d.oldScore === d.newScore ? d.newScore : `${d.oldScore} → ${d.newScore}`}</TableCell>
+          <TableCell>{d.newScore === d.oldScore ? 'No change' : `${d.newScore > d.oldScore ? '+' : ''}${Math.round((d.newScore - d.oldScore) * 100) / 100}`}</TableCell>
         </TableRow>)}</TableBody>
       </Table></div>
       {rows.length > 5 && <Button variant="ghost" onClick={() => setShowAll(value => !value)}>{showAll ? 'Show fewer updates' : `Show all ${rows.length} updates`}</Button>}
