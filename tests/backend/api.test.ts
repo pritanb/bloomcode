@@ -212,3 +212,19 @@ it('returns only score history during mixed practice while keeping topic metadat
   expect((await request('GET', `/api/attempts/${attempt.id}`)).json().version).toBe(attempt.version);
   expect((await request('GET', '/api/topics/missing/history')).statusCode).toBe(404);
 });
+
+
+it('honors the daily question target without a budget cap and preserves existing plans', async () => {
+ for (const slug of ['count-a','count-b','count-c','count-d']) await request('POST','/api/problems',{title:slug,url:`https://leetcode.com/problems/${slug}/`});
+ expect((await request('PATCH','/api/settings',{questionsPerDay:3,budgetMinutes:5})).statusCode).toBe(200);
+ const day=(await request('POST','/api/daily-plan/ensure',{})).json();
+ expect(day.items).toHaveLength(3);
+ expect(day.items.map((item:{status:string})=>item.status)).toEqual(['active','queued','queued']);
+ await request('PATCH','/api/settings',{questionsPerDay:20});
+ expect((await request('POST','/api/daily-plan/ensure',{})).json()).toEqual(day);
+ now=new Date('2026-09-17T01:00:00Z');
+ expect((await request('POST','/api/daily-plan/ensure',{})).json().items).toHaveLength(4);
+ for(const questionsPerDay of [0,21,1.5]) expect((await request('PATCH','/api/settings',{questionsPerDay})).statusCode).toBe(400);
+ await app.close(); app=await createApp({dbPath:join(dir,'test.sqlite'),token:'test-token',clock:()=>now});
+ expect((await request('GET','/api/settings')).json().questionsPerDay).toBe(20);
+});

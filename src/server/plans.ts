@@ -39,10 +39,10 @@ export function registerPlans(app:FastifyInstance,s:Store,clock:()=>Date){
    if(plan&&(plan.version!==1||s.all<ItemRecord>('plan_items').some(i=>i.planId===plan!.id)))return planView(s,plan);
    const refilling=!!plan;
    plan??=s.put('daily_plans',{id:randomUUID(),date:day,timezone:settings.timezone,version:1});
-   const slots=Math.min(settings.primaryCount+settings.optionalCount,Math.max(1,Math.floor(settings.budgetMinutes/10))),minutes=Math.floor(settings.budgetMinutes/slots);
+   const slots=settings.questionsPerDay ?? settings.primaryCount+settings.optionalCount,minutes=Math.floor(settings.budgetMinutes/slots);
    const available=candidates(s,day);if(active){const p=s.get<Problem>('problems',active.problemId);available.splice(0,available.length,p,...available.filter(x=>x.id!==p.id));}
    if(refilling&&available.length)plan=s.put('daily_plans',{...plan,version:plan.version+1});
-   for(const [i,p] of available.slice(0,slots).entries()){const item=newItem(s,plan,p,i===0?'active':i<settings.primaryCount?'queued':'optional',minutes,i);if(i===0&&active){active.planItemId=item.id;s.put('attempts',active);s.put('plan_items',{...item,attemptId:active.id});}}
+   for(const [i,p] of available.slice(0,slots).entries()){const item=newItem(s,plan,p,i===0?'active':'queued',minutes,i);if(i===0&&active){active.planItemId=item.id;s.put('attempts',active);s.put('plan_items',{...item,attemptId:active.id});}}
    return planView(s,plan);
   });
  });

@@ -1,6 +1,7 @@
+import { Disclosure } from '@/components/disclosure';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { NativeSelectOption } from '@/components/ui/native-select';
+import { SelectField, SelectOption } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CalendarDays, Database, Download, Save } from 'lucide-react';
@@ -40,15 +41,11 @@ export function Settings() {
 }
 function SettingsForm({ settings }: { settings: SettingsData }) {
   const [timezone, setTimezone] = useState(settings.timezone);
-  const [budget, setBudget] = useState(settings.budgetMinutes);
-  const [primary, setPrimary] = useState(settings.primaryCount);
-  const [optional, setOptional] = useState(settings.optionalCount);
+  const [questions, setQuestions] = useState(settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount);
   const save = useAction(() =>
     api.send<SettingsData>('/settings', 'PATCH', {
       timezone,
-      budgetMinutes: budget,
-      primaryCount: primary,
-      optionalCount: optional,
+      questionsPerDay: questions,
     }),
   );
   const [exporting, setExporting] = useState(false);
@@ -82,7 +79,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
       <Card className="panel">
         <SectionTitle icon={CalendarDays}>Study rhythm</SectionTitle>
         <p className="muted">
-          Changes guide new daily plans. Existing active work stays in place.
+          Choose how many questions to do each day.
         </p>
         <form
           className="stack"
@@ -91,64 +88,24 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
             save.mutate();
           }}
         >
-          <Field label="Study timezone">
-            <Input
-              required
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              list="timezones"
-            />
-            <datalist id="timezones">
-              {[
-                'Australia/Sydney',
-                'Australia/Melbourne',
-                'Australia/Brisbane',
-                'Australia/Perth',
-                'Europe/London',
-                'America/New_York',
-                'America/Los_Angeles',
-                'Asia/Kolkata',
-                'UTC',
-              ].map((z) => (
-                <NativeSelectOption key={z}>{z}</NativeSelectOption>
-              ))}
-            </datalist>
+          <Field label="Questions per day">
+            <Input required type="number" min="1" max="20" step="1"
+              value={questions} onChange={(e) => setQuestions(Number(e.target.value))}
+              aria-describedby="questions-help" />
           </Field>
-          <Field label="Daily budget (minutes)">
-            <Input
-              required
-              type="number"
-              min="5"
-              max="240"
-              step="1"
-              value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
-            />
-          </Field>
-          <div className="form-grid">
-            <Field label="Primary questions">
-              <Input
-                required
-                type="number"
-                min="1"
-                max="10"
-                step="1"
-                value={primary}
-                onChange={(e) => setPrimary(Number(e.target.value))}
-              />
+          <p id="questions-help" className="small muted">
+            We’ll plan up to this many questions each day, depending on what’s available.
+          </p>
+          <Disclosure title="Advanced">
+            <Field label="Study timezone">
+              <SelectField value={timezone} onValueChange={setTimezone} required>
+                {[...new Set([timezone, 'UTC', ...Intl.supportedValuesOf('timeZone')])].sort().map(zone => <SelectOption key={zone} value={zone}>{zone}</SelectOption>)}
+              </SelectField>
             </Field>
-            <Field label="Optional questions">
-              <Input
-                required
-                type="number"
-                min="0"
-                max="10"
-                step="1"
-                value={optional}
-                onChange={(e) => setOptional(Number(e.target.value))}
-              />
-            </Field>
-          </div>
+          </Disclosure>
+          <p className="small muted">
+            Applies to your next daily plan. Your current plan and unfinished work stay unchanged.
+          </p>
           <ErrorNotice error={save.error} />
           <div className="row">
             <Button variant="default" disabled={save.isPending}>

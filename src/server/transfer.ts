@@ -13,7 +13,7 @@ import { outcome, help, seconds } from './closeout.js';
 const id=z.string().min(1).max(1000),text=z.string(),nullable=text.nullable(),v=z.number().int().min(1);
 const identity=z.object({id,title:name,url:problemUrl,difficulty:nullable}).strict();
 const schemas:Record<Table,z.ZodType>={
- settings:z.object({id:z.literal('singleton'),timezone:text.refine(t=>{try{new Intl.DateTimeFormat('en',{timeZone:t});return true;}catch{return false;}}),budgetMinutes:z.number().int().min(5).max(240),primaryCount:z.number().int().min(1).max(10),optionalCount:z.number().int().min(0).max(10),dataMode:text,lastBackupAt:nullable}).strict(),
+ settings:z.object({id:z.literal('singleton'),timezone:text.refine(t=>{try{new Intl.DateTimeFormat('en',{timeZone:t});return true;}catch{return false;}}),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240),primaryCount:z.number().int().min(1).max(10),optionalCount:z.number().int().min(0).max(10),dataMode:text,lastBackupAt:nullable}).strict(),
  problems:z.object({id,title:name,url:problemUrl,slug:text.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),difficulty:nullable,notes:text,tags:z.array(z.unknown()),lists:z.array(z.unknown()),legacyCompleted:z.boolean(),exposed:z.boolean(),lastAttemptAt:nullable,lastSolveSeconds:seconds,lastSolveHelp:help.nullable(),lastOutcome:outcome.nullable(),nextReviewDate:date.nullable(),attemptCount:z.number().int().min(0)}).strict(),
  tags:z.object({id,name,description:text,archived:z.boolean()}).strict(),lists:z.object({id,name,sourceUrl:nullable,sourceVersion:nullable}).strict(),
  problem_tags:z.object({id,problemId:id,tagId:id,difficulty:z.number().int().min(1).max(10).nullable()}).strict(),list_memberships:z.object({id,problemId:id,listId:id}).strict(),
