@@ -12,6 +12,12 @@ export function leetcodeSlug(url:string):string|null {
   return match?.[1]??null;
 }
 function parseDate(value:string):string|null { return z.iso.date().safeParse(value).success ? value : null; }
+export function parseConfidence(value: unknown): number | null {
+  const raw = text(value).trim();
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+  const rating = Number(raw);
+  return rating >= 1 && rating <= 5 ? rating : null;
+}
 export function parseDuration(value:unknown):number|null {
   const raw=text(value).trim();
   if(/^\d+(?:\.\d+)?$/.test(raw)) { const seconds=Number(raw)*60;return Number.isSafeInteger(seconds)?seconds:null; }
@@ -100,12 +106,15 @@ export function mapSheetSnapshot(raw:unknown):{payload:ImportPayload;report:Impo
         const ranking=['unknown','none','small','major','solution'];if(ranking.indexOf(hinted)>ranking.indexOf(help))help=hinted;
         const activeSeconds=parseDuration(get('Time Min','Time','Active Minutes'));
         const nextReviewDate=parseDate(get('Next Review Date'));
+        const confidenceRaw=get('Post Confidence') || get('Confidence');
+        const confidence=parseConfidence(confidenceRaw);
         const issues:string[]=[];
+        if(confidenceRaw&&confidence===null)issues.push('Invalid confidence; original value retained.');
         if(activeSeconds===null)issues.push('Unknown or ambiguous duration; original value retained, notes not used to replace it.');
         if(get('Next Review Date')&&!nextReviewDate)issues.push('Unsupported next review date.');
         const movementText=get('Tutor Rating Change','Rating Change');
         if(movementText) pendingMovements.push({record,text:movementText,problemKey:slug,date,notes,evidence:evidence(get('Evidence Type'))});
-        payload.attempts.push({sourceKey,problemKey:slug,date,outcome:outcomes[result]!,help,activeSeconds,notes,code:get('Code','Answer'),evidence:evidence(get('Evidence Type')),nextReviewDate,topicNames:get('Tracked Topic(s)','Topics').split(/[,;]/).map(s=>s.trim()).filter(Boolean)});
+        payload.attempts.push({sourceKey,problemKey:slug,date,outcome:outcomes[result]!,help,activeSeconds,confidence,notes,code:get('Code','Answer'),evidence:evidence(get('Evidence Type')),nextReviewDate,topicNames:get('Tracked Topic(s)','Topics').split(/[,;]/).map(s=>s.trim()).filter(Boolean)});
         problems.get(slug)!.exposed=true;
         record.status=issues.length?'unresolved':'imported';record.reason=issues.length?issues.join(' '):'Historical attempt imported; result semantics from the existing tutor tracker.';
       }

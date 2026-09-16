@@ -228,3 +228,13 @@ it('honors the daily question target without a budget cap and preserves existing
  await app.close(); app=await createApp({dbPath:join(dir,'test.sqlite'),token:'test-token',clock:()=>now});
  expect((await request('GET','/api/settings')).json().questionsPerDay).toBe(20);
 });
+
+it('imports explicit decimal confidence without inventing missing ratings', async () => {
+ const payload=imported();
+ payload.attempts[0]!.confidence=4.5;
+ expect((await request('POST','/api/import',payload)).statusCode).toBe(200);
+ const found=(await request('GET','/api/problems?confidence=high')).json();
+ expect(found.total).toBe(1);
+ const detail=(await request('GET',`/api/problems/${found.items[0].id}`)).json();
+ expect(detail.attempts[0].confidence).toBe(4.5);
+});

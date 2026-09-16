@@ -43,7 +43,7 @@ export interface ProblemPage { items: Problem[]; total: number; page: number; pa
 export interface TopicDetail { topic: Topic; decisions: ScoreDecision[]; attempts: Attempt[]; problems: Problem[]; stats: { attemptCount: number; knownTimeCount: number; medianSeconds: number | null } }
 export interface Snapshot { schemaVersion: 1; exportedAt: string; tables: Record<string, Record<string, unknown>[]> }
 export interface ImportProblem { key: string; title: string; url: string; difficulty?: string | null; notes?: string; legacyCompleted?: boolean; exposed?: boolean; tags?: string[]; lists?: string[] }
-export interface ImportAttempt { sourceKey: string; problemKey: string; date: string; outcome: Outcome; help: Help; activeSeconds: number | null; notes: string; code?: string; evidence: string; nextReviewDate?: string | null; topicNames?: string[] }
+export interface ImportAttempt { confidence?: number | null; sourceKey: string; problemKey: string; date: string; outcome: Outcome; help: Help; activeSeconds: number | null; notes: string; code?: string; evidence: string; nextReviewDate?: string | null; topicNames?: string[] }
 export interface ImportTopic { name: string; score: number | null; notes: string; lastReviewed?: string | null; provisional: boolean }
 export interface ImportMovement { sourceKey: string; topicName: string; problemKey?: string; date: string; oldScore: number; newScore: number; rationale: string; evidence: string }
 export interface ImportPlan { sourceKey: string; problemKey?: string; date: string; status: string; notes: string }

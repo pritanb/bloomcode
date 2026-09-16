@@ -85,3 +85,12 @@ test('inventory import deduplicates by strict LC slug, retains raw rows and neve
   expect(result.report.counts.excludedTabs).toBe(1);
   expect(mapSheetSnapshot({retrievedAt:'2026-09-16T00:00:00Z',sheets:[]}).payload.importId).toMatch(/^sheet-v2-[a-f0-9]{64}$/);
 });
+
+test('preserves explicit confidence including decimal and post-attempt ratings', () => {
+  for (const [confidence, post, expected] of [['3','',3],['4.5','',4.5],['3','5',5],['','',null],['6','',null]] as const) {
+    const snapshot=movementSnapshot('');
+    snapshot.sheets[0]!.values[0]!.push('Confidence','Post Confidence');
+    snapshot.sheets[0]!.values[1]!.push(confidence,post);
+    expect(mapSheetSnapshot(snapshot).payload.attempts[0]!.confidence).toBe(expected);
+  }
+});
