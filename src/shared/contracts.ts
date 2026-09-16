@@ -50,3 +50,6 @@ export interface ImportPlan { sourceKey: string; problemKey?: string; date: stri
 export interface ImportRecord { sourceKey: string; tab: string; row: number; raw: unknown; status: 'imported' | 'metadata' | 'duplicate' | 'unresolved'; reason?: string }
 export interface ImportPayload { importId: string; dryRun: boolean; source: { spreadsheetId?: string; retrievedAt: string }; problems: ImportProblem[]; attempts: ImportAttempt[]; topics: ImportTopic[]; movements: ImportMovement[]; planned: ImportPlan[]; records: ImportRecord[] }
 export interface ImportReport { dryRun: boolean; counts: Record<string, number>; warnings: string[]; unresolved: ImportRecord[] }
+
+export type TopicScorePoint = Pick<ScoreDecision, 'id' | 'date' | 'recordedAt' | 'oldScore' | 'newScore'>;
+export interface TopicScoreHistory { topic: Pick<Topic, 'id' | 'name' | 'score'>; decisions: TopicScorePoint[] }

@@ -113,8 +113,6 @@
   .topic-insight { display: flex; flex-wrap: wrap; align-items: center; gap: 2rem; padding: 1rem 0; border-block: 1px solid var(--border); }
   .topic-insight > div { display: flex; flex-direction: column; }
   .topic-insight span, .topic-notes { color: var(--muted-foreground); }
-  .scale-guide ol { list-style: decimal; padding-left: 1.5rem; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.5rem; }
-  .scale-guide span { display: block; font-size: .75rem; color: var(--muted-foreground); }
   .data-status > div { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
   .data-status dt { color: var(--muted-foreground); }
   .data-status dd { text-align: right; overflow-wrap: anywhere; }
@@ -157,7 +155,6 @@
     .sidebar nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dashboard-grid, .form-grid { grid-template-columns: 1fr; }
     .panel { padding: 1rem; }
-    .filter-grid, .scale-guide ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .section-heading .field { flex-direction: column; align-items: stretch; }
     .workspace-toolbar { gap: 1rem; }
@@ -185,3 +182,11 @@
   .tag-filter-actions { display: flex; align-items: center; gap: .375rem; padding-top: .5rem; border-top: 1px solid var(--border); }
 
   .date-field { display: flex; align-items: center; gap: .5rem; }
+  .topic-timeline .section-heading .field { flex-direction: column; align-items: stretch; min-width: min(280px, 100%); }
+  .topic-chart-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 2rem; padding-block: .5rem; }
+  .topic-chart-summary > div { display: flex; flex-direction: column; gap: .25rem; }
+  .topic-chart-summary strong { font-size: 1.5rem; font-weight: 600; }
+  .topic-chart-summary strong span { font-size: 1rem; color: var(--muted-foreground); font-weight: 400; }
+  .topic-chart-summary > a { margin-left: auto; }
+  .topic-score-chart { height: 320px; width: 100%; aspect-ratio: auto; }
+  .topic-review-note { white-space: normal; min-width: 220px; }

@@ -9,6 +9,12 @@ export function decisionView(d:ScoreDecision & {sourceKey?:string;importId?:stri
 export function topicView(s:Store,t:Topic):Topic {const decisions=s.all<ScoreDecision>('score_decisions').filter(d=>d.topicId===t.id).reverse().sort((a,b)=>b.date.localeCompare(a.date)||b.recordedAt.localeCompare(a.recordedAt));return {...t,lastMovement:decisions[0]?decisionView(decisions[0]):null};}
 export function registerTopics(app:FastifyInstance,s:Store){
  app.get('/api/topics',()=>s.all<Topic>('topics').map(t=>topicView(s,t)));
+ // Score-only history is safe during mixed practice; no problem metadata,
+ // evidence, notes or attempt identifiers are returned by this route.
+ app.get<{Params:{id:string}}>('/api/topics/:id/history',req=>{
+  const topic=s.get<Topic>('topics',req.params.id);
+  return {topic:{id:topic.id,name:topic.name,score:topic.score},decisions:s.all<ScoreDecision>('score_decisions').filter(d=>d.topicId===topic.id).reverse().map(d=>({id:d.id,date:d.date,recordedAt:d.recordedAt,oldScore:d.oldScore,newScore:d.newScore}))};
+ });
  app.get<{Params:{id:string}}>('/api/topics/:id',req=>{
   assertMetadataVisible(s);
   const topic=topicView(s,s.get<Topic>('topics',req.params.id)),q=z.object({evidence:z.string().optional(),help:z.string().optional(),difficulty:z.enum(['Easy','Medium','Hard']).optional()}).strict().parse(req.query);

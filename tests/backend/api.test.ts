@@ -195,3 +195,20 @@ it('filters confidence by the latest completed attempt and combines it with unkn
  expect((await request('GET','/api/problems?confidence=unknown')).json().total).toBe(2);
  expect((await request('GET','/api/problems?confidence=invalid')).statusCode).toBe(400);
 });
+
+
+it('returns only score history during mixed practice while keeping topic metadata protected', async () => {
+  expect((await request('POST', '/api/import', imported())).statusCode).toBe(200);
+  const topics = (await request('GET', '/api/topics')).json();
+  const topic = topics.find((t: {name: string}) => t.name === 'Arrays');
+  const problem = (await request('POST', '/api/problems', {title: 'New question', url: 'https://leetcode.com/problems/new-question/'})).json();
+  const attempt = (await request('POST', '/api/attempts', {problemId: problem.id, context: 'mixed'})).json();
+  expect((await request('GET', `/api/topics/${topic.id}`)).statusCode).toBe(403);
+  const history = await request('GET', `/api/topics/${topic.id}/history`);
+  expect(history.statusCode).toBe(200);
+  expect(history.json().topic).toEqual({id: topic.id, name: 'Arrays', score: topic.score});
+  expect(history.json().decisions).toHaveLength(1);
+  expect(Object.keys(history.json().decisions[0]).sort()).toEqual(['date', 'id', 'newScore', 'oldScore', 'recordedAt']);
+  expect((await request('GET', `/api/attempts/${attempt.id}`)).json().version).toBe(attempt.version);
+  expect((await request('GET', '/api/topics/missing/history')).statusCode).toBe(404);
+});

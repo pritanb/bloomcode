@@ -1,12 +1,13 @@
+import { enumLabel, helpLabel } from './labels';
 import { Card } from '@/components/ui/card';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { ArrowLeft, BookOpen, History, ListChecks, Ruler } from 'lucide-react';
+import { SelectField, SelectOption } from '@/components/select-field';
+import { ArrowLeft, BookOpen, History, ListChecks } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import type { Topic, TopicDetail as TopicData } from '../shared/contracts';
 import { api } from './api';
-import { TopicTable } from './Dashboard';
+import { TopicProgress } from './TopicProgress';
 import { ProblemTable } from './Library';
 import {
   Icon,
@@ -30,46 +31,11 @@ export function Topics() {
     <>
       <PageTitle
         title="Topic progress"
-        description="Evidence-based proficiency, not a completion counter."
+        description="See how your topic scores change with practice."
       />
-      <Card className="panel">
-        {query.isPending ? (
-          <Loading />
-        ) : query.isError ? (
-          <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-        ) : (
-          <TopicTable topics={query.data} />
-        )}
-      </Card>
-      <section className="scale-guide">
-        <SectionTitle icon={Ruler}>The existing 1–5 scale</SectionTitle>
-        <ol>
-          <li>
-            <strong>Unfamiliar</strong>
-            <span>Learning the foundations</span>
-          </li>
-          <li>
-            <strong>Supported</strong>
-            <span>Needs substantial help</span>
-          </li>
-          <li>
-            <strong>Standard forms</strong>
-            <span>Solves familiar structures</span>
-          </li>
-          <li>
-            <strong>Unseen variants</strong>
-            <span>Transfers under pressure</span>
-          </li>
-          <li>
-            <strong>Mock-ready</strong>
-            <span>Reliable in mock interviews</span>
-          </li>
-        </ol>
-        <p className="small muted">
-          Decimal scores are retained. Repeats alone don’t justify new scores
-          above 3. Missed days never reduce a score.
-        </p>
-      </section>
+      {query.isPending ? <Loading /> : query.isError ? (
+        <ErrorNotice error={query.error} retry={() => void query.refetch()} />
+      ) : <TopicProgress topics={query.data} />}
     </>
   );
 }
@@ -133,36 +99,36 @@ export function TopicDetail() {
         <SectionTitle icon={History}>Practice history</SectionTitle>
         <div className="row history-filters">
           <Field label="Evidence type">
-            <NativeSelect
+            <SelectField
               value={evidence}
-              onChange={(e) => setEvidence(e.target.value)}
+              onValueChange={(value) => setEvidence(value)}
             >
-              <NativeSelectOption value="">All evidence</NativeSelectOption>
+              <SelectOption value="">All evidence</SelectOption>
               {['retention', 'near_transfer', 'unseen', 'mock'].map((v) => (
-                <NativeSelectOption key={v} value={v}>
-                  {v.replaceAll('_', ' ')}
-                </NativeSelectOption>
+                <SelectOption key={v} value={v}>
+                  {enumLabel(v)}
+                </SelectOption>
               ))}
-            </NativeSelect>
+            </SelectField>
           </Field>
           <Field label="Help filter">
-            <NativeSelect value={help} onChange={(e) => setHelp(e.target.value)}>
-              <NativeSelectOption value="">All help levels</NativeSelectOption>
+            <SelectField value={help} onValueChange={(value) => setHelp(value)}>
+              <SelectOption value="">All help levels</SelectOption>
               {['none', 'small', 'major', 'solution', 'unknown'].map((v) => (
-                <NativeSelectOption key={v}>{v}</NativeSelectOption>
+                <SelectOption key={v} value={v}>{helpLabel(v)}</SelectOption>
               ))}
-            </NativeSelect>
+            </SelectField>
           </Field>
           <Field label="Question difficulty filter">
-            <NativeSelect
+            <SelectField
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
+              onValueChange={(value) => setDifficulty(value)}
             >
-              <NativeSelectOption value="">All difficulties</NativeSelectOption>
+              <SelectOption value="">All difficulties</SelectOption>
               {['Easy', 'Medium', 'Hard'].map((v) => (
-                <NativeSelectOption key={v}>{v}</NativeSelectOption>
+                <SelectOption key={v}>{v}</SelectOption>
               ))}
-            </NativeSelect>
+            </SelectField>
           </Field>
         </div>
         <AttemptList items={attempts} />
