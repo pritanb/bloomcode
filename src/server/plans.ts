@@ -10,7 +10,7 @@ import { topicView, decisionView } from './topics.js';
 import { updateTarget } from './closeout.js';
 export interface PlanRecord extends Omit<DailyPlan,'items'> {id:string}
 export interface ItemRecord extends PlanItem {planId:string;position:number}
-export function planView(s:Store,p:PlanRecord):DailyPlan{return {...p,items:s.all<ItemRecord>('plan_items').filter(i=>i.planId===p.id).sort((a,b)=>a.position-b.position).map(({planId:_plan,position:_pos,...i})=>i)};}
+export function planView(s:Store,p:PlanRecord):DailyPlan{return {...p,items:s.all<ItemRecord>('plan_items').filter(i=>i.planId===p.id).sort((a,b)=>{const rank=(i:ItemRecord)=>i.status==='active'?0:['completed','skipped'].includes(i.status)?2:1;return rank(a)-rank(b)||a.position-b.position;}).map(({planId:_plan,position:_pos,...i})=>i)};}
 export function bumpPlan(s:Store,id:string){const p=s.get<PlanRecord>('daily_plans',id);s.put('daily_plans',{...p,version:p.version+1});}
 function candidates(s:Store,day:string,exclude=new Set<string>()):Problem[]{
  const reviews=s.all<ReviewTarget>('review_targets'),topics=s.all<Topic>('topics');
@@ -27,8 +27,23 @@ export function linkAttempt(s:Store,attempt:AttemptRecord){
  for(const other of s.all<ItemRecord>('plan_items').filter(i=>i.planId===item.planId&&i.status==='active'&&i.id!==item.id))s.put('plan_items',{...other,status:'queued'});
  s.put('plan_items',{...item,status:'active',attemptId:attempt.id});bumpPlan(s,item.planId);
 }
-export function completeAssignment(s:Store,a:AttemptRecord){if(!a.planItemId)return;const item=s.get<ItemRecord>('plan_items',a.planItemId);s.put('plan_items',{...item,status:'completed',attemptId:a.id});const next=s.all<ItemRecord>('plan_items').find(i=>i.planId===item.planId&&i.status==='queued');if(next)s.put('plan_items',{...next,status:'active'});bumpPlan(s,item.planId);}
+export function completeAssignment(s:Store,a:AttemptRecord){if(!a.planItemId)return;const item=s.get<ItemRecord>('plan_items',a.planItemId);s.put('plan_items',{...item,status:'completed',attemptId:a.id});const next=s.all<ItemRecord>('plan_items').filter(i=>i.planId===item.planId&&i.status==='queued').sort((a,b)=>a.position-b.position)[0];if(next)s.put('plan_items',{...next,status:'active'});bumpPlan(s,item.planId);}
 export function registerPlans(app:FastifyInstance,s:Store,clock:()=>Date){
+ app.post<{Params:{id:string}}>('/api/daily-plans/:id/reorder',req=>{
+  const b=z.object({version:z.number().int().min(1),itemIds:z.array(z.string()).min(1)}).strict().parse(req.body);
+  return s.transaction(()=>{
+   const plan=s.get<PlanRecord>('daily_plans',req.params.id);
+   if(plan.version!==b.version)throw conflict('The plan changed. Refresh before reordering.');
+   const items=s.all<ItemRecord>('plan_items').filter(i=>i.planId===plan.id);
+   if(b.itemIds.length!==items.length||new Set(b.itemIds).size!==items.length||b.itemIds.some(id=>!items.some(i=>i.id===id)))throw new ApiError(400,'VALIDATION','Include each plan item exactly once');
+   const ordered=b.itemIds.map(id=>items.find(i=>i.id===id)!);
+   const live=ordered.some(i=>i.attemptId&&!['completed','skipped'].includes(i.status));
+   const next=ordered.find(i=>!['completed','skipped'].includes(i.status));
+   ordered.forEach((item,position)=>s.put('plan_items',{...item,position,...(!live&&next ? {status:item.id===next.id?'active':item.status==='active'?'queued':item.status} : {})}));
+   bumpPlan(s,plan.id);return planView(s,s.get('daily_plans',plan.id));
+  });
+ });
+
  app.post('/api/daily-plan/ensure',req=>{
   const b=z.object({date:date.optional()}).strict().parse(req.body??{});
   return s.transaction(()=>{
@@ -58,7 +73,7 @@ export function registerPlans(app:FastifyInstance,s:Store,clock:()=>Date){
    if(item.attemptId||['completed','skipped'].includes(item.status))throw conflict('Only unstarted assignments may be changed');
    if(b.action==='snooze'){if(!b.until||b.until<=studyDate(clock(),plan.timezone))throw new ApiError(400,'VALIDATION','Snooze requires a future date');if(item.problemId)updateTarget(s,item.problemId,null,'snoozed',{action:'snooze',date:b.until});}
    if(b.action==='swap'){const items=s.all<ItemRecord>('plan_items').filter(i=>i.planId===plan.id),replacement=candidates(s,plan.date,new Set(items.map(i=>i.problemId).filter((id):id is string=>!!id)))[0];if(!replacement)throw conflict('No alternative candidate available');newItem(s,plan,replacement,item.status,item.suggestedMinutes,items.length);}
-   s.put('plan_items',{...item,status:'skipped',reason:b.reason??b.action});bumpPlan(s,plan.id);return planView(s,s.get('daily_plans',plan.id));
+   s.put('plan_items',{...item,status:'skipped',reason:b.reason??b.action});if(item.status==='active'){const next=s.all<ItemRecord>('plan_items').filter(i=>i.planId===plan.id&&['queued','optional'].includes(i.status)).sort((a,b)=>a.position-b.position)[0];if(next)s.put('plan_items',{...next,status:'active'});}bumpPlan(s,plan.id);return planView(s,s.get('daily_plans',plan.id));
   });
  });
  app.post<{Params:{id:string}}>('/api/plan-items/:id/activate',req=>{

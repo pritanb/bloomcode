@@ -120,10 +120,10 @@ it('builds a stable budgeted day, resumes work across midnight and transitions a
  now=new Date('2026-09-17T01:00:00Z');expect((await request('POST','/api/daily-plan/ensure',{})).json().id).toBe(day.id);
  expect((await request('POST',`/api/plan-items/${day.items[0].id}/disposition`,{action:'skip'})).statusCode).toBe(409);
  const done=await request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'not_solved',help:'none',activeSeconds:50},{'idempotency-key':'plan-finish'});expect(done.statusCode).toBe(200);
- const previous=(await request('GET','/api/dashboard?date=2026-09-16')).json();expect(previous.plan.items[0].status).toBe('completed');expect(previous.activeAttempt).toBeNull();expect(previous.topics[0].score).toBe(3.75);
+ const previous=(await request('GET','/api/dashboard?date=2026-09-16')).json();expect(previous.plan.items.find((i:{id:string})=>i.id===day.items[0].id).status).toBe('completed');expect(previous.plan.items[0].status).toBe('active');expect(previous.activeAttempt).toBeNull();expect(previous.topics[0].score).toBe(3.75);
  const swapped=(await request('POST',`/api/plan-items/${day.items[1].id}/disposition`,{action:'swap',reason:'Prefer another'})).json();expect(swapped.items.find((i:{id:string})=>i.id===day.items[1].id).status).toBe('skipped');expect(swapped.items).toHaveLength(3);
- const replacement=swapped.items[2];const activated=(await request('POST',`/api/plan-items/${replacement.id}/activate`,{})).json();expect(activated.items[2].status).toBe('active');
- const snoozed=(await request('POST',`/api/plan-items/${replacement.id}/disposition`,{action:'snooze',until:'2026-09-25'})).json();expect(snoozed.items[2].status).toBe('skipped');
+ const replacement=swapped.items.find((i:{id:string})=>!day.items.some((old:{id:string})=>old.id===i.id));const activated=(await request('POST',`/api/plan-items/${replacement.id}/activate`,{})).json();expect(activated.items[0].id).toBe(replacement.id);expect(activated.items[0].status).toBe('active');
+ const snoozed=(await request('POST',`/api/plan-items/${replacement.id}/disposition`,{action:'snooze',until:'2026-09-25'})).json();expect(snoozed.items.find((i:{id:string})=>i.id===replacement.id).status).toBe('skipped');
  expect((await request('GET',`/api/problems/${replacement.problemId}`)).json().attempts).toHaveLength(0);
  expect((await request('GET','/api/reviews')).json().find((r:{problemId:string})=>r.problemId===replacement.problemId).effectiveDate).toBe('2026-09-25');
 });
@@ -253,4 +253,43 @@ it('shows submission fields without code and retains the latest recorded confide
  expect(row.latestSubmission).toMatchObject({outcome:'not_solved',help:'small',language:'java',activeSeconds:90,confidence:null,notes:'Submission notes',nextReviewDate:'2026-10-01'});
  expect(row.latestSubmission).not.toHaveProperty('code');
  expect(row.nextReviewDate).toBe('2026-10-01');
+});
+
+it('cancels an active attempt without recording a result and permits a fresh start', async () => {
+ const p=(await request('POST','/api/problems',{title:'Cancel fixture',url:'https://leetcode.com/problems/cancel-fixture/'})).json();
+ const plan=(await request('POST','/api/daily-plan/ensure',{})).json();
+ const item=plan.items.find((i:{problemId:string})=>i.problemId===p.id);
+ const a=(await request('POST','/api/attempts',{problemId:p.id,planItemId:item.id,context:'mixed'})).json();
+ const before=(await request('GET','/api/reviews')).json();
+ const payload={version:a.version};
+ expect((await request('POST',`/api/attempts/${a.id}/cancel`,{version:a.version+1},{'idempotency-key':'cancel-stale'})).statusCode).toBe(409);
+ for(let i=0;i<2;i++)expect((await request('POST',`/api/attempts/${a.id}/cancel`,payload,{'idempotency-key':'cancel-once'})).json()).toEqual({cancelled:true});
+ const dashboard=(await request('GET','/api/dashboard')).json();
+ expect(dashboard.activeAttempt).toBeNull();expect(dashboard.recentAttempts).toEqual([]);
+ expect(dashboard.plan.items.find((i:{id:string})=>i.id===item.id).attemptId).toBeNull();
+ expect((await request('GET','/api/reviews')).json()).toEqual(before);
+ const problem=(await request('GET',`/api/problems/${p.id}`)).json().problem;
+ expect(problem.attemptCount).toBe(0);expect(problem.latestSubmission).toBeNull();
+ const restarted=await request('POST','/api/attempts',{problemId:p.id,planItemId:item.id,context:'mixed'});
+ expect(restarted.statusCode).toBe(200);expect(restarted.json().id).not.toBe(a.id);
+});
+
+it('persists plan order while rejecting stale or incomplete reorders', async () => {
+ await request('PATCH','/api/settings',{questionsPerDay:3});
+ for(const slug of ['order-a','order-b','order-c'])await request('POST','/api/problems',{title:slug,url:`https://leetcode.com/problems/${slug}/`});
+ const plan=(await request('POST','/api/daily-plan/ensure',{})).json();
+ const ids=plan.items.map((i:{id:string})=>i.id).reverse();
+ expect((await request('POST',`/api/daily-plans/${plan.id}/reorder`,{version:plan.version,itemIds:[ids[0],ids[0],ids[2]]})).statusCode).toBe(400);
+ const reordered=(await request('POST',`/api/daily-plans/${plan.id}/reorder`,{version:plan.version,itemIds:ids})).json();
+ expect(reordered.items.map((i:{id:string})=>i.id)).toEqual(ids);
+ expect(reordered.items[0].status).toBe('active');
+ expect((await request('POST',`/api/daily-plans/${plan.id}/reorder`,{version:plan.version,itemIds:ids})).statusCode).toBe(409);
+ expect((await request('POST','/api/daily-plan/ensure',{})).json().items.map((i:{id:string})=>i.id)).toEqual(ids);
+ const attempt=(await request('POST','/api/attempts',{problemId:reordered.items[0].problemId,planItemId:ids[0],context:'mixed'})).json();
+ const current=(await request('GET','/api/dashboard')).json().plan;
+ const moved=(await request('POST',`/api/daily-plans/${plan.id}/reorder`,{version:current.version,itemIds:[ids[1],ids[2],ids[0]]})).json();
+ expect(moved.items.find((i:{id:string})=>i.id===ids[0]).attemptId).toBe(attempt.id);
+ expect(moved.items.find((i:{id:string})=>i.id===ids[0]).status).toBe('active');
+ expect(moved.items[0].id).toBe(ids[0]);
+ expect((await request('GET','/api/dashboard')).json().recentAttempts).toEqual([]);
 });

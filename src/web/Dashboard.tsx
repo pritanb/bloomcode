@@ -1,3 +1,5 @@
+import { DragDropProvider } from '@dnd-kit/react';
+import { useSortable, isSortable } from '@dnd-kit/react/sortable';
 import { enumLabel } from './labels';
 import { DateField } from '@/components/date-field';
 import { Badge } from '@/components/ui/badge';
@@ -5,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
   CalendarCheck,
+  GripVertical,
   History,
   ListChecks,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import type {
@@ -30,7 +33,28 @@ import {
   PageTitle,
   useAction,
 } from './ui';
-function PlanRow({ item }: { item: PlanItem }) {
+function CancelAttemptButton({ attemptId }: { attemptId: string }) {
+  const request = useRef<{ version: number; key: string } | null>(null);
+  const cancel = useAction(async () => {
+    if (!request.current) {
+      const attempt = await api.get<Attempt>(`/attempts/${attemptId}`);
+      request.current = { version: attempt.version, key: crypto.randomUUID() };
+    }
+    return api.send(`/attempts/${attemptId}/cancel`, 'POST', {
+      version: request.current.version,
+    }, request.current.key);
+  });
+  return <div>
+    <Button variant="outline" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+      {cancel.isPending ? 'Cancelling…' : 'Cancel attempt'}
+    </Button>
+    <ErrorNotice error={cancel.error} />
+  </div>;
+}
+
+function PlanRow({ item, index, busy }: { item: PlanItem; index: number; busy: boolean }) {
+  const movable = !['completed', 'skipped'].includes(item.status) && !item.attemptId;
+  const { ref, handleRef, isDragSource } = useSortable({ id: item.id, index, disabled: busy || !movable });
   const navigate = useNavigate();
   const [snoozing, setSnoozing] = useState(false);
   const [until, setUntil] = useState('');
@@ -56,7 +80,11 @@ function PlanRow({ item }: { item: PlanItem }) {
   });
   const available = !['completed', 'skipped'].includes(item.status);
   return (
-    <li className={`plan-row ${item.status}`}>
+    <li ref={ref} data-plan-id={item.id} className={`plan-row ${item.status}${isDragSource ? ' is-dragging' : ''}`}>
+      {movable ? <button ref={handleRef} type="button" className="plan-drag-handle" aria-label={`Reorder ${item.title}`} aria-disabled={busy}
+        title="Drag to reorder. With keyboard, press Space, use arrow keys, then Space to drop.">
+        <Icon icon={GripVertical} />
+      </button> : <span className="plan-handle-spacer" aria-hidden="true" />}
       <div className="plan-content">
         <div className="row between">
           <h3>{item.title}</h3>
@@ -64,9 +92,12 @@ function PlanRow({ item }: { item: PlanItem }) {
         </div>
         <div className="plan-actions">
           {item.attemptId && available ? (
-            <Button asChild variant="default"><Link  to={`/attempts/${item.attemptId}`}>
-              Resume
-            </Link></Button>
+            <>
+              <Button asChild variant="default"><Link to={`/attempts/${item.attemptId}`}>
+                Resume
+              </Link></Button>
+              <CancelAttemptButton attemptId={item.attemptId} />
+            </>
           ) : (
             available &&
             item.problemId && (
@@ -85,12 +116,6 @@ function PlanRow({ item }: { item: PlanItem }) {
           )}
           {available && !item.attemptId && (
             <>
-              <Button variant="outline"
-                disabled={action.isPending}
-                onClick={() => action.mutate('swap')}
-              >
-                Swap
-              </Button>
               <Button variant="outline"
                 disabled={action.isPending}
                 onClick={() => setSnoozing(!snoozing)}
@@ -138,7 +163,7 @@ function RecentPractice({ items }: { items: Attempt[] }) {
   const start = currentPage * pageSize;
   return (
     <>
-      <AttemptList items={items.slice(start, start + pageSize)} />
+      <AttemptList items={items.slice(start, start + pageSize)} showReview={false} />
       {pages > 1 && (
         <nav className="row between" aria-label="Recent practice pages">
           <span className="small muted" role="status">
@@ -154,6 +179,30 @@ function RecentPractice({ items }: { items: Attempt[] }) {
       )}
     </>
   );
+}
+
+function PlanList({ plan }: { plan: DailyPlan }) {
+  const [items, setItems] = useState(plan.items);
+  const reorder = useAction((itemIds: string[]) => api.send<DailyPlan>(`/daily-plans/${plan.id}/reorder`, 'POST', { version: plan.version, itemIds }));
+  return <>
+    <ErrorNotice error={reorder.error} />
+    <span className="sr-only" role="status">{reorder.isPending ? 'Saving order' : reorder.isSuccess ? 'Plan order saved' : ''}</span>
+    <DragDropProvider onDragEnd={event => {
+      if (event.canceled || reorder.isPending) return;
+      const { source } = event.operation;
+      if (!isSortable(source) || source.initialIndex === source.index) return;
+      const next = [...items];
+      const [moved] = next.splice(source.initialIndex, 1);
+      if (!moved) return;
+      next.splice(source.index, 0, moved);
+      setItems(next);
+      reorder.mutate(next.map(item => item.id), { onError: () => setItems(plan.items) });
+    }}>
+      <ol className="plan-list">
+        {items.map((item, index) => <PlanRow key={item.id} item={item} index={index} busy={reorder.isPending} />)}
+      </ol>
+    </DragDropProvider>
+  </>;
 }
 
 export function Dashboard() {
@@ -197,19 +246,16 @@ export function Dashboard() {
                 <strong>Pick up where you left off</strong>
                 <p>{d.activeAttempt.problem.title}</p>
               </div>
-              <Button asChild variant="default"><Link
-                to={`/attempts/${d.activeAttempt.id}`}
-              >
-                Resume attempt
-              </Link></Button>
+              <div className="row">
+                <Button asChild variant="default"><Link to={`/attempts/${d.activeAttempt.id}`}>
+                  Resume attempt
+                </Link></Button>
+                <CancelAttemptButton attemptId={d.activeAttempt.id} />
+              </div>
             </div>
           )}
           {d.plan?.items.length ? (
-            <ol className="plan-list">
-              {d.plan.items.map((item) => (
-                <PlanRow key={item.id} item={item} />
-              ))}
-            </ol>
+            <PlanList key={`${d.plan.id}-${d.plan.version}`} plan={d.plan} />
           ) : (
             <Empty>
               <h3>Your next question starts here</h3>

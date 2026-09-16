@@ -1,8 +1,9 @@
+import { idempotent } from './idempotency.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Attempt, Problem, Settings } from '../shared/contracts.js';
-import { linkAttempt } from './plans.js';
+import { bumpPlan, type ItemRecord, linkAttempt } from './plans.js';
 import { topicView } from './topics.js';
 import type { Topic } from '../shared/contracts.js';
 import { Store } from './store.js';
@@ -21,6 +22,18 @@ export function registerAttempts(app:FastifyInstance,s:Store,clock:()=>Date){
    const p=s.get<Problem>('problems',b.problemId),now=clock().toISOString();
    const a:AttemptRecord={id:randomUUID(),problemId:p.id,problem:{id:p.id,title:p.title,url:p.url,difficulty:p.difficulty},planItemId:b.planItemId??null,status:'active',version:1,language:b.language??'python',code:'',notes:'',activeSeconds:0,startedAt:now,finishedAt:null,studyDate:studyDate(clock(),s.get<Settings & {id:string}>('settings','singleton').timezone),runningSince:now,lastHeartbeatAt:now,needsGapDecision:false,outcome:null,help:'unknown',evidence:p.exposed||p.legacyCompleted||p.attemptCount>0||b.context==='review'?'retention':b.context==='mixed'?'unseen':'near_transfer',confidence:null,feedback:null,reviewedAt:null,nextReviewDate:null,context:b.context,gapSeconds:0};
    s.put('problems',{...p,exposed:true});s.put('attempts',a);linkAttempt(s,a);return attemptView(a);
+  });
+ });
+ app.post<{Params:{id:string}}>('/api/attempts/:id/cancel',req=>{
+  const b=z.object({version}).strict().parse(req.body);
+  return idempotent(s,`cancel:${req.params.id}`,req.headers['idempotency-key'],b,()=>{
+   const a=s.get<AttemptRecord>('attempts',req.params.id);checkVersion(a,b.version);
+   if(a.status==='completed')throw conflict('Submitted attempts cannot be cancelled');
+   if(a.planItemId){const item=s.get<ItemRecord>('plan_items',a.planItemId);s.put('plan_items',{...item,attemptId:null});bumpPlan(s,item.planId);}
+   for(const table of ['answer_versions','attempt_topics'] as const)for(const row of s.all<{id:string;attemptId:string}>(table))if(row.attemptId===a.id)s.remove(table,row.id);
+   s.remove('attempts',a.id);
+   s.put('audit_events',{id:randomUUID(),action:'cancel_attempt',attemptId:a.id,problemId:a.problemId,recordedAt:clock().toISOString()});
+   return {cancelled:true};
   });
  });
  app.get<{Params:{id:string}}>('/api/attempts/:id',req=>attemptView(s.get<AttemptRecord>('attempts',req.params.id)));

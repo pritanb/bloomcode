@@ -221,7 +221,7 @@ const attemptHeaders = [
   'Evidence / help',
   'Review',
 ] as const;
-export function AttemptList({ items }: { items: Attempt[] }) {
+export function AttemptList({ items, showReview = true }: { items: Attempt[]; showReview?: boolean }) {
   if (!items.length)
     return (
       <Empty>
@@ -229,7 +229,7 @@ export function AttemptList({ items }: { items: Attempt[] }) {
       </Empty>
     );
   return (
-    <ResponsiveTable headers={attemptHeaders}>
+    <ResponsiveTable headers={showReview ? attemptHeaders : attemptHeaders.slice(0, 4)}>
       {items.map((a) => (
         <TableRow role="row" key={a.id}>
           <TableCell label={attemptHeaders[0]}>
@@ -246,13 +246,13 @@ export function AttemptList({ items }: { items: Attempt[] }) {
             {enumLabel(a.evidence)}
             <small>{helpLabel(a.help)}</small>
           </TableCell>
-          <TableCell label={attemptHeaders[4]}>
+          {showReview && <TableCell label={attemptHeaders[4]}>
             {a.reviewedAt
               ? 'Reviewed'
               : a.status === 'completed'
                 ? 'Awaiting tutor review'
                 : 'In progress'}
-          </TableCell>
+          </TableCell>}
         </TableRow>
       ))}
     </ResponsiveTable>
