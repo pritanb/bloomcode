@@ -1,3 +1,4 @@
+import { enumLabel, helpLabel } from './labels';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell as TablePrimitiveCell } from '@/components/ui/table';
@@ -194,7 +195,7 @@ export function MovementList({ items }: { items: ScoreDecision[] }) {
           <p>{item.rationale}</p>
           <div className="row small muted">
             <span>{dateLabel(item.date)}</span>
-            <span>{item.evidence.replaceAll('_', ' ')}</span>
+            <span>{enumLabel(item.evidence)}</span>
             {item.attemptId && (
               <Link to={`/attempts/${item.attemptId}`}>View evidence</Link>
             )}
@@ -232,14 +233,14 @@ export function AttemptList({ items }: { items: Attempt[] }) {
             <small>{dateLabel(a.finishedAt ?? a.startedAt)}</small>
           </TableCell>
           <TableCell label={attemptHeaders[1]}>
-            {a.outcome?.replaceAll('_', ' ') ?? a.status}
+            {enumLabel(a.outcome ?? a.status)}
           </TableCell>
           <TableCell label={attemptHeaders[2]}>
             {duration(a.activeSeconds)}
           </TableCell>
           <TableCell label={attemptHeaders[3]}>
-            {a.evidence?.replaceAll('_', ' ')}
-            <small>{a.help === 'none' ? 'No help' : `${a.help} help`}</small>
+            {enumLabel(a.evidence)}
+            <small>{helpLabel(a.help)}</small>
           </TableCell>
           <TableCell label={attemptHeaders[4]}>
             {a.reviewedAt
@@ -276,7 +277,7 @@ export function CopyButton({
   const [state, setState] = useState('');
   return (
     <>
-      <Button variant="outline"
+      <Button type="button" variant="outline"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
