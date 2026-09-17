@@ -34,6 +34,7 @@ export function AttemptComparison({ attempt }: { attempt: Attempt }) {
           <p className="small muted">{dateLabel(item.finishedAt ?? item.startedAt)} · {enumLabel(item.outcome)}</p>
           <p>{duration(item.activeSeconds)} · {helpLabel(item.help)}</p>
           <p className="preserve">{item.notes || 'No notes recorded.'}</p>
+          {item.feedback && <div className="feedback preserve"><strong className="small">Tutor note</strong><br />{item.feedback}</div>}
           <p className="small muted">{languageLabel(item.language)}</p>
           <pre className="comparison-code" tabIndex={0}><code>{item.code || 'No code recorded.'}</code></pre>
         </section>)}

@@ -271,7 +271,10 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             </p>
           )}
           {attempt.feedback && (
-            <div className="feedback preserve">{attempt.feedback}</div>
+            <div className="stack">
+              <h3>Tutor note</h3>
+              <div className="feedback preserve">{attempt.feedback}</div>
+            </div>
           )}
           <p>
             Next review:{' '}

@@ -219,7 +219,7 @@ const attemptHeaders = [
   'Outcome',
   'Active time',
   'Evidence / help',
-  'Review',
+  'Tutor note',
 ] as const;
 export function AttemptList({ items, showReview = true }: { items: Attempt[]; showReview?: boolean }) {
   if (!items.length)
@@ -247,11 +247,11 @@ export function AttemptList({ items, showReview = true }: { items: Attempt[]; sh
             <small>{helpLabel(a.help)}</small>
           </TableCell>
           {showReview && <TableCell label={attemptHeaders[4]}>
-            {a.reviewedAt
-              ? 'Reviewed'
-              : a.status === 'completed'
-                ? 'Awaiting tutor review'
-                : 'In progress'}
+            {a.status !== 'completed'
+              ? 'In progress'
+              : a.feedback
+                ? 'Tutor note saved'
+                : 'No tutor note'}
           </TableCell>}
         </TableRow>
       ))}

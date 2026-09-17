@@ -87,6 +87,20 @@ it('returns the recorded score movements with the saved attempt so the app can s
  expect(saved.scoreDecisions).toHaveLength(1);
  expect(saved.scoreDecisions[0]).toMatchObject({topicName:'Arrays & Hashing',oldScore:2.8,newScore:3});
 });
+it('records a tutor note without touching scores when decisions are omitted',async()=>{
+ const {request,finish}=await fixture(2.8);
+ const {attempt}=await finish('Fresh Problem','mixed',{outcome:'solved',help:'none'});
+ const saved=(await request('GET',`/api/attempts/${attempt.id}`)).json();
+ const scoreBefore=(await request('GET','/api/topics')).json()[0].score;
+ const note='Clean derivation. Work on stating the invariant before coding.';
+ const result=await request('POST',`/api/attempts/${attempt.id}/reviews`,{version:saved.version,feedback:note});
+ expect(result.statusCode).toBe(200);
+ const after=(await request('GET',`/api/attempts/${attempt.id}`)).json();
+ expect(after.feedback).toBe(note);
+ // The automatic movement stands; omitting decisions must not re-score.
+ expect((await request('GET','/api/topics')).json()[0].score).toBe(scoreBefore);
+ expect(after.scoreDecisions).toHaveLength(1);
+});
 it('skips topics without a current score',async()=>{
  const {finish,decisions}=await fixture(null);
  await finish('Fresh Problem','mixed',{outcome:'solved',help:'none'});
