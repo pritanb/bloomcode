@@ -28,6 +28,6 @@ it('locks an uncertain finish and retries the identical idempotent payload after
   expect(await screen.findByRole('alert')).toHaveTextContent('Connection lost');
   expect(screen.getByRole('button',{name:'Save attempt'})).toBeDisabled();
   fireEvent.click(screen.getByRole('button',{name:'Retry'}));
-  expect(await screen.findByText('Awaiting tutor review')).toBeVisible();
+  expect(await screen.findByText('Attempt saved')).toBeVisible();
   expect(JSON.parse(finishes[0].body).activeSeconds).toBe(593);expect(finishes).toHaveLength(2);expect(finishes[0]).toEqual(finishes[1]);
 });

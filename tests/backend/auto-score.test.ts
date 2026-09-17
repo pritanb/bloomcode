@@ -80,6 +80,13 @@ it('applies exactly once across idempotent finish retries',async()=>{
  expect(await decisions()).toHaveLength(1);
  expect((await request('GET','/api/topics')).json()[0].score).toBe(3);
 });
+it('returns the recorded score movements with the saved attempt so the app can show them',async()=>{
+ const {request,finish}=await fixture(2.8);
+ const {attempt}=await finish('Fresh Problem','mixed',{outcome:'solved',help:'none'});
+ const saved=(await request('GET',`/api/attempts/${attempt.id}`)).json();
+ expect(saved.scoreDecisions).toHaveLength(1);
+ expect(saved.scoreDecisions[0]).toMatchObject({topicName:'Arrays & Hashing',oldScore:2.8,newScore:3});
+});
 it('skips topics without a current score',async()=>{
  const {finish,decisions}=await fixture(null);
  await finish('Fresh Problem','mixed',{outcome:'solved',help:'none'});

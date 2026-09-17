@@ -17,6 +17,7 @@ export interface Problem {
   lastOutcome: Outcome | null; nextReviewDate: string | null; attemptCount: number;
 }
 export interface Attempt {
+  scoreDecisions?: ScoreDecision[];
   mistakeLabels?: MistakeLabel[]; takeaway?: string;
   id: string; problemId: string; problem: { id: string; title: string; url: string; difficulty: string | null };
   planItemId: string | null; status: 'active' | 'paused' | 'completed'; version: number;

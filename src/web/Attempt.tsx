@@ -232,11 +232,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
         <Card className="completion panel">
           <div className="row between">
             <div>
-              <h2>
-                {attempt.reviewedAt
-                  ? 'Tutor review saved'
-                  : 'Awaiting tutor review'}
-              </h2>
+              <h2>Attempt saved</h2>
               <p>
                 {enumLabel(attempt.outcome)} ·{' '}
                 {duration(attempt.activeSeconds)} active time ·{' '}
@@ -247,11 +243,33 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
               <Icon icon={Check} />
             </span>
           </div>
-          <p className="small muted">
-            {attempt.reviewedAt
-              ? `Reviewed ${dateLabel(attempt.reviewedAt)}`
-              : 'Your attempt is saved. Topic scores stay unchanged until an evidence-based review.'}
-          </p>
+          {attempt.scoreDecisions?.length ? (
+            <div className="stack">
+              <h3>Topic scores updated</h3>
+              <ul className="plain-list score-movements">
+                {attempt.scoreDecisions.map(d => (
+                  <li key={d.id} className="row between">
+                    <Link to={`/topics/${d.topicId}`}>{d.topicName}</Link>
+                    <span className="small">
+                      {d.oldScore} → <strong>{d.newScore}</strong>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="small muted">
+                Applied automatically from this result. Independent unseen
+                solves can raise a score towards 5; other evidence is capped at
+                3. Change this in Settings.
+              </p>
+            </div>
+          ) : (
+            <p className="small muted">
+              No topic score changed. A score moves only when the evidence
+              supports it — help beyond a small hint, a miss on unseen
+              material, or a score already at its evidence cap leaves it
+              unchanged.
+            </p>
+          )}
           {attempt.feedback && (
             <div className="feedback preserve">{attempt.feedback}</div>
           )}
@@ -262,23 +280,14 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
               : 'Not scheduled'}
           </p>
           <div className="row">
-            <CopyButton
-              text={`Please review my saved LeetCode Tutor attempt ${attempt.id}. Use the app tools to retrieve it and record an evidence-based review.`}
-            >
-              Copy Hermes review prompt
-            </CopyButton>
-            <Button variant="outline" onClick={() => void reloadSaved()}>
-              <Icon icon={RefreshCw} />
-              Refresh feedback
-            </Button>
             <Button asChild variant="default"><Link  to="/">
               Done for now
             </Link></Button>
+            <Button variant="outline" onClick={() => void reloadSaved()}>
+              <Icon icon={RefreshCw} />
+              Refresh
+            </Button>
           </div>
-          <p className="small muted">
-            Copying does not start Hermes. Send the prompt in your own chat; the
-            configured model may receive this attempt’s code and context.
-          </p>
         </Card>
       ) : null}
       {!completed && (

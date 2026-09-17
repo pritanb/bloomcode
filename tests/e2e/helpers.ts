@@ -67,5 +67,5 @@ export async function finish(page: Page, options: { seconds: number | null; revi
   await page.getByRole('option', { name: options.review === 'none' ? 'No scheduled review' : 'Choose date', exact: true }).click();
   if (options.review === 'manual') await page.getByLabel('Review date', { exact: true }).fill(options.date!);
   await page.getByRole('button', { name: 'Save attempt', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Awaiting tutor review', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Attempt saved', exact: true })).toBeVisible();
 }

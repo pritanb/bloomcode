@@ -36,7 +36,7 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
   const reviews = await api.read<ReviewTarget[]>('/reviews');
   expect(reviews.find(review => review.problemId === problem.id)).toMatchObject({ action: 'none', effectiveDate: null });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Awaiting tutor review', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Attempt saved', exact: true })).toBeVisible();
   await expect(page.getByText('Next review: Not scheduled', { exact: true })).toBeVisible();
   await expect(page.locator('.cm-content')).toContainText('def reverseList(head):');
   await expect(page.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');

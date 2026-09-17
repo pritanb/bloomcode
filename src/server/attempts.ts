@@ -6,7 +6,8 @@ import { z } from 'zod';
 import type { Attempt, Problem, Settings } from '../shared/contracts.js';
 import { bumpPlan, type ItemRecord, linkAttempt } from './plans.js';
 import { topicView } from './topics.js';
-import type { Topic } from '../shared/contracts.js';
+import { decisionView } from './topics.js';
+import type { Topic, ScoreDecision } from '../shared/contracts.js';
 import { Store } from './store.js';
 import { ApiError, conflict } from './errors.js';
 export interface AttemptRecord extends Attempt {context:'mixed'|'targeted'|'review';gapSeconds:number;sourceKey?:string;importId?:string}
@@ -40,7 +41,7 @@ export function registerAttempts(app:FastifyInstance,s:Store,clock:()=>Date){
    return {cancelled:true};
   });
  });
- app.get<{Params:{id:string}}>('/api/attempts/:id',req=>{const a=s.get<AttemptRecord>('attempts',req.params.id);return reflectionSafeView(a,a.status==='completed'&&s.all<AttemptRecord>('attempts').some(x=>x.context==='mixed'&&x.status!=='completed'));});
+ app.get<{Params:{id:string}}>('/api/attempts/:id',req=>{const a=s.get<AttemptRecord>('attempts',req.params.id);const hidden=a.status==='completed'&&s.all<AttemptRecord>('attempts').some(x=>x.context==='mixed'&&x.status!=='completed');const view=reflectionSafeView(a,hidden);if(hidden)return view;const scoreDecisions=s.all<ScoreDecision>('score_decisions').filter(d=>d.attemptId===a.id).map(decisionView);return scoreDecisions.length?{...view,scoreDecisions}:view;});
  app.get<{Params:{id:string}}>('/api/attempts/:id/context',req=>{
   assertMetadataVisible(s);
   const a=s.get<AttemptRecord>('attempts',req.params.id);

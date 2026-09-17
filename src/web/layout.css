@@ -385,3 +385,8 @@
 #main:has(> .study-layout) > .page-title { margin-bottom: 1.25rem; }
 
 .plan-actions > [data-slot="button"].plan-more { min-width: 0; }
+
+/* Score movements recorded automatically when an attempt is saved. */
+.score-movements li { padding: .5rem 0; border-bottom: 1px solid var(--border); gap: 1rem; }
+.score-movements li:last-child { border: 0; }
+.score-movements strong { font-variant-numeric: tabular-nums; }
