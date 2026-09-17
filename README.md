@@ -11,7 +11,7 @@ cd /Users/pritanbarai/Projects/leetcode-tutor
 ./scripts/start-local.sh
 ```
 
-Open **http://127.0.0.1:4317**. The launcher starts or reuses this app's authenticated local server. It does not install a login item or a background scheduling service.
+Open **http://127.0.0.1:4317**. The launcher starts or reuses this app's authenticated local server only when it matches the current build. After rebuilding, an older running server must be stopped before launching again; the launcher reports this instead of opening incompatible frontend/backend versions. It never automatically kills an existing server. It does not install a login item or a background scheduling service.
 
 For a fresh checkout, use Node.js 22 or later:
 

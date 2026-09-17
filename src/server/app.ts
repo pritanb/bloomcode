@@ -22,6 +22,9 @@ import { registerAttempts } from './attempts.js';
 import { migratePatternNotebooks } from './pattern-migration.js';
 import { registerStudyTools } from './study-tools.js';
 import { registerCatalogue } from './catalogue.js';
+declare const __TUTOR_BUILD_ID__: string;
+// Captured in the bundle, never read from mutable files on each health check.
+const buildId = typeof __TUTOR_BUILD_ID__ === 'string' ? __TUTOR_BUILD_ID__ : 'development';
 const equal=(a:string,b:string)=>{const left=Buffer.from(a),right=Buffer.from(b);return left.length===right.length&&timingSafeEqual(left,right);};
 export async function createApp(options:AppOptions) {
  const app=Fastify({bodyLimit:2*1024*1024,logger:false});
@@ -53,7 +56,7 @@ export async function createApp(options:AppOptions) {
    if(!session || session.expires<clock().getTime()) throw new ApiError(401,'UNAUTHENTICATED','Authentication required');
    if(!['GET','HEAD','OPTIONS'].includes(req.method) && !equal(String(req.headers['x-csrf-token']??''),session.csrf)) throw new ApiError(403,'CSRF','CSRF token required');
  });
- app.get('/health',()=>({ok:true}));
+ app.get('/health',()=>({ok:true,buildId}));
  app.get('/api/session',(_req,reply)=>{
    const id=randomBytes(32).toString('hex'),csrf=randomBytes(32).toString('hex');
    sessions.set(id,{csrf,expires:clock().getTime()+86400000});

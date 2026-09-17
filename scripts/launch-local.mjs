@@ -11,11 +11,13 @@ const base=`http://127.0.0.1:${port}`;
 async function ready() {
   try {
     const health=await fetch(`${base}/health`,{redirect:'error',signal:AbortSignal.timeout(800)});
-    if(!health.ok||(await health.json()).ok!==true)return false;
+    if(!health.ok)return false;
+    const status=await health.json();
+    if(status.ok!==true)return false;
     const token=(await readFile(join(dataDir,'api-token'),'utf8')).trim();
     if(!token||/[\r\n]/.test(token))return false;
     const settings=await fetch(`${base}/api/settings`,{redirect:'error',signal:AbortSignal.timeout(800),headers:{Authorization:`Bearer ${token}`}});
-    return settings.ok&&typeof (await settings.json()).timezone==='string';
+    return settings.ok&&typeof (await settings.json()).timezone==='string'?status:false;
   }catch{return false;}
 }
 async function showBrowser() {
@@ -28,7 +30,14 @@ async function showBrowser() {
 async function main() {
   if(Number(process.versions.node.split('.')[0])<22)throw Error('Node.js 22 or newer is required.');
   if(!/^\d+$/.test(port)||Number(port)<1||Number(port)>65535)throw Error('PORT must be an integer from 1 to 65535.');
-  if(await ready()){process.stdout.write(`LeetCode Tutor already running: ${base}\n`);await showBrowser();return;}
+  let expectedBuild;
+  try{expectedBuild=(await readFile(join(root,'dist/server/build-id'),'utf8')).trim();}catch{throw Error('Build identity missing. Run npm run build in the repository first.');}
+  if(!expectedBuild)throw Error('Build identity missing. Run npm run build in the repository first.');
+  const checkBuild=status=>{
+    if(status.buildId!==expectedBuild)throw Error(`The local server at ${base} is out of date. Stop the existing LeetCode Tutor server, then launch again. No process was stopped and no browser was opened.`);
+  };
+  const running=await ready();
+  if(running){checkBuild(running);process.stdout.write(`LeetCode Tutor already running: ${base}\n`);await showBrowser();return;}
   const entry=join(root,'dist/server/index.js');
   try{await access(entry);}catch{throw Error('Built server missing. Run npm ci and npm run build in the repository first.');}
   await mkdir(dataDir,{recursive:true,mode:0o700});
@@ -45,7 +54,8 @@ async function main() {
     const deadline=Date.now()+15000;
     while(Date.now()<deadline){
       if(exited)throw Error(`Server exited before readiness. Check ${join(dataDir,'server.log')}; the port may already be in use.`);
-      if(await ready()){process.stdout.write(`Ready: ${base}\nLog: ${join(dataDir,'server.log')}\n`);await showBrowser();return;}
+      const status=await ready();
+      if(status){checkBuild(status);process.stdout.write(`Ready: ${base}\nLog: ${join(dataDir,'server.log')}\n`);await showBrowser();return;}
       await delay(200);
     }
     throw Error(`Server failed its authenticated readiness check. Check ${join(dataDir,'server.log')}.`);

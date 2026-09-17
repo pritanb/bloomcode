@@ -1,5 +1,10 @@
 import { defineConfig } from 'tsup';
+import { randomUUID } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
+const buildId = randomUUID();
 export default defineConfig({
+  define: { __TUTOR_BUILD_ID__: JSON.stringify(buildId) },
+  onSuccess: async () => { await writeFile('dist/server/build-id', buildId); },
   entry: { index: 'src/server/index.ts', mcp: 'src/integrations/mcp.ts' },
   format: ['esm'],
   outDir: 'dist/server',
