@@ -48,7 +48,7 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
   await expect(page.getByLabel('One-sentence takeaway', { exact: true })).toHaveValue('Check the empty input before walking the list.');
   await expect(page.getByRole('checkbox', { name: 'Missed edge case', exact: true })).toBeChecked();
   await page.getByRole('link', { name: 'Done for now', exact: true }).click();
-  await expect(page.locator('.recent-practice').getByRole('row').filter({ hasText: problem.title })).toContainText('9:53');
+  await expect(page.locator('.recent-practice').getByRole('listitem').filter({ hasText: problem.title })).toContainText('9:53');
   await page.goto(`/library?search=${encodeURIComponent(problem.title)}&status=completed&timeBucket=0-10`);
   await expect(page.locator('.library-results h2')).toHaveText('1 question');
   await expect(page.locator('.problem-table tbody tr')).toContainText('9:53');

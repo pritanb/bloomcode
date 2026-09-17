@@ -30,6 +30,7 @@ import {
   Icon,
   SectionTitle,
   dateLabel,
+  duration,
   Empty,
   ErrorNotice,
   Field,
@@ -167,7 +168,7 @@ function PlanRow({ item, index, busy, featured, onChanged }: { item: PlanItem; i
 function RecentPractice({ items }: { items: Attempt[] }) {
   return items.length ? <ul className="plain-list compact-practice">{items.slice(0, 3).map(attempt => <li key={attempt.id}>
     <div><Link to={`/attempts/${attempt.id}`}>{attempt.problem.title}</Link><span className="small muted">{dateLabel(attempt.finishedAt)}</span></div>
-    <span className="small muted">{enumLabel(attempt.outcome ?? 'unknown')}</span>
+    <span className="small muted">{enumLabel(attempt.outcome ?? 'unknown')} · {duration(attempt.activeSeconds)}</span>
   </li>)}</ul> : <p className="small muted">Your completed attempts will appear here.</p>;
 }
 
