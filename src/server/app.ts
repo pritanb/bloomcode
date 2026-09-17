@@ -67,7 +67,7 @@ export async function createApp(options:AppOptions) {
  });
  app.get('/api/settings',()=>db.orm.select().from(settings).get()!.data);
  app.patch('/api/settings',(req)=>{
-   const update=z.object({recommendations:recommendationSchema.optional(),timezone:z.string().refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Invalid timezone').optional(),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240).optional(),primaryCount:z.number().int().min(1).max(10).optional(),optionalCount:z.number().int().min(0).max(10).optional()}).strict().parse(req.body);
+   const update=z.object({autoScore:z.boolean().optional(),recommendations:recommendationSchema.optional(),timezone:z.string().refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Invalid timezone').optional(),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240).optional(),primaryCount:z.number().int().min(1).max(10).optional(),optionalCount:z.number().int().min(0).max(10).optional()}).strict().parse(req.body);
    const data={...db.orm.select().from(settings).get()!.data,...update};
    if(update.recommendations?.listId&&!store.all<{id:string}>('lists').some(l=>l.id===update.recommendations!.listId))throw new ApiError(400,'VALIDATION','Choose an available list');
    if(update.recommendations?.startTopic&&!recommendationContext(store,update.recommendations).options.topics.some(t=>t.name===update.recommendations!.startTopic))throw new ApiError(400,'VALIDATION','Choose an available starting topic for this list');

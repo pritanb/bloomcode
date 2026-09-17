@@ -7,6 +7,7 @@ import { Store } from './store.js';
 import { date } from './catalogue.js';
 import { type AttemptRecord, attemptView, checkVersion, version } from './attempts.js';
 import { ApiError, conflict } from './errors.js';
+import { applyAutoScore } from './auto-score.js';
 import { idempotent } from './idempotency.js';
 export const outcome=z.enum(['solved','not_solved','stopped']);
 export const help=z.enum(['none','small','major','solution','unknown']);
@@ -30,7 +31,8 @@ export function registerCloseout(app:FastifyInstance,s:Store,clock:()=>Date){
    const p=s.get<Problem>('problems',a.problemId);s.put('problems',{...p,exposed:true,lastAttemptAt:a.finishedAt,lastOutcome:a.outcome,attemptCount:p.attemptCount+1,...(a.outcome==='solved'?{lastSolveSeconds:a.activeSeconds,lastSolveHelp:a.help}:{})});
    const r=recommendation(a);a.nextReviewDate=updateTarget(s,p.id,r.date,r.stage,{action:b.reviewAction??'recommended',date:b.reviewDate}).effectiveDate;
    s.put('attempts',a);completeAssignment(s,a);s.put('answer_versions',{id:randomUUID(),attemptId:a.id,code:a.code,notes:a.notes,language:a.language,version:a.version,recordedAt:clock().toISOString()});
-   s.put('audit_events',{id:randomUUID(),action:'finish_attempt',attemptId:a.id,recordedAt:clock().toISOString()});
+   const decisions=applyAutoScore(s,a,clock);
+   s.put('audit_events',{id:randomUUID(),action:'finish_attempt',attemptId:a.id,...(decisions.length?{decisionIds:decisions.map(d=>d.id)}:{}),recordedAt:clock().toISOString()});
    return attemptView(a);
   });
  });

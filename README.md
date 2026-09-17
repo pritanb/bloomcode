@@ -35,7 +35,7 @@ npm run build
 - **Topic progress** — the existing decimal 1–5 scores, evidence, explicit score decisions and no-change rationales. Topic proficiency and a question's per-tag 1–10 difficulty are separate concepts.
 - **Settings & data** — choose questions per day, study timezone and daily recommendation policy; download a portable export.
 
-Code is **stored, not executed**. This app is not a LeetCode judge and does not automatically submit answers, scrape paid statements or invoke a model. Submit on LeetCode and record the result here. The tutor-review API/MCP adapter records evidence-based feedback and score decisions; merely finishing an attempt does not change a topic score.
+Code is **stored, not executed**. This app is not a LeetCode judge and does not automatically submit answers, scrape paid statements or invoke a model. Submit on LeetCode and record the result here. Finishing an attempt moves topic scores automatically under conservative evidence rules: independent unseen solves can raise a score towards 5, every other result is capped at 3, and misses on known material lower it slightly. The tutor-review API/MCP adapter can still record manual feedback and score decisions, which override the automatic movement. Automatic scoring can be turned off in Settings.
 
 ### Daily recommendation policy
 

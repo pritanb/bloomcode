@@ -209,7 +209,7 @@ export function MovementList({ items }: { items: ScoreDecision[] }) {
     </ul>
   ) : (
     <Empty>
-      No score decisions yet. Scores change only when supported by a review.
+      No score decisions yet. Scores change when attempts or reviews support them.
     </Empty>
   );
 }

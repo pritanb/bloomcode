@@ -21,7 +21,7 @@ const descriptions: Record<keyof typeof schemas,string> = {
   get_today:'Get or resume the stable daily plan; does not start an attempt. No hidden pattern context.',
   search_questions:'Search at most 100 questions. Metadata can reveal patterns: use only with consent, never to peek at an active mixed assessment.',
   get_attempt_context:'Read saved code, history and score versions for a requested review. Backend blocks active mixed assessment disclosure.',
-  finish_attempt:'Finalise a reported attempt using its current version and a caller-chosen unique idempotency key. Retry with the SAME key and identical payload after uncertainty. Reads back the saved attempt.',
+  finish_attempt:'Finalise a reported attempt using its current version and a caller-chosen unique idempotency key. Retry with the SAME key and identical payload after uncertainty. Topic scores move automatically under conservative evidence rules; use save_review for manual decisions. Reads back the saved attempt.',
   save_review:'Commit feedback and absolute 1–5 score decisions atomically, including no-change decisions. Supply current attempt/topic versions and a stable idempotency key. Repeat evidence cannot justify increases above 3. Reads back context.',
   set_review_date:'Set a manual, snoozed, recommended or no-review schedule using its current version; reads back the target. On conflict re-read, do not blindly overwrite.'
 };

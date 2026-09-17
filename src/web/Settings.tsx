@@ -1,5 +1,6 @@
 import { Disclosure } from '@/components/disclosure';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SelectField, SelectOption } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,8 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
   const [timezone, setTimezone] = useState(settings.timezone);
   const [questions, setQuestions] = useState(settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount);
   const [recommendations, setRecommendations] = useState(settings.recommendations ?? defaultRecommendations);
-  const unsaved=timezone!==settings.timezone||questions!==(settings.questionsPerDay??settings.primaryCount+settings.optionalCount)||JSON.stringify(recommendations)!==JSON.stringify(settings.recommendations??defaultRecommendations);
+  const [autoScore, setAutoScore] = useState(settings.autoScore ?? true);
+  const unsaved=timezone!==settings.timezone||questions!==(settings.questionsPerDay??settings.primaryCount+settings.optionalCount)||autoScore!==(settings.autoScore??true)||JSON.stringify(recommendations)!==JSON.stringify(settings.recommendations??defaultRecommendations);
   const change = (update: Partial<RecommendationSettings>) => setRecommendations(current => ({...current,...update}));
   const options = useQuery({queryKey:['recommendation-options',recommendations.listId,recommendations.startTopic],queryFn:()=>api.get<RecommendationOptions>(`/recommendations/options?${new URLSearchParams({listId:recommendations.listId??'',startTopic:recommendations.startTopic??''})}`)});
   const rebuild = useAction(async () => {
@@ -56,6 +58,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
     api.send<SettingsData>('/settings', 'PATCH', {
       timezone,
       questionsPerDay: questions,
+      autoScore,
       recommendations,
     }),
   );
@@ -155,6 +158,13 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           <p className="small muted">
             Applies to your next daily plan. Your current plan and unfinished work stay unchanged.
           </p>
+          <Separator />
+          <h3>Topic scores</h3>
+          <div className="row">
+            <Checkbox id="auto-score" checked={autoScore} onCheckedChange={value=>setAutoScore(value===true)} />
+            <label htmlFor="auto-score">Move topic scores automatically when an attempt finishes</label>
+          </div>
+          <p className="small muted">Conservative rules: independent unseen solves can raise a score towards 5; every other result is capped at 3, and misses on known material lower it slightly. Scores never change without a recorded decision, and a manual review can still override any movement.</p>
           <ErrorNotice error={save.error} />
           <div className="row">
             <Button variant="default" disabled={save.isPending}>
@@ -221,8 +231,8 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
         <Separator />
         <h3>Migration stays explicit</h3>
         <p className="small muted">
-          This app never writes to your source spreadsheet. Import and
-          source-of-truth cutover require a separate, approved operation.
+          This app never writes to your source spreadsheet. The spreadsheet is
+          a read-only archive; this app is the authoritative record.
         </p>
       </Card>
     </div>
