@@ -1,6 +1,6 @@
 # Read-only Sheet migration
 
-The Sheet remains authoritative. Reading/mapping a snapshot is not cutover permission; never write back to it or create two writable study histories.
+Cutover was approved on 2026-09-17: the app is authoritative and the Sheet is a read-only archive. This document remains as the historical record of how the import was performed and verified. Never write back to the Sheet or maintain two writable study histories.
 
 ## Snapshot format (version 1)
 
@@ -104,4 +104,4 @@ Old `listId` URLs for hidden Sheet inventories still filter their **original sto
 
 ## Cutover gate
 
-Keep the live Sheet/tutor configuration unchanged until the import report is approved, a fresh isolated app import is reconciled, representative answers/ratings/dates are checked, and an empty-database restore has been exercised. Preserve the source archive and original database. Cutover itself is not performed by any script here.
+Approved 2026-09-17. Verification completed before approval: the import report was reviewed, the corrected pilot was reconciled against the source snapshot, a portable export was restored into a fresh empty database with all tables compared, a SQLite backup passed integrity checks, and the MCP adapter was registered and exercised against the live data. The user approved proceeding on the imported history without re-interpreting the preserved unknowns. The source archive and original database are retained; the Sheet is read-only. Cutover itself was a configuration/docs change, not performed by any script here.
