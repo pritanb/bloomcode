@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
+import { recommendationSchema } from '../shared/recommendations.js';
 import type { Snapshot, Settings } from '../shared/contracts.js';
 import { durableTables, type Table } from './db.js';
 import { Store } from './store.js';
@@ -16,7 +17,7 @@ const id=z.string().min(1).max(1000),text=z.string(),nullable=text.nullable(),v=
 const identity=z.object({id,title:name,url:problemUrl,difficulty:nullable}).strict();
 const schemas:Record<Table,z.ZodType>={
  patterns:z.object({id,...legacyPatternFields,version:v,createdAt:z.iso.datetime(),updatedAt:z.iso.datetime()}).strict(),
- settings:z.object({id:z.literal('singleton'),timezone:text.refine(t=>{try{new Intl.DateTimeFormat('en',{timeZone:t});return true;}catch{return false;}}),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240),primaryCount:z.number().int().min(1).max(10),optionalCount:z.number().int().min(0).max(10),dataMode:text,lastBackupAt:nullable}).strict(),
+ settings:z.object({recommendations:recommendationSchema.optional(),id:z.literal('singleton'),timezone:text.refine(t=>{try{new Intl.DateTimeFormat('en',{timeZone:t});return true;}catch{return false;}}),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240),primaryCount:z.number().int().min(1).max(10),optionalCount:z.number().int().min(0).max(10),dataMode:text,lastBackupAt:nullable}).strict(),
  problems:z.object({leetcodeTopics:z.array(name).max(50).optional(),id,title:name,url:problemUrl,slug:text.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),difficulty:nullable,notes:text,tags:z.array(z.unknown()),lists:z.array(z.unknown()),legacyCompleted:z.boolean(),exposed:z.boolean(),lastAttemptAt:nullable,lastSolveSeconds:seconds,lastSolveHelp:help.nullable(),lastOutcome:outcome.nullable(),nextReviewDate:date.nullable(),attemptCount:z.number().int().min(0)}).strict(),
  tags:z.object({kind:z.enum(['topic','pattern']).optional(),recognitionCues:text.optional(),pitfalls:text.optional(),patternNotes:text.optional(),notebookVersion:v.optional(),notebookUpdatedAt:z.iso.datetime().optional(),id,name,description:text,archived:z.boolean(),hue:z.number().min(0).lt(360).optional()}).strict(),lists:z.object({id,name,sourceUrl:nullable,sourceVersion:nullable}).strict(),
  problem_tags:z.object({recognitionCues:text.optional(),pitfalls:text.optional(),patternNotes:text.optional(),notebookVersion:v.optional(),notebookUpdatedAt:z.iso.datetime().optional(),id,problemId:id,tagId:id,difficulty:z.number().int().min(1).max(10).nullable()}).strict(),list_memberships:z.object({id,problemId:id,listId:id}).strict(),
@@ -31,7 +32,7 @@ const schemas:Record<Table,z.ZodType>={
  import_records:z.object({id,importId:id,sourceKey:id,tab:text,row:z.number().int().min(0),raw:z.unknown(),status:z.enum(['imported','metadata','duplicate','unresolved']),reason:text.optional()}).strict(),
  import_plans:z.object({id,importId:id,sourceKey:id,problemId:id.nullable(),problemKey:id.optional(),date,status:text,notes:text}).strict(),
  daily_plans:z.object({id,date,timezone:text,version:v}).strict(),
- plan_items:z.object({id,planId:id,position:z.number().int().min(0),problemId:id.nullable(),title:name,url:nullable,status:z.enum(['active','queued','optional','completed','skipped']),reason:text,suggestedMinutes:z.number().int().min(1),attemptId:id.nullable()}).strict(),
+ plan_items:z.object({recommendationKind:z.enum(['topic','refresher','balanced']).optional(),id,planId:id,position:z.number().int().min(0),problemId:id.nullable(),title:name,url:nullable,status:z.enum(['active','queued','optional','completed','skipped']),reason:text,suggestedMinutes:z.number().int().min(1),attemptId:id.nullable()}).strict(),
 };
 export function exportSnapshot(s:Store,clock:()=>Date):Snapshot {return s.transaction(()=>({schemaVersion:3,exportedAt:clock().toISOString(),tables:Object.fromEntries(durableTables.map(t=>[t,(s.sql.prepare(`SELECT id,data FROM "${t}" ORDER BY rowid`).all() as {id:string;data:string}[]).map(r=>({...JSON.parse(r.data),id:r.id}))]))}));}
 export function registerTransfer(app:FastifyInstance,s:Store,clock:()=>Date,dbPath:string){

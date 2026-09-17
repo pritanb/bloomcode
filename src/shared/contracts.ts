@@ -40,12 +40,13 @@ export interface ReviewTarget {
   action: 'recommended' | 'manual' | 'snooze' | 'none'; version: number; stage: string;
 }
 export interface PlanItem {
+  recommendationKind?: 'topic' | 'refresher' | 'balanced';
   id: string; problemId: string | null; title: string; url: string | null;
   status: 'active' | 'queued' | 'optional' | 'completed' | 'skipped';
   reason: string; suggestedMinutes: number; attemptId: string | null;
 }
 export interface DailyPlan { id: string; date: string; timezone: string; items: PlanItem[]; version: number }
-export interface Settings { questionsPerDay?: number; timezone: string; budgetMinutes: number; primaryCount: number; optionalCount: number; dataMode: string; lastBackupAt: string | null }
+export interface Settings { recommendations?: import('./recommendations.js').RecommendationSettings; questionsPerDay?: number; timezone: string; budgetMinutes: number; primaryCount: number; optionalCount: number; dataMode: string; lastBackupAt: string | null }
 export interface Dashboard { plan: DailyPlan | null; topics: Topic[]; movements: ScoreDecision[]; recentAttempts: Attempt[]; activeAttempt: Attempt | null; settings: Settings; activity: ActivityDay[]; latestReflection: { attemptId: string; takeaway: string } | null }
 export interface ProblemPage { items: Problem[]; total: number; page: number; pageSize: number }
 export interface TopicDetail { topic: Topic; decisions: ScoreDecision[]; attempts: Attempt[]; problems: Problem[]; stats: { attemptCount: number; knownTimeCount: number; medianSeconds: number | null } }

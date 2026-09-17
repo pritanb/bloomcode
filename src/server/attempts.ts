@@ -22,6 +22,8 @@ export function registerAttempts(app:FastifyInstance,s:Store,clock:()=>Date){
   return s.transaction(()=>{
    if(s.all<AttemptRecord>('attempts').some(a=>a.status!=='completed'))throw conflict('Finish the existing active attempt first');
    const p=s.get<Problem>('problems',b.problemId),now=clock().toISOString();
+   // A curriculum assignment is known-topic practice, never unseen mixed evidence.
+   if(b.context==='mixed'&&b.planItemId&&s.get<ItemRecord>('plan_items',b.planItemId).recommendationKind==='topic')b.context='targeted';
    const a:AttemptRecord={id:randomUUID(),problemId:p.id,problem:{id:p.id,title:p.title,url:p.url,difficulty:p.difficulty},planItemId:b.planItemId??null,status:'active',version:1,language:b.language??'python',code:'',notes:'',activeSeconds:0,startedAt:now,finishedAt:null,studyDate:studyDate(clock(),s.get<Settings & {id:string}>('settings','singleton').timezone),runningSince:now,lastHeartbeatAt:now,needsGapDecision:false,outcome:null,help:'unknown',evidence:p.exposed||p.legacyCompleted||p.attemptCount>0||b.context==='review'?'retention':b.context==='mixed'?'unseen':'near_transfer',confidence:null,feedback:null,reviewedAt:null,nextReviewDate:null,context:b.context,gapSeconds:0};
    s.put('problems',{...p,exposed:true});s.put('attempts',a);linkAttempt(s,a);return attemptView(a);
   });

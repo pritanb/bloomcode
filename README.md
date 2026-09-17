@@ -33,9 +33,19 @@ npm run build
 - **Review calendar** — browse seven-day windows and reschedule with the existing manual-date rules.
 - **Tag notebooks** — every tag has recognition cues, pitfalls and notes, with assigned questions appearing automatically. Imported and custom tags use the same notebook and question assignment controls. Mixed practice blocks notebook access; revealing linked questions records exposure.
 - **Topic progress** — the existing decimal 1–5 scores, evidence, explicit score decisions and no-change rationales. Topic proficiency and a question's per-tag 1–10 difficulty are separate concepts.
-- **Settings & data** — adjust the time budget and primary/optional workload; download a portable export.
+- **Settings & data** — choose questions per day, study timezone and daily recommendation policy; download a portable export.
 
 Code is **stored, not executed**. This app is not a LeetCode judge and does not automatically submit answers, scrape paid statements or invoke a model. Submit on LeetCode and record the result here. The tutor-review API/MCP adapter records evidence-based feedback and score decisions; merely finishing an attempt does not change a topic score.
+
+### Daily recommendation policy
+
+Settings offers **All questions** or **one available list only**, mixed/balanced selection or topic-by-topic progression, a starting topic, and completed-question exclusion or a capped refresher allowance. Existing installations keep the original balanced selection until settings are changed. A chosen list is a hard boundary for new assignments, due reviews, refreshers and swaps; an exhausted pool produces a shorter or empty plan, never outside-list filler.
+
+NeetCode lists use the checked-in NeetCode 250 category/question order. Other lists use alphabetical topic order, assigning each question to its first alphabetical non-archived topic tag (or Uncategorized). Progress counts imported completion flags and any saved solved attempt once per question. Failed retries never remove completion credit. An unstarted assignment is still eligible tomorrow; an unfinished draft resumes first, including after restart. Topics advance only after completion, not because all remaining questions are snoozed. You can choose a later starting topic explicitly.
+
+Refreshers revisit completed questions within the same source limit, preferring Blind 75 / NeetCode 150 membership as a curated core—not measured popularity. Slots are part of the daily count, not extra work. Manual review dates and “no review” choices remain authoritative. Known-topic assignments use the app's targeted-practice evidence path, not unseen mixed evidence; no score is automatically changed.
+
+Saving settings does **not** replace an existing plan. **Rebuild unstarted current plan** explicitly applies saved settings while retaining active drafts, completed/skipped assignments, saved attempts, scores and review choices. Preserved work may remain outside a newly selected list or above a reduced daily target. Recommendation settings and assignment kinds are included in export/restore; older snapshots without them retain legacy defaults.
 
 ## Data and cutover
 
@@ -47,7 +57,7 @@ The default data directory is:
 
 It contains the SQLite database, private local API credential, source-import artefacts and backups. It is outside the repository. Keep it private. Never put its credential in a prompt, Git commit or MCP configuration.
 
-**The installed data mode is an isolated pilot.** The live Sheet and existing Hermes tutor configuration remain unchanged. Source ambiguities are preserved for reconciliation, not guessed. Do not alternate between writing the Sheet and writing the app as two authoritative histories. Approve the import and choose one source of truth before switching normal tutoring.
+**This app is the authoritative study tracker.** Cutover was approved on 2026-09-17 using the imported Sheet history plus current app data; the legacy unresolved timings, URLs and composite topic labels remain preserved as explicit unknowns in the source archive rather than guessed. The Sheet is a read-only historical archive — never write study updates to it, and do not maintain two histories. The `leetcode-tutor` MCP server is registered in the default Hermes profile (see [operations](docs/operations.md#mcp-adapter)).
 
 [Migration and provenance](docs/migration.md) describes the read-only Sheet mapper, unresolved fields and separately verified NeetCode 150 / NeetCode 250 / Blind 75 manifests.
 

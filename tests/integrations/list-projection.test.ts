@@ -32,6 +32,9 @@ test('projects verified slug memberships without exposing Sheet provenance or re
     const before = await api.request('GET', '/api/export') as Snapshot;
     const lists = await api.request('GET', '/api/lists') as ProblemList[];
     expect(lists.map(l => l.name).sort()).toEqual(['Blind 75', 'Microsoft Top Questions', 'My custom list', 'NeetCode 150', 'NeetCode 250'].sort());
+    const options = await api.request('GET', '/api/recommendations/options') as {lists: {id:string;name:string}[]};
+    expect(options.lists).toEqual(lists.map(({id,name}) => ({id,name})));
+    expect((await api.request('GET', '/api/export') as Snapshot).tables).toEqual(before.tables);
     const page = await api.request('GET', '/api/problems') as ProblemPage;
     expect(page.total).toBe(3);
     const question = page.items.find(p => p.slug === 'contains-duplicate')!;
