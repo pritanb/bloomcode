@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Problem, ScoreDecision, Topic } from '../shared/contracts.js';
 import type { AttemptRecord } from './attempts.js';
 import { problemView } from './catalogue.js';
+import { neetcodeCategory } from './neetcode-category.js';
 import type { Store } from './store.js';
 
 // Conservative automatic movements applied when an attempt finishes.
@@ -25,12 +26,18 @@ export function applyAutoScore(s:Store,a:AttemptRecord,clock:()=>Date):ScoreDeci
   if(s.get<{id:string;autoScore?:boolean}>('settings','singleton').autoScore===false)return [];
   const delta=autoScoreDelta(a);
   if(!delta)return [];
-  // Tag kind is unreliable for topic-ness after notebook consolidation; match
-  // tag names against tracked topic names, as plan weakness and imports do.
-  const tags=new Set(problemView(s,s.get<Problem>('problems',a.problemId)).tags.filter(t=>!t.archived).map(t=>t.name.toLowerCase()));
+  // Topics are the curriculum grouping (NeetCode's categories); tags are the
+  // user's own labels for what a question involves. Scoring follows the
+  // category so relabelling a question never moves a score. Questions outside
+  // the verified lists fall back to a tag whose name IS a tracked topic.
+  const problem=s.get<Problem>('problems',a.problemId);
+  const category=neetcodeCategory(problem);
+  const names=new Set<string>();
+  if(category)names.add(category.toLowerCase());
+  else for(const t of problemView(s,problem).tags.filter(t=>!t.archived))names.add(t.name.toLowerCase());
   const cap=a.evidence==='unseen'&&a.outcome==='solved'&&a.help==='none'?5:3;
   const decisions:ScoreDecision[]=[];
-  for(const t of s.all<Topic>('topics').filter(t=>t.score!==null&&tags.has(t.name.toLowerCase()))){
+  for(const t of s.all<Topic>('topics').filter(t=>t.score!==null&&names.has(t.name.toLowerCase()))){
     // The cap withholds further increases; it must never pull an existing
     // higher score down, so a solve can only ever raise or leave a score.
     const next=delta>0?(t.score!>=cap?t.score!:Math.round(Math.min(cap,t.score!+delta)*100)/100):Math.round(Math.max(1,t.score!+delta)*100)/100;

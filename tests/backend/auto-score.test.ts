@@ -5,9 +5,10 @@ afterEach(async()=>{for(const app of apps.splice(0))await app.close();});
 async function fixture(topicScore:number|null){
  const app=await createApp({dbPath:':memory:',token:'test',clock:()=>new Date('2026-09-16T01:00:00Z')});apps.push(app);
  const request=(method:'GET'|'POST'|'PATCH',url:string,payload?:object,key?:string)=>app.inject({method,url,headers:{authorization:'Bearer test','idempotency-key':key??crypto.randomUUID()},...(payload?{payload}:{})});
+ // Real NeetCode 250 slugs: the manifest category, not the tag, drives scoring.
  await request('POST','/api/import',{importId:'fixture',dryRun:false,source:{retrievedAt:'2026-09-16T00:00:00Z'},problems:[
-  {key:'fresh',title:'Fresh Problem',url:'https://leetcode.com/problems/fresh-problem/',tags:['Arrays & Hashing']},
-  {key:'seen',title:'Seen Problem',url:'https://leetcode.com/problems/seen-problem/',tags:['Arrays & Hashing'],legacyCompleted:true},
+  {key:'fresh',title:'Fresh Problem',url:'https://leetcode.com/problems/contains-duplicate/',tags:['Some Personal Label']},
+  {key:'seen',title:'Seen Problem',url:'https://leetcode.com/problems/two-sum/',tags:['Some Personal Label'],legacyCompleted:true},
  ],attempts:[],topics:[{name:'Arrays & Hashing',score:topicScore,notes:'',provisional:true}],movements:[],planned:[],records:[]});
  // /api/problems discloses pattern metadata; the export is side-effect free.
  const problems=(await request('GET','/api/export')).json().tables.problems as {id:string;title:string}[];
@@ -83,4 +84,24 @@ it('skips topics without a current score',async()=>{
  const {finish,decisions}=await fixture(null);
  await finish('Fresh Problem','mixed',{outcome:'solved',help:'none'});
  expect(await decisions()).toHaveLength(0);
+});
+it('scores by NeetCode category, so a personal tag never decides the topic',async()=>{
+ const {request,finish,decisions}=await fixture(2.8);
+ // The question is tagged "Some Personal Label" and there is no such topic;
+ // its NeetCode category (Arrays & Hashing) is what moves.
+ await finish('Fresh Problem','mixed',{outcome:'solved',help:'none'});
+ expect((await request('GET','/api/topics')).json()[0].score).toBe(3);
+ expect((await decisions())[0]).toMatchObject({topicName:'Arrays & Hashing'});
+ expect((await request('GET','/api/export')).json().tables.tags.map((t:{name:string})=>t.name)).toEqual(['Some Personal Label']);
+});
+it('falls back to a topic-named tag for a question outside the verified lists',async()=>{
+ const app=await createApp({dbPath:':memory:',token:'test'});apps.push(app);
+ const request=(method:'GET'|'POST',url:string,payload?:object)=>app.inject({method,url,headers:{authorization:'Bearer test','idempotency-key':crypto.randomUUID()},...(payload?{payload}:{})});
+ await request('POST','/api/import',{importId:'f',dryRun:false,source:{retrievedAt:'2026-09-16T00:00:00Z'},problems:[
+  {key:'custom',title:'Custom',url:'https://leetcode.com/problems/some-unlisted-question/',tags:['Trees']},
+ ],attempts:[],topics:[{name:'Trees',score:2.5,notes:'',provisional:true}],movements:[],planned:[],records:[]});
+ const p=(await request('GET','/api/export')).json().tables.problems[0] as {id:string};
+ const a=(await request('POST','/api/attempts',{problemId:p.id,context:'mixed'})).json();
+ await request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'solved',help:'none',activeSeconds:60});
+ expect((await request('GET','/api/topics')).json()[0].score).toBe(2.7);
 });
