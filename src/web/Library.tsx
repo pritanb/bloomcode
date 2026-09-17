@@ -350,8 +350,24 @@ export function ProblemTable({ problems, sort = 'title', direction = 'asc', onSo
     </ResponsiveTable>
   );
 }
+const libraryFiltersKey = 'library-filters';
 export function Library() {
   const [params, setParams] = useSearchParams();
+  // A bare /library visit (e.g. from the sidebar) brings back the filters last used this session;
+  // links that carry their own filters take precedence.
+  const [restoring, setRestoring] = useState(() => {
+    if (params.size > 0) return false;
+    try { return !!sessionStorage.getItem(libraryFiltersKey); } catch { return false; }
+  });
+  useEffect(() => {
+    if (restoring) {
+      try { setParams(new URLSearchParams(sessionStorage.getItem(libraryFiltersKey) ?? ''), { replace: true }); }
+      catch { /* Start with default filters. */ }
+      setRestoring(false);
+      return;
+    }
+    try { sessionStorage.setItem(libraryFiltersKey, params.toString()); } catch { /* Filters still live in the URL. */ }
+  }, [params, restoring, setParams]);
   // Older library links used overlapping practice-history filters.
   useEffect(() => {
     const status = params.get('status');
@@ -380,6 +396,7 @@ export function Library() {
   const query = useQuery({
     queryKey: ['problems', queryParams.toString()],
     queryFn: () => api.get<ProblemPage>(`/problems?${queryParams}`),
+    enabled: !restoring,
   });
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
