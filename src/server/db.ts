@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as schema from './schema.js';
-export const durableTables = ['settings','problems','tags','lists','problem_tags','list_memberships','attempts','review_targets','answer_versions','audit_events','topics','score_decisions','attempt_topics','import_batches','import_records','import_plans','daily_plans','plan_items'] as const;
+export const durableTables = ['settings','problems','tags','lists','problem_tags','list_memberships','attempts','review_targets','answer_versions','audit_events','topics','score_decisions','attempt_topics','import_batches','import_records','import_plans','daily_plans','plan_items','patterns'] as const;
 export type Table = typeof durableTables[number];
 export function openDb(path:string) {
   if(path !== ':memory:') mkdirSync(dirname(path),{recursive:true,mode:0o700});

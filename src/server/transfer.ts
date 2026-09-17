@@ -9,15 +9,18 @@ import { Store } from './store.js';
 import { ApiError, conflict } from './errors.js';
 import { date, name, problemUrl } from './catalogue.js';
 import { score, importSchema } from './import.js';
+import { reflectionFields, legacyPatternFields } from './study-tools.js';
+import { migratePatternNotebooks } from './pattern-migration.js';
 import { outcome, help, seconds } from './closeout.js';
 const id=z.string().min(1).max(1000),text=z.string(),nullable=text.nullable(),v=z.number().int().min(1);
 const identity=z.object({id,title:name,url:problemUrl,difficulty:nullable}).strict();
 const schemas:Record<Table,z.ZodType>={
+ patterns:z.object({id,...legacyPatternFields,version:v,createdAt:z.iso.datetime(),updatedAt:z.iso.datetime()}).strict(),
  settings:z.object({id:z.literal('singleton'),timezone:text.refine(t=>{try{new Intl.DateTimeFormat('en',{timeZone:t});return true;}catch{return false;}}),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240),primaryCount:z.number().int().min(1).max(10),optionalCount:z.number().int().min(0).max(10),dataMode:text,lastBackupAt:nullable}).strict(),
- problems:z.object({id,title:name,url:problemUrl,slug:text.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),difficulty:nullable,notes:text,tags:z.array(z.unknown()),lists:z.array(z.unknown()),legacyCompleted:z.boolean(),exposed:z.boolean(),lastAttemptAt:nullable,lastSolveSeconds:seconds,lastSolveHelp:help.nullable(),lastOutcome:outcome.nullable(),nextReviewDate:date.nullable(),attemptCount:z.number().int().min(0)}).strict(),
- tags:z.object({id,name,description:text,archived:z.boolean(),hue:z.number().min(0).lt(360).optional()}).strict(),lists:z.object({id,name,sourceUrl:nullable,sourceVersion:nullable}).strict(),
- problem_tags:z.object({id,problemId:id,tagId:id,difficulty:z.number().int().min(1).max(10).nullable()}).strict(),list_memberships:z.object({id,problemId:id,listId:id}).strict(),
- attempts:z.object({id,problemId:id,problem:identity,planItemId:id.nullable(),status:z.enum(['active','paused','completed']),version:v,language:text,code:text,notes:text,activeSeconds:seconds,startedAt:text,finishedAt:nullable,studyDate:date,runningSince:nullable,lastHeartbeatAt:nullable,needsGapDecision:z.boolean(),outcome:outcome.nullable(),help,evidence:text,confidence:z.number().min(1).max(5).nullable(),feedback:nullable,reviewedAt:nullable,nextReviewDate:date.nullable(),context:z.enum(['mixed','targeted','review']),gapSeconds:z.number().int().min(0),sourceKey:id.optional(),importId:id.optional()}).strict(),
+ problems:z.object({leetcodeTopics:z.array(name).max(50).optional(),id,title:name,url:problemUrl,slug:text.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),difficulty:nullable,notes:text,tags:z.array(z.unknown()),lists:z.array(z.unknown()),legacyCompleted:z.boolean(),exposed:z.boolean(),lastAttemptAt:nullable,lastSolveSeconds:seconds,lastSolveHelp:help.nullable(),lastOutcome:outcome.nullable(),nextReviewDate:date.nullable(),attemptCount:z.number().int().min(0)}).strict(),
+ tags:z.object({kind:z.enum(['topic','pattern']).optional(),recognitionCues:text.optional(),pitfalls:text.optional(),patternNotes:text.optional(),notebookVersion:v.optional(),notebookUpdatedAt:z.iso.datetime().optional(),id,name,description:text,archived:z.boolean(),hue:z.number().min(0).lt(360).optional()}).strict(),lists:z.object({id,name,sourceUrl:nullable,sourceVersion:nullable}).strict(),
+ problem_tags:z.object({recognitionCues:text.optional(),pitfalls:text.optional(),patternNotes:text.optional(),notebookVersion:v.optional(),notebookUpdatedAt:z.iso.datetime().optional(),id,problemId:id,tagId:id,difficulty:z.number().int().min(1).max(10).nullable()}).strict(),list_memberships:z.object({id,problemId:id,listId:id}).strict(),
+ attempts:z.object({mistakeLabels:reflectionFields.mistakeLabels.optional(),takeaway:reflectionFields.takeaway.optional(),id,problemId:id,problem:identity,planItemId:id.nullable(),status:z.enum(['active','paused','completed']),version:v,language:text,code:text,notes:text,activeSeconds:seconds,startedAt:text,finishedAt:nullable,studyDate:date,runningSince:nullable,lastHeartbeatAt:nullable,needsGapDecision:z.boolean(),outcome:outcome.nullable(),help,evidence:text,confidence:z.number().min(1).max(5).nullable(),feedback:nullable,reviewedAt:nullable,nextReviewDate:date.nullable(),context:z.enum(['mixed','targeted','review']),gapSeconds:z.number().int().min(0),sourceKey:id.optional(),importId:id.optional()}).strict(),
  review_targets:z.object({id,problemId:id,problemTitle:name,constraint:nullable,recommendedDate:date.nullable(),effectiveDate:date.nullable(),action:z.enum(['recommended','manual','snooze','none']),version:v,stage:text}).strict(),
  answer_versions:z.object({id,attemptId:id,code:text,notes:text,language:text,version:v,recordedAt:text}).strict(),
  audit_events:z.object({id,action:text,problemId:id.optional(),attemptId:id.optional(),decisionIds:z.array(id).optional(),recordedAt:text}).strict(),
@@ -30,12 +33,14 @@ const schemas:Record<Table,z.ZodType>={
  daily_plans:z.object({id,date,timezone:text,version:v}).strict(),
  plan_items:z.object({id,planId:id,position:z.number().int().min(0),problemId:id.nullable(),title:name,url:nullable,status:z.enum(['active','queued','optional','completed','skipped']),reason:text,suggestedMinutes:z.number().int().min(1),attemptId:id.nullable()}).strict(),
 };
-export function exportSnapshot(s:Store,clock:()=>Date):Snapshot {return s.transaction(()=>({schemaVersion:1,exportedAt:clock().toISOString(),tables:Object.fromEntries(durableTables.map(t=>[t,(s.sql.prepare(`SELECT id,data FROM "${t}" ORDER BY rowid`).all() as {id:string;data:string}[]).map(r=>({...JSON.parse(r.data),id:r.id}))]))}));}
+export function exportSnapshot(s:Store,clock:()=>Date):Snapshot {return s.transaction(()=>({schemaVersion:3,exportedAt:clock().toISOString(),tables:Object.fromEntries(durableTables.map(t=>[t,(s.sql.prepare(`SELECT id,data FROM "${t}" ORDER BY rowid`).all() as {id:string;data:string}[]).map(r=>({...JSON.parse(r.data),id:r.id}))]))}));}
 export function registerTransfer(app:FastifyInstance,s:Store,clock:()=>Date,dbPath:string){
  app.get('/api/export',()=>exportSnapshot(s,clock));
  app.post('/api/restore',{bodyLimit:50*1024*1024},req=>{
-  const b=z.object({confirmEmpty:z.literal(true),snapshot:z.object({schemaVersion:z.literal(1),exportedAt:z.iso.datetime(),tables:z.record(z.string(),z.array(z.record(z.string(),z.unknown())))}).strict()}).strict().parse(req.body);
-  const keys=Object.keys(b.snapshot.tables);if(keys.length!==durableTables.length||keys.some(k=>!durableTables.includes(k as Table)))throw new ApiError(400,'SNAPSHOT_SCHEMA','Snapshot table allowlist does not match schema version 1');
+  const b=z.object({confirmEmpty:z.literal(true),snapshot:z.object({schemaVersion:z.union([z.literal(1),z.literal(2),z.literal(3)]),exportedAt:z.iso.datetime(),tables:z.record(z.string(),z.array(z.record(z.string(),z.unknown())))}).strict()}).strict().parse(req.body);
+  const expected:readonly string[]=b.snapshot.schemaVersion===1?durableTables.filter(t=>t!=='patterns'):durableTables;
+  const keys=Object.keys(b.snapshot.tables);if(keys.length!==expected.length||keys.some(k=>!expected.includes(k)))throw new ApiError(400,'SNAPSHOT_SCHEMA','Snapshot table allowlist does not match schema version');
+  if(b.snapshot.schemaVersion===1)b.snapshot.tables.patterns=[];
   for(const table of durableTables){const rows=b.snapshot.tables[table]!,ids=new Set();for(const row of rows){schemas[table].parse(row);if(ids.has(row.id))throw new ApiError(400,'SNAPSHOT_SCHEMA','Duplicate record ID');ids.add(row.id);}if(table==='settings'&&(rows.length!==1||rows[0]!.id!=='singleton'))throw new ApiError(400,'SNAPSHOT_SCHEMA','Exactly one settings record is required');}
   try{return s.transaction(()=>{
    if(durableTables.some(t=>t!=='settings'&&(s.sql.prepare(`SELECT count(*) AS n FROM "${t}"`).get() as {n:number}).n>0))throw conflict('Restore requires an empty database');
@@ -44,7 +49,10 @@ export function registerTransfer(app:FastifyInstance,s:Store,clock:()=>Date,dbPa
    if((s.sql.pragma('foreign_key_check') as unknown[]).length)throw new ApiError(400,'SNAPSHOT_REFERENCE','Snapshot contains missing references');
    // DTO-only references are checked as well as the physical foreign keys.
    for(const row of b.snapshot.tables.attempts!){if(row.planItemId)s.get('plan_items',String(row.planItemId));const p=s.get<{id:string;slug:string}>('problems',String(row.problemId));if((row.problem as {id:string}).id!==p.id)throw new ApiError(400,'SNAPSHOT_REFERENCE','Attempt identity mismatch');}
+   for(const row of b.snapshot.tables.patterns!)for(const id of row.exampleProblemIds as string[])s.get('problems',id);
    for(const row of b.snapshot.tables.problems!)if(new URL(String(row.url)).pathname.split('/')[2]!==row.slug)throw new ApiError(400,'SNAPSHOT_SCHEMA','Problem slug does not match original URL');
+   migratePatternNotebooks(s);
+   for(const table of durableTables)counts[table]=s.all(table).length;
    return {restored:true,counts};
   });}catch(error){if(error instanceof ApiError&&error.status!==404)throw error;if(error instanceof Error&&(error as Error&{code?:string}).code?.startsWith('SQLITE_CONSTRAINT')||error instanceof ApiError)throw new ApiError(400,'SNAPSHOT_REFERENCE','Snapshot contains invalid or conflicting records');throw error;}
  });

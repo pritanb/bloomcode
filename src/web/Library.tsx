@@ -24,7 +24,7 @@ import {
   Tags,
 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Link,
   useNavigate,
@@ -39,7 +39,7 @@ import type {
   Attempt,
   ReviewTarget,
 } from '../shared/contracts';
-import { api } from './api';
+import { api, ApiError } from './api';
 import {
   Icon,
   SectionTitle,
@@ -95,18 +95,27 @@ export function ProblemForm({
   const [url, setUrl] = useState(problem?.url ?? '');
   const [difficulty, setDifficulty] = useState(problem?.difficulty ?? '');
   const [notes, setNotes] = useState(problem?.notes ?? '');
+  const [leetcodeTopics, setLeetcodeTopics] = useState((problem?.leetcodeTopics ?? []).join(', '));
   const [selectedTags, setTags] = useState<Record<string, number | null>>(
     Object.fromEntries(problem?.tags.map((t) => [t.id, t.difficulty]) ?? []),
   );
   const [listIds, setListIds] = useState(problem?.lists.map((l) => l.id) ?? []);
   const [tagSearch, setTagSearch] = useState('');
+  const createPattern = useAction(async () => {
+    const tag = await api.send<Tag>('/tags', 'POST', { name: tagSearch.trim() });
+    setTags(old => ({ ...old, [tag.id]: null }));
+    setTagSearch('');
+    return tag;
+  });
   function submit(e: FormEvent) {
     e.preventDefault();
+    const enteredTopics = leetcodeTopics.split(',').map(topic => topic.trim()).filter(Boolean);
     onSave({
       title,
       ...(!problem ? { url } : {}),
       difficulty: difficulty || null,
       notes,
+      leetcodeTopics: enteredTopics,
       tags: Object.entries(selectedTags).map(([tagId, difficulty]) => ({
         tagId,
         difficulty,
@@ -146,6 +155,10 @@ export function ProblemForm({
           </SelectField>
         </Field>
       </div>
+      <Field label="LeetCode topics">
+        <Input value={leetcodeTopics} onChange={event => setLeetcodeTopics(event.target.value)} placeholder="Binary Search, Array" />
+      </Field>
+      <p className="small muted">Optional additional categories, separated by commas. Each tag below has its own notebook page.</p>
       <Field label="Question notes">
         <Textarea
           rows={3}
@@ -154,13 +167,14 @@ export function ProblemForm({
         />
       </Field>
       <fieldset>
-        <legend>Pattern tags & question difficulty</legend>
+        <legend>Tags & question difficulty</legend>
         <p className="small muted">
-          Optional difficulty per tag, from 1–10. This does not change your
+          Optional difficulty per pattern, from 1–10. This does not change your
           topic score.
         </p>
-        <Field label="Find a tag">
+        <Field label="Find or create a tag">
           <Input
+            maxLength={300}
             value={tagSearch}
             onChange={(e) => setTagSearch(e.target.value)}
           />
@@ -210,11 +224,10 @@ export function ProblemForm({
               </div>
             ))}
         </div>
-        {!tags.length && (
-          <p className="small muted">
-            No tags yet. Create tags in Manage tags & lists.
-          </p>
-        )}
+        {tagSearch.trim() && !tags.some(tag => tag.name.toLowerCase() === tagSearch.trim().toLowerCase()) && <Button type="button" variant="outline" disabled={createPattern.isPending || pending} onClick={() => createPattern.mutate()}>Create tag “{tagSearch.trim()}”</Button>}
+        <ErrorNotice error={createPattern.error} />
+        {!tags.length && <p className="small muted">Create a tag to group questions and keep shared notebook notes.</p>}
+
       </fieldset>
       <fieldset>
         <legend>List membership</legend>
@@ -264,7 +277,7 @@ const problemHeaders = [
   'Attempt notes',
 ] as const;
 const problemSortKeys: Record<string, string> = {
-  Question: 'title', Tags: 'tagDifficulty', Difficulty: 'difficulty',
+  Question: 'title', 'Tags': 'tagDifficulty', Difficulty: 'difficulty',
   'Latest submission': 'lastAttempt', 'LeetCode time': 'solveTime',
   Confidence: 'confidence', 'Next review': 'reviewDate',
 };
@@ -275,7 +288,7 @@ export function ProblemTable({ problems, sort = 'title', direction = 'asc', onSo
     <ResponsiveTable headers={problemHeaders} className={`problem-table${onSort ? ' sortable-table' : ''}`} sorting={onSort ? {
       active: Object.keys(problemSortKeys).find(header => problemSortKeys[header] === sort) ?? '',
       direction, onSort: header => onSort(problemSortKeys[header]),
-      labels: { Question: 'question title', Tags: 'tag rating', Difficulty: 'difficulty', 'Latest submission': 'last attempt', 'LeetCode time': 'solve time', Confidence: 'confidence', 'Next review': 'next review' },
+      labels: { Question: 'question title', 'Tags': 'tag difficulty', Difficulty: 'difficulty', 'Latest submission': 'last attempt', 'LeetCode time': 'solve time', Confidence: 'confidence', 'Next review': 'next review' },
     } : undefined}>
       {problems.map((p) => (
         <TableRow role="row" key={p.id}>
@@ -285,11 +298,10 @@ export function ProblemTable({ problems, sort = 'title', direction = 'asc', onSo
             </Link>
           </TableCell>
           <TableCell label={problemHeaders[1]}>
-            <div className="chips">
+            <div className="chips" aria-label="Tags">
               {p.tags.map((t) => (
                 <Badge variant="secondary" key={t.id} style={tagColour(t)} title={`${t.name}${t.difficulty !== null ? ` ${t.difficulty}/10` : ''}`} className="tag-colour chip library-tag">
-                  {t.name}
-                  {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
+                  <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>{t.name}{t.difficulty !== null ? ` ${t.difficulty}/10` : ''}</Link>
                 </Badge>
               ))}
             </div>
@@ -429,6 +441,7 @@ export function Library() {
         </div>
         <div id="library-filters" className="library-filter-details">
           <div className="library-filter-grid">
+            <Field label="LeetCode topic"><Input value={params.get('leetcodeTopic') ?? ''} onChange={event => filter('leetcodeTopic', event.target.value)} placeholder="e.g. Binary Search" /></Field>
             <Field label="Latest submission">
               <SelectField value={params.get('status') ?? 'all'} onValueChange={value => filter('status', value)}>
                 <SelectOption value="all">All questions</SelectOption>
@@ -452,8 +465,8 @@ export function Library() {
                     {selectedTags.length ? `${selectedTags.length} selected` : 'All tags'}<Icon icon={ChevronDown} />
                   </Button>
                 </PopoverTrigger>
-                  <PopoverContent className="tag-filter-popover" align="start" sideOffset={6} aria-label="Filter by tags">
-                    <Input aria-label="Find a tag" placeholder="Find a tag…" value={tagSearch} onChange={e => setTagSearch(e.target.value)} />
+                  <PopoverContent className="tag-filter-popover" align="start" sideOffset={6} aria-label="Filter by patterns">
+                    <Input aria-label="Find a pattern" placeholder="Find a pattern…" value={tagSearch} onChange={e => setTagSearch(e.target.value)} />
                     <div className="tag-filter-options">
                       {tags.data?.filter(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase())).map(t => (
                         <Label className="tag-filter-option" key={t.id}>
@@ -464,9 +477,9 @@ export function Library() {
                       {tags.data && !tags.data.some(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase())) && <p className="muted">No matching tags.</p>}
                     </div>
                     <div className="tag-filter-actions">
-                      <SelectField aria-label="Match selected tags" value={params.get('tagMode') ?? 'any'} onValueChange={value => filter('tagMode', value)}>
-                        <SelectOption value="any">Match any tag</SelectOption>
-                        <SelectOption value="all">Match all tags</SelectOption>
+                      <SelectField aria-label="Match selected patterns" value={params.get('tagMode') ?? 'any'} onValueChange={value => filter('tagMode', value)}>
+                        <SelectOption value="any">Match any pattern</SelectOption>
+                        <SelectOption value="all">Match all patterns</SelectOption>
                       </SelectField>
                       <Button variant="ghost" disabled={!selectedTags.length} onClick={() => filter('tags', '')}>Clear</Button>
                       <Button variant="outline" onClick={() => setTagsOpen(false)}>Done</Button>
@@ -563,6 +576,7 @@ export function Library() {
   );
 }
 export function ReviewEditor({ review }: { review: ReviewTarget }) {
+  const cache = useQueryClient();
   const [action, setAction] = useState(review.action);
   const [date, setDate] = useState(review.effectiveDate ?? '');
   const save = useAction(() =>
@@ -613,6 +627,7 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
         . {review.constraint ?? ''}
       </p>
       <ErrorNotice error={save.error} />
+      {save.error instanceof ApiError && save.error.status === 409 && <div className="stack"><p className="small">This schedule changed elsewhere. Reload its latest choice before rescheduling.</p><Button type="button" variant="outline" onClick={() => void cache.invalidateQueries()}>Reload latest schedule</Button></div>}
       {save.isSuccess && (
         <p role="status" className="positive">
           Review choice saved.
@@ -705,13 +720,19 @@ export function ProblemDetail() {
         ) : (
           <>
             <p className="preserve">{p.notes || 'No question notes yet.'}</p>
+            <h3>LeetCode topics</h3>
+            <p>{p.leetcodeTopics?.join(', ') || 'No additional topics recorded.'}</p>
+            <h3>Tags</h3>
             <div className="chips">
               {p.tags.map((t) => (
                 <Badge variant="secondary" key={t.id} style={tagColour(t)} className="tag-colour chip">
-                  {t.name}
-                  {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
+                  <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>{t.name}{t.difficulty !== null ? ` ${t.difficulty}/10` : ''}</Link>
                 </Badge>
               ))}
+              {!p.tags.length && <p className="small muted">No tags assigned.</p>}
+            </div>
+            <h3>Lists</h3>
+            <div className="chips">
               {p.lists.map((l) => (
                 <Badge variant="secondary" className="badge" key={l.id}>
                   {l.name}

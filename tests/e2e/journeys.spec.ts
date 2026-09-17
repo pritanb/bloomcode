@@ -40,6 +40,13 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
   await expect(page.getByText('Next review: Not scheduled', { exact: true })).toBeVisible();
   await expect(page.locator('.cm-content')).toContainText('def reverseList(head):');
   await expect(page.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
+  await page.getByLabel('One-sentence takeaway', { exact: true }).fill('Check the empty input before walking the list.');
+  await page.getByRole('checkbox', { name: 'Missed edge case', exact: true }).check();
+  await page.getByRole('button', { name: 'Save reflection', exact: true }).click();
+  await expect(page.getByText('Reflection saved.', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('One-sentence takeaway', { exact: true })).toHaveValue('Check the empty input before walking the list.');
+  await expect(page.getByRole('checkbox', { name: 'Missed edge case', exact: true })).toBeChecked();
   await page.getByRole('link', { name: 'Done for now', exact: true }).click();
   await expect(page.locator('.recent-practice').getByRole('row').filter({ hasText: problem.title })).toContainText('9:53');
   await page.goto(`/library?search=${encodeURIComponent(problem.title)}&status=completed&timeBucket=0-10`);

@@ -27,6 +27,11 @@ npm run build
 - **Question library** — search questions; combine custom pattern tags, per-question tag difficulty, list membership, completion status, LeetCode difficulty and solve-time bands. Filters stay in the URL.
 - **Attempt workspace** — Python/Java code editing, notes, active timer, pause/resume, automatic draft saving and reload recovery. Mixed practice hides topic and solution metadata. Finish with an outcome, help level, optional confidence and either known or unknown time.
 - **Review scheduling** — accept the recommendation, choose a date or opt out. A manual choice is not silently replaced by a recommendation.
+- **Weekly recap & activity** — counts from saved study dates, supporting attempts and recorded score changes, plus a 28-day practice strip.
+- **Mistake notebook** — optional mistake labels and takeaways on completed attempts, searchable across questions.
+- **Attempt comparison** — explicitly reveal the previous completed solution after finishing, alongside recorded time, help and notes.
+- **Review calendar** — browse seven-day windows and reschedule with the existing manual-date rules.
+- **Tag notebooks** — every tag has recognition cues, pitfalls and notes, with assigned questions appearing automatically. Imported and custom tags use the same notebook and question assignment controls. Mixed practice blocks notebook access; revealing linked questions records exposure.
 - **Topic progress** — the existing decimal 1–5 scores, evidence, explicit score decisions and no-change rationales. Topic proficiency and a question's per-tag 1–10 difficulty are separate concepts.
 - **Settings & data** — adjust the time budget and primary/optional workload; download a portable export.
 
@@ -53,7 +58,7 @@ npm run backup
 node --import tsx scripts/export.ts --output /absolute/existing-directory/tutor-export.json
 ```
 
-The backup command uses SQLite's consistent backup operation and verifies database/foreign-key integrity. Portable restore only accepts an empty target and compares all exported tables after restoration. See [operations](docs/operations.md) for the isolated restore drill, start/stop procedure and troubleshooting. Backups on this Mac do not replace an encrypted off-device copy.
+The backup command uses SQLite's consistent backup operation and verifies database/foreign-key integrity. Portable restore only accepts an empty target and compares all exported tables after restoration. New exports use snapshot version 3. Versions 1 and 2 still restore: former standalone notebook entries merge into matching pattern tags, with notes and question links preserved. Existing tag difficulty, scores and schedules remain unchanged. See [operations](docs/operations.md) for the isolated restore drill, start/stop procedure and troubleshooting. Backups on this Mac do not replace an encrypted off-device copy.
 
 ## Hermes / MCP
 
@@ -74,13 +79,13 @@ npm run test:smoke  # Builds, boots production server and checks real runtime
 npm run test:e2e    # Playwright user journeys against the build
 ```
 
-If Chromium is missing: `npx playwright install chromium`. **Use the lightweight workflow in [Testing policy](docs/testing.md):** 36 critical function tests and one optional browser solve/save/reload flow. Cosmetic changes need an affected-screen check, not the entire suite. Browser tests use an isolated temporary database and port 4318; they refuse to reuse another running server.
+If Chromium is missing: `npx playwright install chromium`. **Use the lightweight workflow in [Testing policy](docs/testing.md):** critical function tests and one optional browser solve/save/reload flow. Cosmetic changes need an affected-screen check, not the entire suite. Browser tests use an isolated temporary database and port 4318; they refuse to reuse another running server.
 
 The Vite development proxy translates legitimate local same-origin requests while preserving the backend's Host, Origin and CSRF checks. The production app serves its own static UI and binds only to loopback. This is a personal single-user application, not a publicly deployable multi-user service.
 
 ## UI
 
-The UI uses the actual shadcn/ui Radix Nova registry components, Tailwind CSS v4, a neutral palette and system sans-serif text. It follows the system light/dark preference. See [UI design system](docs/design-system.md) for component and layout conventions.
+The UI uses the actual shadcn/ui Radix Nova registry components, Tailwind CSS v4, warm off-white surfaces, restrained indigo accents and system sans-serif text. Dark mode uses charcoal surfaces; theme selection follows the system until explicitly changed. See [UI design system](docs/design-system.md) for component and layout conventions.
 
 ## Repository map
 

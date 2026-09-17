@@ -4,7 +4,9 @@ The application uses actual shadcn/ui Radix Nova registry components, generated 
 
 ## Visual direction
 
-Use an understated sidebar application: white/neutral surfaces, zinc-like grey borders, near-black text and monochrome primary actions. Dark mode follows the system preference and uses neutral dark surfaces, not purple accents. Use system sans-serif for interface text and system monospace for code. No downloaded font, gradients, ornaments or promotional styling.
+Use the approved warm-and-indigo study workspace: warm off-white (`#F7F6F2`) backgrounds, white cards, charcoal text and restrained indigo (`#4F46E5`) primary actions. Dark mode uses charcoal backgrounds and a lighter indigo (`#A5B4FC`) accent. Keep borders subtle and use color for selected navigation, primary actions and progress, not decoration.
+
+Use system sans-serif for interface text and system monospace for code. Page titles are 30–32px; numeric summaries use tabular figures. Feature the next or active question, with a quieter plan, recap and practice history. No downloaded fonts, gradients or promotional styling. Transitions respond to interaction and respect reduced motion.
 
 ## Implementation
 

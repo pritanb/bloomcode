@@ -1,3 +1,5 @@
+import { reflectionSafeView } from './attempts.js';
+import { activityDays } from './study-tools.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -64,7 +66,8 @@ export function registerPlans(app:FastifyInstance,s:Store,clock:()=>Date){
  app.get('/api/dashboard',req=>s.transaction(()=>{
   const q=z.object({date:date.optional()}).strict().parse(req.query),settings=s.get<Settings&{id:string}>('settings','singleton'),day=q.date??studyDate(clock(),settings.timezone),active=s.all<AttemptRecord>('attempts').find(a=>a.status!=='completed');
   let plan=s.all<PlanRecord>('daily_plans').find(p=>p.date===day&&p.timezone===settings.timezone);if(!q.date&&active?.planItemId)plan=s.get('daily_plans',s.get<ItemRecord>('plan_items',active.planItemId).planId);
-  return {plan:plan?planView(s,plan):null,topics:s.all<Topic>('topics').map(t=>topicView(s,t)),movements:s.all<ScoreDecision>('score_decisions').filter(d=>d.oldScore!==d.newScore).reverse().slice(0,20).map(decisionView),recentAttempts:s.all<AttemptRecord>('attempts').filter(a=>a.status==='completed').sort(newestAttempt).slice(0,20).map(attemptView),activeAttempt:active?attemptView(active):null,settings};
+  const reflection=active?.context==='mixed'?undefined:s.all<AttemptRecord>('attempts').filter(a=>a.status==='completed'&&!!a.takeaway?.trim()).sort(newestAttempt)[0];
+  return {plan:plan?planView(s,plan):null,topics:s.all<Topic>('topics').map(t=>topicView(s,t)),movements:s.all<ScoreDecision>('score_decisions').filter(d=>d.oldScore!==d.newScore).reverse().slice(0,20).map(decisionView),recentAttempts:s.all<AttemptRecord>('attempts').filter(a=>a.status==='completed').sort(newestAttempt).slice(0,20).map(a=>reflectionSafeView(a,active?.context==='mixed')),activeAttempt:active?attemptView(active):null,settings,activity:activityDays(s,day),latestReflection:reflection?{attemptId:reflection.id,takeaway:reflection.takeaway!}:null};
  }));
  app.post<{Params:{id:string}}>('/api/plan-items/:id/disposition',req=>{
   const b=z.object({action:z.enum(['swap','snooze','skip']),until:date.optional(),reason:z.string().max(2000).optional()}).strict().parse(req.body);

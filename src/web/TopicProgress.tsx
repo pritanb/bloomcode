@@ -46,7 +46,7 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
           <Button asChild variant="outline"><Link to={`/topics/${topic.id}`}>View topic details</Link></Button>
         </div>
         {points.length ? <>
-          <ChartContainer config={{ score: { label: 'Score', color: 'var(--foreground)' } }} className="topic-score-chart" aria-label={`${topic.name} score history on a 1 to 5 scale`}>
+          <ChartContainer config={{ score: { label: 'Score', color: 'var(--primary)' } }} className="topic-score-chart" aria-label={`${topic.name} score history on a 1 to 5 scale`}>
             <LineChart data={points} accessibilityLayer margin={{ top: 16, right: 24, bottom: 8, left: 0 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="time" type="number" scale="time" domain={points.length === 1 ? [points[0].time - 86400000, points[0].time + 86400000] : ['dataMin', 'dataMax']} ticks={points.length === 1 ? [points[0].time] : undefined} tickFormatter={axisDate} tickLine={false} axisLine={false} minTickGap={45} tickMargin={12} />

@@ -94,6 +94,14 @@ Sources:
 [2] https://neetcode.io/main.f39af0c52a4e9fb5.js
 [3] https://github.com/neetcode-gh/leetcode/blob/9f104d45b1efc8c2e42b6dcc7b1216cdf8c4f80e/.problemSiteData.json
 
+## Catalogue list display
+
+The normal `/api/lists` response and problem list badges/filters share a read-only projection. `Sheet: Neetcode List`, both additions spellings, `Sheet: Others`, `Sheet: Tutor Tracker`, `Sheet: Current Plan`, and `Sheet: Topic Ratings` are source provenance, not selectable study lists. Meaningful company/custom lists remain visible; for example, `Sheet: Microsoft Top Questions` displays as **Microsoft Top Questions**, with its original ID unchanged.
+
+Once canonical list records exist (normally via the verified-list import above), every stored question with a matching canonical slug appears in each independently verified public list, regardless of its import source or missing stored public-list membership edges. The projection uses the bundled manifests' explicit flags/identities, never Sheet names, titles, or assumed nesting. Existing explicit memberships are retained. It does not create list records, questions, or membership edges, and does not combine the overlapping NeetCode 150, NeetCode 250, and Blind 75 lists.
+
+Old `listId` URLs for hidden Sheet inventories still filter their **original stored memberships**, not a guessed canonical replacement. Export/backup retain all original names, source records, memberships, and study history. Saving the displayed memberships back through the question editor preserves hidden source memberships and does not materialise manifest-derived edges; canonical slug membership remains derived rather than a removable custom assignment. No migration or live-data rewrite is required.
+
 ## Cutover gate
 
 Keep the live Sheet/tutor configuration unchanged until the import report is approved, a fresh isolated app import is reconciled, representative answers/ratings/dates are checked, and an empty-database restore has been exercised. Preserve the source archive and original database. Cutover itself is not performed by any script here.

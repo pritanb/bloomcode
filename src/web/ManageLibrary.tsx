@@ -56,7 +56,7 @@ function TagRow({ tag }: { tag: Tag }) {
               (name === tag.name && description === tag.description && hue === (tag.hue ?? 0))
             }
           >
-            Save tag
+            Save changes
           </Button>
           <Button variant="outline"
             type="button"
@@ -64,7 +64,7 @@ function TagRow({ tag }: { tag: Tag }) {
             disabled={edit.isPending}
             onClick={() => edit.mutate({ archived: !tag.archived })}
           >
-            {tag.archived ? 'Restore tag' : 'Archive tag'}
+            {tag.archived ? 'Restore' : 'Archive'}
           </Button>
           <Popover>
             <PopoverTrigger asChild>
@@ -74,9 +74,10 @@ function TagRow({ tag }: { tag: Tag }) {
               <Field label={`Colour for ${tag.name}`}>
                 <input type="range" min="0" max="359" step="1" value={hue} onChange={e => setHue(Number(e.target.value))} className="tag-hue-picker" />
               </Field>
-              <p className="small muted">Choose a colour, then Save tag.</p>
+              <p className="small muted">Choose a colour, then Save changes.</p>
             </PopoverContent>
           </Popover>
+          <Button asChild variant="ghost"><Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>Open notebook</Link></Button>
           {tag.archived && <Badge variant="secondary" className="badge">Archived</Badge>}
         </div>
         <ErrorNotice error={edit.error} />
@@ -126,11 +127,11 @@ export function ManageLibrary() {
       </Link>
       <PageTitle
         title="Tags & lists"
-        description="Organise questions without duplicating them. Tags do not create proficiency scores."
+        description="Each tag has a notebook page. Its assigned questions appear there automatically."
       />
       <div className="management-grid">
         <Card className="panel">
-          <SectionTitle icon={Tags}>Pattern tags</SectionTitle>
+          <SectionTitle icon={Tags}>Tags</SectionTitle>
           <form
             className="stack inset"
             onSubmit={(e) => {
@@ -167,12 +168,12 @@ export function ManageLibrary() {
             <ErrorNotice error={tags.error} retry={() => void tags.refetch()} />
           ) : tags.data.length ? (
             <ul className="plain-list">
-              {tags.data.map((t) => (
-                <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}`} tag={t} />
+              {[...tags.data].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
+                <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}-${t.kind}`} tag={t} />
               ))}
             </ul>
           ) : (
-            <Empty>No pattern tags yet.</Empty>
+            <Empty>No tags yet.</Empty>
           )}
         </Card>
         <Card className="panel">

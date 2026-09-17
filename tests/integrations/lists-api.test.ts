@@ -48,6 +48,9 @@ test('real list CLI exposes all three verified filters and retries without creat
       expect(snapshot.tables.import_batches).toHaveLength(1);
       expect(snapshot.tables.import_records).toHaveLength(400);
       expect(snapshot.tables.list_memberships).toHaveLength(475);
+      expect(snapshot.tables.tags.length).toBeGreaterThan(0);
+
+      expect(await api.request('GET','/api/patterns')).toHaveLength(snapshot.tables.tags.length);
       expect(snapshot.tables.attempts).toEqual([]);
       expect(snapshot.tables.score_decisions).toEqual([]);
     }

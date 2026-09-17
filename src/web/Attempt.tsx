@@ -22,6 +22,8 @@ import { java } from '@codemirror/lang-java';
 import type { Attempt, Help, Outcome } from '../shared/contracts';
 import { api, ApiError } from './api';
 import { AttemptQueue } from './attemptQueue';
+import { AttemptComparison } from './AttemptComparison';
+import { AttemptReflection } from './AttemptReflection';
 import {
   Icon,
   SectionTitle,
@@ -319,7 +321,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
           }}
         />
       )}
-      {completed && <div className="stack">{notesField}{codeField}{draftStatus}</div>}
+      {completed && <><AttemptReflection attempt={attempt} onSaved={saved => { queue.current = saved; setAttempt(saved); }} /><AttemptComparison attempt={attempt} /><div className="stack">{notesField}{codeField}{draftStatus}</div></>}
     </>
   );
 }

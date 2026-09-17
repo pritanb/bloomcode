@@ -19,6 +19,8 @@ import { registerImport } from './import.js';
 import { registerTopics } from './topics.js';
 import { registerCloseout } from './closeout.js';
 import { registerAttempts } from './attempts.js';
+import { migratePatternNotebooks } from './pattern-migration.js';
+import { registerStudyTools } from './study-tools.js';
 import { registerCatalogue } from './catalogue.js';
 const equal=(a:string,b:string)=>{const left=Buffer.from(a),right=Buffer.from(b);return left.length===right.length&&timingSafeEqual(left,right);};
 export async function createApp(options:AppOptions) {
@@ -65,6 +67,7 @@ export async function createApp(options:AppOptions) {
    db.orm.update(settings).set({data}).run(); return data;
  });
  const store=new Store(db.sqlite);
+ migratePatternNotebooks(store);
  store.transaction(()=>{for(const tag of store.all<{id:string;hue?:number}>('tags'))if(tag.hue===undefined)store.put('tags',tag);});
  registerCatalogue(app,store,clock);
  registerAttempts(app,store,clock);
@@ -73,6 +76,7 @@ export async function createApp(options:AppOptions) {
  registerTopics(app,store);
  registerScoring(app,store,clock);
  registerPlans(app,store,clock);
+ registerStudyTools(app,store,clock);
  registerTransfer(app,store,clock,options.dbPath);
  return app;
 }

@@ -130,7 +130,7 @@ it('builds a stable budgeted day, resumes work across midnight and transitions a
 
 it('exports all durable data, restores only to an empty database and produces a consistent private SQLite backup',async()=>{
  await request('POST','/api/import',imported());
- const snapshotResponse=await request('GET','/api/export');expect(snapshotResponse.statusCode).toBe(200);const snapshot=snapshotResponse.json();expect(snapshot.schemaVersion).toBe(1);expect(snapshot.tables.import_records[0].raw).toEqual({unknown:'2:xx',formula:'=A1'});expect(snapshot.tables).not.toHaveProperty('idempotency');expect(JSON.stringify(snapshot)).not.toContain('test-token');
+ const snapshotResponse=await request('GET','/api/export');expect(snapshotResponse.statusCode).toBe(200);const snapshot=snapshotResponse.json();expect(snapshot.schemaVersion).toBe(3);expect(snapshot.tables.import_records[0].raw).toEqual({unknown:'2:xx',formula:'=A1'});expect(snapshot.tables).not.toHaveProperty('idempotency');expect(JSON.stringify(snapshot)).not.toContain('test-token');
  expect((await request('POST','/api/restore',{snapshot,confirmEmpty:true})).statusCode).toBe(409);
  const second=await createApp({dbPath:join(dir,'restore.sqlite'),token:'test-token',clock:()=>now});
  try {

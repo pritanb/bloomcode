@@ -1,9 +1,12 @@
 export type Help = 'none' | 'small' | 'major' | 'solution' | 'unknown';
+export const MISTAKE_LABELS = ['missed_edge_case', 'wrong_approach', 'implementation_bug'] as const;
+export type MistakeLabel = typeof MISTAKE_LABELS[number];
 export type Outcome = 'solved' | 'not_solved' | 'stopped';
-export interface Tag { hue?: number; id: string; name: string; description: string; archived: boolean }
+export interface Tag { kind?: 'topic' | 'pattern'; recognitionCues?: string; pitfalls?: string; patternNotes?: string; notebookVersion?: number; notebookUpdatedAt?: string; hue?: number; id: string; name: string; description: string; archived: boolean }
 export interface ProblemList { id: string; name: string; sourceUrl: string | null; sourceVersion: string | null }
 export type SubmissionSummary = Pick<Attempt, 'id' | 'outcome' | 'help' | 'language' | 'activeSeconds' | 'confidence' | 'notes' | 'finishedAt' | 'nextReviewDate'>;
 export interface Problem {
+  leetcodeTopics?: string[];
   latestSubmission?: SubmissionSummary | null;
   latestConfidence?: number | null;
   reviewAction?: ReviewTarget['action'] | null;
@@ -14,6 +17,7 @@ export interface Problem {
   lastOutcome: Outcome | null; nextReviewDate: string | null; attemptCount: number;
 }
 export interface Attempt {
+  mistakeLabels?: MistakeLabel[]; takeaway?: string;
   id: string; problemId: string; problem: { id: string; title: string; url: string; difficulty: string | null };
   planItemId: string | null; status: 'active' | 'paused' | 'completed'; version: number;
   language: string; code: string; notes: string; activeSeconds: number | null;
@@ -42,10 +46,10 @@ export interface PlanItem {
 }
 export interface DailyPlan { id: string; date: string; timezone: string; items: PlanItem[]; version: number }
 export interface Settings { questionsPerDay?: number; timezone: string; budgetMinutes: number; primaryCount: number; optionalCount: number; dataMode: string; lastBackupAt: string | null }
-export interface Dashboard { plan: DailyPlan | null; topics: Topic[]; movements: ScoreDecision[]; recentAttempts: Attempt[]; activeAttempt: Attempt | null; settings: Settings }
+export interface Dashboard { plan: DailyPlan | null; topics: Topic[]; movements: ScoreDecision[]; recentAttempts: Attempt[]; activeAttempt: Attempt | null; settings: Settings; activity: ActivityDay[]; latestReflection: { attemptId: string; takeaway: string } | null }
 export interface ProblemPage { items: Problem[]; total: number; page: number; pageSize: number }
 export interface TopicDetail { topic: Topic; decisions: ScoreDecision[]; attempts: Attempt[]; problems: Problem[]; stats: { attemptCount: number; knownTimeCount: number; medianSeconds: number | null } }
-export interface Snapshot { schemaVersion: 1; exportedAt: string; tables: Record<string, Record<string, unknown>[]> }
+export interface Snapshot { schemaVersion: 1 | 2 | 3; exportedAt: string; tables: Record<string, Record<string, unknown>[]> }
 export interface ImportProblem { key: string; title: string; url: string; difficulty?: string | null; notes?: string; legacyCompleted?: boolean; exposed?: boolean; tags?: string[]; lists?: string[] }
 export interface ImportAttempt { confidence?: number | null; sourceKey: string; problemKey: string; date: string; outcome: Outcome; help: Help; activeSeconds: number | null; notes: string; code?: string; evidence: string; nextReviewDate?: string | null; topicNames?: string[] }
 export interface ImportTopic { name: string; score: number | null; notes: string; lastReviewed?: string | null; provisional: boolean }
@@ -57,3 +61,17 @@ export interface ImportReport { dryRun: boolean; counts: Record<string, number>;
 
 export type TopicScorePoint = Pick<ScoreDecision, 'id' | 'date' | 'recordedAt' | 'oldScore' | 'newScore'>;
 export interface TopicScoreHistory { topic: Pick<Topic, 'id' | 'name' | 'score'>; decisions: TopicScorePoint[] }
+
+export interface PatternEntry {
+  id: string; title: string; description: string; archived: boolean;
+  recognitionCues: string; pitfalls: string; notes: string; version: number; updatedAt: string | null;
+}
+export type PatternSummary = Pick<PatternEntry, 'id' | 'title' | 'archived' | 'version' | 'updatedAt'>;
+export interface PatternDetail extends PatternEntry { examples: (Pick<Problem, 'id' | 'title' | 'url' | 'difficulty'> & { patternDifficulty: number | null })[] }
+export interface ActivityDay { date: string; completedAttempts: number }
+export type RecapAttempt = Pick<Attempt, 'id' | 'problemId' | 'problem' | 'studyDate' | 'outcome' | 'help' | 'activeSeconds' | 'evidence'> & { scheduledReview: boolean };
+export interface WeeklyRecap {
+  weekStart: string; weekEnd: string; timezone: string; detailsHidden: boolean;
+  distinctQuestions: number; completedAttempts: number; independentSolves: number; scheduledReviews: number;
+  attempts: RecapAttempt[]; movements: ScoreDecision[];
+}

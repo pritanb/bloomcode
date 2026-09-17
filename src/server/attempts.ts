@@ -1,3 +1,4 @@
+import { assertMetadataVisible } from './catalogue.js';
 import { idempotent } from './idempotency.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
@@ -12,6 +13,7 @@ export interface AttemptRecord extends Attempt {context:'mixed'|'targeted'|'revi
 export const version=z.number().int().min(1);
 export function studyDate(now:Date,timezone:string):string {const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);return ['year','month','day'].map(k=>parts.find(p=>p.type===k)!.value).join('-');}
 export function attemptView(a:AttemptRecord):Attempt {const {context:_context,gapSeconds:_gap,sourceKey:_source,importId:_import,...publicAttempt}=a;return publicAttempt;}
+export function reflectionSafeView(a:AttemptRecord,hideReflection:boolean):Attempt {const view=attemptView(a);if(hideReflection){delete view.mistakeLabels;delete view.takeaway;}return view;}
 export function newestAttempt(a:Attempt,b:Attempt):number {return (b.finishedAt??b.startedAt).localeCompare(a.finishedAt??a.startedAt)||b.id.localeCompare(a.id);}
 export function checkVersion(a:{version:number},v:number){if(a.version!==v)throw conflict();}
 export function registerAttempts(app:FastifyInstance,s:Store,clock:()=>Date){
@@ -36,8 +38,9 @@ export function registerAttempts(app:FastifyInstance,s:Store,clock:()=>Date){
    return {cancelled:true};
   });
  });
- app.get<{Params:{id:string}}>('/api/attempts/:id',req=>attemptView(s.get<AttemptRecord>('attempts',req.params.id)));
+ app.get<{Params:{id:string}}>('/api/attempts/:id',req=>{const a=s.get<AttemptRecord>('attempts',req.params.id);return reflectionSafeView(a,a.status==='completed'&&s.all<AttemptRecord>('attempts').some(x=>x.context==='mixed'&&x.status!=='completed'));});
  app.get<{Params:{id:string}}>('/api/attempts/:id/context',req=>{
+  assertMetadataVisible(s);
   const a=s.get<AttemptRecord>('attempts',req.params.id);
   if(a.context==='mixed'&&a.status!=='completed')throw new ApiError(403,'HIDDEN_ASSESSMENT','Complete the mixed assessment before requesting history');
   return {attempt:attemptView(a),history:s.all<AttemptRecord>('attempts').filter(x=>x.problemId===a.problemId&&x.id!==a.id).map(attemptView),topics:s.all<Topic>('topics').map(t=>topicView(s,t))};

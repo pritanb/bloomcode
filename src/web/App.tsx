@@ -3,6 +3,8 @@ import { lazy, Suspense, useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   BookOpen,
+  NotebookPen,
+  Bookmark,
   ChartNoAxesCombined,
   CodeXml,
   LayoutDashboard,
@@ -16,6 +18,8 @@ import { ManageLibrary } from './ManageLibrary';
 import { Icon, Loading } from './ui';
 import { Topics, TopicDetail } from './Topics';
 import { Settings } from './Settings';
+import { Mistakes } from './Mistakes';
+import { Patterns } from './Patterns';
 import { ThemeSwitch } from './theme';
 import { Button } from '@/components/ui/button';
 
@@ -26,6 +30,8 @@ const navigation = [
   { to: '/', label: 'Study desk', icon: LayoutDashboard },
   { to: '/library', label: 'Question library', icon: BookOpen },
   { to: '/topics', label: 'Topic progress', icon: ChartNoAxesCombined },
+  { to: '/mistakes', label: 'Mistake notebook', icon: NotebookPen },
+  { to: '/patterns', label: 'Pattern notebook', icon: Bookmark },
   { to: '/settings', label: 'Settings & data', icon: Settings2 },
 ];
 
@@ -88,6 +94,8 @@ export function App() {
           <Route path="/library/:id" element={<ProblemDetail />} />
           <Route path="/topics" element={<Topics />} />
           <Route path="/topics/:id" element={<TopicDetail />} />
+          <Route path="/mistakes" element={<Mistakes />} />
+          <Route path="/patterns" element={<Patterns />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>
