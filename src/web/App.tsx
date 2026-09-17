@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
   Settings2,
 } from 'lucide-react';
+import { StudyReport } from './StudyReports';
 import { Dashboard } from './Dashboard';
 import { Library, ProblemDetail } from './Library';
 import { ManageLibrary } from './ManageLibrary';
@@ -89,6 +90,8 @@ export function App() {
       <main id="main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/reviews" element={<StudyReport calendar />} />
+          <Route path="/weekly-report" element={<StudyReport />} />
           <Route path="/library" element={<Library />} />
           <Route path="/library/manage" element={<ManageLibrary />} />
           <Route path="/library/:id" element={<ProblemDetail />} />

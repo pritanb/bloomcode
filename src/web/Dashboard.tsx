@@ -1,3 +1,4 @@
+import { DropdownMenu } from 'radix-ui';
 import { DragDropProvider } from '@dnd-kit/react';
 import { useSortable, isSortable } from '@dnd-kit/react/sortable';
 import { enumLabel } from './labels';
@@ -7,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
   CalendarCheck,
+  ChevronDown,
   GripVertical,
   History,
   ListChecks,
   Play,
-  NotebookPen,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -23,12 +24,11 @@ import type {
   PlanItem,
 } from '../shared/contracts';
 import { api } from './api';
-import { WeeklyRecap } from './WeeklyRecap';
 import { ReviewCalendar } from './ReviewCalendar';
+import { WeeklyRecap } from './WeeklyRecap';
 import {
   Icon,
   SectionTitle,
-  AttemptList,
   dateLabel,
   Empty,
   ErrorNotice,
@@ -56,7 +56,8 @@ function CancelAttemptButton({ attemptId }: { attemptId: string }) {
   </div>;
 }
 
-function PlanActions({ item }: { item: PlanItem }) {
+type PlanChange = (plan: DailyPlan, item: PlanItem, action: string) => void;
+function PlanActions({ item, onChanged }: { item: PlanItem; onChanged: PlanChange }) {
   const navigate = useNavigate();
   const [snoozing, setSnoozing] = useState(false);
   const [until, setUntil] = useState('');
@@ -71,13 +72,14 @@ function PlanActions({ item }: { item: PlanItem }) {
       navigate(`/attempts/${attempt.id}`);
       return;
     }
-    await api.send<DailyPlan>(
+    const updated = await api.send<DailyPlan>(
       `/plan-items/${item.id}/${choice === 'activate' ? 'activate' : 'disposition'}`,
       'POST',
       choice === 'activate'
         ? {}
         : { action: choice, ...(choice === 'snooze' ? { until } : {}) },
     );
+    onChanged(updated, item, choice);
     setSnoozing(false);
   });
   const available = !['completed', 'skipped'].includes(item.status);
@@ -106,23 +108,18 @@ function PlanActions({ item }: { item: PlanItem }) {
               </Button>
             )
           )}
-          {available && !item.attemptId && (
-            <>
-              <Button variant="outline"
-                disabled={action.isPending}
-                onClick={() => setSnoozing(!snoozing)}
-              >
-                Snooze
-              </Button>
-              <Button
-                variant="outline"
-                disabled={action.isPending}
-                onClick={() => action.mutate('skip')}
-              >
-                Skip
-              </Button>
-            </>
-          )}
+          {available && !item.attemptId && <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <Button variant="ghost" size="icon" className="plan-more" disabled={action.isPending} aria-label={`More actions for ${item.title}`}><Icon icon={ChevronDown} /></Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content className="plan-action-menu" align="start" sideOffset={5}>
+                <DropdownMenu.Item onSelect={() => action.mutate('swap')}>Replace question</DropdownMenu.Item>
+                <DropdownMenu.Item onSelect={() => setSnoozing(true)}>Postpone…</DropdownMenu.Item>
+                <DropdownMenu.Item onSelect={() => action.mutate('skip')}>Skip today</DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>}
         </div>
         {snoozing && (
           <form
@@ -132,25 +129,25 @@ function PlanActions({ item }: { item: PlanItem }) {
               action.mutate('snooze');
             }}
           >
-            <Field label="Snooze until">
+            <Field label="Postpone until">
               <DateField
                 required
                 value={until}
                 onValueChange={(value) => setUntil(value)}
               />
             </Field>
-            <Button variant="outline" disabled={action.isPending}>Save snooze</Button>
+            <Button variant="outline" disabled={action.isPending}>Save date</Button>
           </form>
         )}
         <ErrorNotice error={action.error} />
   </>;
 }
 
-function PlanRow({ item, index, busy, featured }: { item: PlanItem; index: number; busy: boolean; featured: boolean }) {
+function PlanRow({ item, index, busy, featured, onChanged }: { item: PlanItem; index: number; busy: boolean; featured: boolean; onChanged: PlanChange }) {
   const movable = !['completed', 'skipped'].includes(item.status) && !item.attemptId;
   const { ref, handleRef, isDragSource } = useSortable({ id: item.id, index, disabled: busy || !movable });
   return (
-    <li ref={ref} data-plan-id={item.id} className={`plan-row ${item.status}${isDragSource ? ' is-dragging' : ''}`}>
+    <li ref={ref} data-plan-id={item.id} className={`plan-row ${item.status}${featured ? ' plan-featured' : ''}${isDragSource ? ' is-dragging' : ''}`}>
       {movable ? <button ref={handleRef} type="button" className="plan-drag-handle" aria-label={`Reorder ${item.title}`} aria-disabled={busy}
         title="Drag to reorder. With keyboard, press Space, use arrow keys, then Space to drop.">
         <Icon icon={GripVertical} />
@@ -158,41 +155,23 @@ function PlanRow({ item, index, busy, featured }: { item: PlanItem; index: numbe
       <div className="plan-content">
         <div className="row between">
           <h3>{item.title}</h3>
-          <Badge variant="secondary" className="badge">{enumLabel(item.status)}</Badge>
+          <Badge variant="secondary" className="badge">{featured ? item.attemptId ? 'In progress' : 'Up next' : enumLabel(item.status)}</Badge>
         </div>
-        {featured ? <p className="small muted">Ready in the card above</p> : <PlanActions item={item} />}
+        <p className="small muted" title={item.reason}>{item.reason.split(' · ')[0]}</p>
+        <PlanActions item={item} onChanged={onChanged} />
 
       </div>
     </li>
   );
 }
 function RecentPractice({ items }: { items: Attempt[] }) {
-  const [page, setPage] = useState(0);
-  const pageSize = 3;
-  const pages = Math.max(1, Math.ceil(items.length / pageSize));
-  const currentPage = Math.min(page, pages - 1);
-  const start = currentPage * pageSize;
-  return (
-    <>
-      <AttemptList items={items.slice(start, start + pageSize)} showReview={false} />
-      {pages > 1 && (
-        <nav className="row between" aria-label="Recent practice pages">
-          <span className="small muted" role="status">
-            {start + 1}–{Math.min(start + pageSize, items.length)} of {items.length} attempts · Page {currentPage + 1} of {pages}
-          </span>
-          <div className="row">
-            <Button variant="outline" disabled={currentPage === 0}
-              onClick={() => setPage(currentPage - 1)}>Previous</Button>
-            <Button variant="outline" disabled={currentPage === pages - 1}
-              onClick={() => setPage(currentPage + 1)}>Next</Button>
-          </div>
-        </nav>
-      )}
-    </>
-  );
+  return items.length ? <ul className="plain-list compact-practice">{items.slice(0, 3).map(attempt => <li key={attempt.id}>
+    <div><Link to={`/attempts/${attempt.id}`}>{attempt.problem.title}</Link><span className="small muted">{dateLabel(attempt.finishedAt)}</span></div>
+    <span className="small muted">{enumLabel(attempt.outcome ?? 'unknown')}</span>
+  </li>)}</ul> : <p className="small muted">Your completed attempts will appear here.</p>;
 }
 
-function PlanList({ plan, featuredId }: { plan: DailyPlan; featuredId?: string }) {
+function PlanList({ plan, featuredId, onChanged }: { plan: DailyPlan; featuredId?: string; onChanged: PlanChange }) {
   const [items, setItems] = useState(plan.items);
   const reorder = useAction((itemIds: string[]) => api.send<DailyPlan>(`/daily-plans/${plan.id}/reorder`, 'POST', { version: plan.version, itemIds }));
   return <>
@@ -202,27 +181,41 @@ function PlanList({ plan, featuredId }: { plan: DailyPlan; featuredId?: string }
       if (event.canceled || reorder.isPending) return;
       const { source } = event.operation;
       if (!isSortable(source) || source.initialIndex === source.index) return;
-      const next = [...items];
+      const next = items.filter(item => item.status !== 'skipped');
       const [moved] = next.splice(source.initialIndex, 1);
       if (!moved) return;
       next.splice(source.index, 0, moved);
-      setItems(next);
-      reorder.mutate(next.map(item => item.id), { onError: () => setItems(plan.items) });
+      const ordered = [...next, ...items.filter(item => item.status === 'skipped')];
+      setItems(ordered);
+      reorder.mutate(ordered.map(item => item.id), { onError: () => setItems(plan.items) });
     }}>
       <ol className="plan-list">
-        {items.map((item, index) => <PlanRow key={item.id} item={item} index={index} busy={reorder.isPending} featured={item.id === featuredId} />)}
+        {items.filter(item => item.status !== 'skipped').map((item, index) => <PlanRow key={item.id} item={item} index={index} busy={reorder.isPending} featured={item.id === featuredId} onChanged={onChanged} />)}
       </ol>
     </DragDropProvider>
+    {items.some(item => item.status === 'skipped') && <details className="plan-history">
+      <summary>Plan changes ({items.filter(item => item.status === 'skipped').length})</summary>
+      <ul className="plain-list">{items.filter(item => item.status === 'skipped').map(item => <li key={item.id} className="row between">
+        <span>{item.title}</span><span className="small muted">{item.reason === 'swap' ? 'Replaced' : item.reason === 'snooze' ? 'Postponed' : 'Skipped today'}</span>
+      </li>)}</ul>
+    </details>}
   </>;
 }
 
 export function Dashboard() {
+  const [planNotice, setPlanNotice] = useState('');
   const query = useQuery({
     queryKey: ['dashboard'],
     staleTime: 0,
     queryFn: async () => {
       await api.send('/daily-plan/ensure', 'POST', {});
-      return api.get<DashboardData>('/dashboard');
+      const dashboard = await api.get<DashboardData>('/dashboard');
+      // A running pre-workspace backend can serve newly built static assets.
+      // Reject its older payload before WeeklyRecap tries to render activity.
+      if (!Array.isArray(dashboard.activity)) {
+        throw new Error('The local server is out of date. Stop it and launch LeetCode Tutor again.');
+      }
+      return dashboard;
     },
     refetchInterval: 60000,
   });
@@ -235,8 +228,7 @@ export function Dashboard() {
   const featured = d.plan?.items.find(item => item.attemptId === d.activeAttempt?.id && d.activeAttempt)
     ?? (!d.activeAttempt ? d.plan?.items.find(item => item.problemId && !['completed', 'skipped'].includes(item.status)) : undefined);
   const completed = d.plan?.items.filter(item => item.status === 'completed').length ?? 0;
-  const total = d.plan?.items.length ?? 0;
-  const skipped = d.plan?.items.filter(item => item.status === 'skipped').length ?? 0;
+  const total = d.plan?.items.filter(item => item.status !== 'skipped').length ?? 0;
 
   return (
     <>
@@ -252,36 +244,39 @@ export function Dashboard() {
       </PageTitle>
       <div className="study-layout">
         <div className="study-primary">
-          {(featured || d.activeAttempt) && <Card className="panel next-question">
-            <span className="next-label"><Icon icon={Play} />{d.activeAttempt ? 'Continue studying' : 'Up next'}</span>
-            <h2>{d.activeAttempt?.problem.title ?? featured?.title}</h2>
-            <p className="muted">{d.activeAttempt ? 'Pick up where you left off.' : 'Ready when you are.'}</p>
-            {featured ? <PlanActions key={featured.id} item={featured} /> : d.activeAttempt && <div className="plan-actions">
-              <Button asChild><Link to={`/attempts/${d.activeAttempt.id}`}>Resume attempt</Link></Button>
-              <CancelAttemptButton attemptId={d.activeAttempt.id} />
-            </div>}
-          </Card>}
           <Card className="panel plan-panel">
             <div className="section-heading">
               <SectionTitle icon={CalendarCheck}>Your plan</SectionTitle>
               <span className="small muted">{dateLabel(d.plan?.date ?? null)}</span>
             </div>
             {total > 0 && <div className="plan-progress">
-              <span>{completed} of {total} completed{skipped ? ` · ${skipped} skipped or snoozed` : ''}</span>
+              <span>{completed} of {total} completed</span>
               <progress value={completed} max={total} aria-label="Plan completion" />
             </div>}
+            {d.activeAttempt && !featured && <div className="plan-active-attempt">
+              <span className="next-label"><Icon icon={Play} />Continue studying</span>
+              <h3>{d.activeAttempt.problem.title}</h3>
+              <div className="plan-actions">
+                <Button asChild><Link to={`/attempts/${d.activeAttempt.id}`}>Resume attempt</Link></Button>
+                <CancelAttemptButton attemptId={d.activeAttempt.id} />
+              </div>
+            </div>}
+            {planNotice && <p className="small plan-change-notice" role="status">{planNotice}</p>}
             {d.plan?.items.length ? (
-              <PlanList key={`${d.plan.id}-${d.plan.version}`} plan={d.plan} featuredId={featured?.id} />
+              <PlanList key={`${d.plan.id}-${d.plan.version}`} plan={d.plan} featuredId={featured?.id} onChanged={(updated, previous, action) => {
+                const replacement = updated.items.find(item => !d.plan?.items.some(old => old.id === item.id));
+                setPlanNotice(action === 'swap' && replacement ? `Replaced “${previous.title}” with “${replacement.title}”. The new question is in your plan below.` : action === 'snooze' ? `“${previous.title}” postponed. Its review date has been updated.` : action === 'skip' ? `Skipped “${previous.title}” for today.` : 'Plan updated.');
+              }} />
             ) : <Empty>
-              <h3>Your next question starts here</h3>
-              <p>Add questions to your library, or import your existing study records.</p>
-              <Button asChild><Link to="/library">Open library</Link></Button>
+              <h3>No eligible questions in this plan</h3>
+              <p>Your selected list, completion policy or review dates may leave no questions available. Topic progression waits for completion; it does not skip a snoozed topic. No questions are pulled from outside your selected list.</p>
+              <div className="row"><Button asChild><Link to="/settings">Review recommendation settings</Link></Button><Button asChild variant="outline"><Link to="/library">Open library</Link></Button></div>
             </Empty>}
           </Card>
-          <ReviewCalendar timezone={d.settings.timezone} />
+          <ReviewCalendar timezone={d.settings.timezone} compact />
         </div>
         <div className="study-secondary">
-          <WeeklyRecap activity={d.activity} />
+          <WeeklyRecap activity={d.activity} compact />
           <Card className="panel recent-practice">
             <div className="section-heading">
               <SectionTitle icon={History}>Recent practice</SectionTitle>
@@ -291,11 +286,6 @@ export function Dashboard() {
           </Card>
         </div>
       </div>
-      {!query.isFetching && d.latestReflection && <Card className="panel latest-takeaway">
-        <div><SectionTitle icon={NotebookPen}>Your latest takeaway</SectionTitle>
-          <p className="preserve">{d.latestReflection.takeaway}</p></div>
-        <Button asChild variant="ghost"><Link to={`/attempts/${d.latestReflection.attemptId}`}>View reflection</Link></Button>
-      </Card>}
 
     </>
   );

@@ -274,18 +274,16 @@
 .panel { box-shadow: none; border: 1px solid var(--border); border-radius: var(--radius); }
 .study-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr); gap: 1.5rem; align-items: start; }
 .study-primary, .study-secondary { min-width: 0; }
-.next-question { padding: 2rem; gap: .75rem; min-height: 240px; }
-.next-question h2 { font-size: clamp(1.5rem, 2.5vw, 2rem); letter-spacing: -.035em; line-height: 1.2; margin-top: .5rem; overflow-wrap: anywhere; }
-.next-question > p { font-size: 1rem; }
 .next-label { display: inline-flex; gap: .5rem; align-items: center; align-self: flex-start; border-radius: .375rem; background: var(--accent); color: var(--accent-foreground); padding: .375rem .625rem; font-size: .8125rem; font-weight: 600; }
-.next-question .plan-actions { margin-top: auto; padding-top: 1.25rem; }
-.next-question .plan-actions > [data-slot=button] { min-height: 2.75rem; }
 .plan-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; font-size: .8125rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .plan-progress progress { width: 8rem; height: .5rem; border: 0; border-radius: 1rem; overflow: hidden; background: var(--muted); accent-color: var(--primary); }
 .plan-progress progress::-webkit-progress-bar { background: var(--muted); border-radius: 1rem; }
 .plan-progress progress::-webkit-progress-value { background: var(--primary); border-radius: 1rem; }
 .plan-progress progress::-moz-progress-bar { background: var(--primary); border-radius: 1rem; }
-.plan-row { padding: 1rem 0; align-items: baseline; }
+.plan-row { padding: .75rem 0; align-items: baseline; }
+.plan-panel { gap: .75rem; }
+.plan-active-attempt { padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+.plan-active-attempt h3 { margin-top: .5rem; font-size: 1rem; }
 .plan-row.completed h3, .plan-row.skipped h3 { color: var(--muted-foreground); font-weight: 500; }
 .plan-row.completed .badge { background: var(--accent); color: var(--accent-foreground); }
 .recap-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
@@ -326,7 +324,6 @@
 @media (max-width: 700px) {
   #main { padding: 1.5rem 1rem; }
   .study-secondary, .notebook-layout, .attempt-comparison-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .next-question { padding: 1.5rem; min-height: 220px; }
   .review-calendar-grid { gap: .25rem; }
   .review-calendar-day { padding-inline: 0; }
 }
@@ -340,3 +337,51 @@
 
 .notebook-layout { margin-top: 1.25rem; }
 .review-calendar-day[aria-pressed=true] .small { color: var(--primary-foreground); }
+
+/* Emphasize the current question without repeating it outside the plan. */
+.plan-featured .plan-content > .row { align-items: flex-start; }
+.plan-featured h3, .plan-active-attempt h3 {
+  font-size: clamp(1.25rem, 1.8vw, 1.5rem);
+  line-height: 1.3;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+.plan-featured .badge { flex-shrink: 0; background: var(--accent); color: var(--accent-foreground); }
+.plan-featured .plan-actions, .plan-active-attempt .plan-actions { margin-top: .75rem; }
+
+.plan-history { border-top: 1px solid var(--border); padding-top: .75rem; font-size: .8125rem; }
+.plan-history summary { cursor: pointer; color: var(--muted-foreground); }
+.plan-history li { padding-top: .75rem; gap: .75rem; }
+.plan-change-notice { padding: .75rem; border-radius: .5rem; background: var(--accent); color: var(--accent-foreground); }
+ .plan-action-menu {
+  z-index: 50;
+  min-width: 11rem;
+  padding: .25rem;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 6px 20px rgb(0 0 0 / .2);
+}
+.plan-action-menu [role="menuitem"] { padding: .5rem .75rem; border-radius: .25rem; font-size: .875rem; cursor: pointer; outline: none; }
+.plan-action-menu [data-highlighted] { background: var(--accent); color: var(--accent-foreground); }
+
+/* A concise overview; full reports live on their own pages. */
+.compact-practice li { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.compact-practice li:last-child { border: 0; padding-bottom: 0; }
+.compact-practice li > div { display: grid; gap: .25rem; }
+.dashboard-calendar-link { display: inline-block; margin-top: .25rem; font-size: .875rem; }
+#main:has(> .study-layout) { padding-top: 1.5rem; }
+.study-layout .panel { padding: 1.25rem; gap: .75rem; }
+.study-layout .recap-metrics > div { padding: .75rem; }
+.study-layout .recap-metrics strong { font-size: 1.5rem; }
+
+/* Keep the dashboard calendar concise without clipping or nested scrolling. */
+.study-layout .review-calendar { gap: .625rem; }
+.study-layout .review-calendar-day { min-height: 0; padding-block: .375rem; gap: .125rem; }
+.study-layout .plan-row { padding-block: .625rem; }
+.study-layout .plan-row:first-child { padding-top: 0; }
+.study-layout .plan-featured h3 { font-size: clamp(1.2rem, 1.6vw, 1.45rem); }
+#main:has(> .study-layout) > .page-title { margin-bottom: 1.25rem; }
+
+.plan-actions > [data-slot="button"].plan-more { min-width: 0; }

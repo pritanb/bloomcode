@@ -16,7 +16,7 @@ function shiftWeek(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-export function WeeklyRecap({ activity }: { activity: ActivityDay[] }) {
+export function WeeklyRecap({ activity, compact = false }: { activity: ActivityDay[]; compact?: boolean }) {
   const [week, setWeek] = useState('');
   const mountId = useId();
   const query = useQuery({ queryKey: ['recap', mountId, week], gcTime: 0, staleTime: 0, queryFn: () => api.get<Recap>(`/recap${week ? `?week=${week}` : ''}`) });
@@ -24,11 +24,11 @@ export function WeeklyRecap({ activity }: { activity: ActivityDay[] }) {
   return <Card className="panel weekly-recap">
     <div className="section-heading">
       <SectionTitle icon={ChartNoAxesCombined}>{week ? 'Week in review' : 'This week'}</SectionTitle>
-      <div className="row">
+      {!compact && <div className="row">
         <Button variant="ghost" size="icon" aria-label="Previous week" disabled={!recap} onClick={() => recap && setWeek(shiftWeek(recap.weekStart, -7))}><Icon icon={ChevronLeft} /></Button>
         <Button variant="ghost" size="icon" aria-label="Next week" disabled={!recap} onClick={() => recap && setWeek(shiftWeek(recap.weekStart, 7))}><Icon icon={ChevronRight} /></Button>
         {week && <Button variant="ghost" size="sm" onClick={() => setWeek('')}>Current week</Button>}
-      </div>
+      </div>}
     </div>
     {query.isPending || query.isFetching ? <Loading /> : query.isError ? <ErrorNotice error={query.error} retry={() => void query.refetch()} /> : recap && <>
       <p className="small muted">{dateLabel(recap.weekStart)} – {dateLabel(recap.weekEnd)} · {recap.timezone}</p>
@@ -37,8 +37,8 @@ export function WeeklyRecap({ activity }: { activity: ActivityDay[] }) {
         <div><strong>{recap.independentSolves}</strong><span>independent solves</span></div>
       </div>
       <p className="small">{recap.completedAttempts} completed attempts · {recap.scheduledReviews} scheduled reviews completed</p>
-      {!recap.completedAttempts && <p className="muted">No completed attempts this week yet.</p>}
-      {recap.detailsHidden ? <p className="small muted">Finish your mixed practice to see supporting records and score changes.</p> : <Disclosure title="View supporting records">
+      {!compact && !recap.completedAttempts && <p className="muted">No completed attempts this week yet.</p>}
+      {!compact && (recap.detailsHidden ? <p className="small muted">Finish your mixed practice to see supporting records and score changes.</p> : <Disclosure title="View supporting records">
         <p className="small muted">Independent solves used no help. Scheduled reviews count attempts linked to a scheduled review in a daily plan; unlinked historical reviews are excluded. Weeks use the study date saved with each attempt.</p>
         <ul className="plain-list recap-records">
           {recap.attempts.map(attempt => <li key={attempt.id}>
@@ -51,7 +51,7 @@ export function WeeklyRecap({ activity }: { activity: ActivityDay[] }) {
           <Link to={movement.attemptId ? `/attempts/${movement.attemptId}` : `/topics/${movement.topicId}`}>{movement.topicName}: {movement.oldScore} → {movement.newScore}</Link>
           <span className="small">{dateLabel(movement.date)}</span>
         </li>)}</ul> : <p className="small muted">No recorded score changes this week.</p>}
-      </Disclosure>}
+      </Disclosure>)}
     </>}
     <div className="activity-section">
       <div className="row between"><h3>Last 28 days</h3><span className="small">Completed attempts</span></div>
@@ -60,5 +60,6 @@ export function WeeklyRecap({ activity }: { activity: ActivityDay[] }) {
       </div>
       <p className="small muted">Each square is one study day. Hover or focus for details.</p>
     </div>
+    {compact && <Link className="small" to="/weekly-report">View weekly report →</Link>}
   </Card>;
 }
