@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, ChartNoAxesCombined } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Disclosure } from '@/components/disclosure';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ActivityDay, WeeklyRecap as Recap } from '../shared/contracts';
 import { api } from './api';
 import { dateLabel, ErrorNotice, Icon, Loading, SectionTitle } from './ui';
@@ -55,9 +56,19 @@ export function WeeklyRecap({ activity, compact = false }: { activity: ActivityD
     </>}
     <div className="activity-section">
       <div className="row between"><h3>Last 28 days</h3><span className="small">Completed attempts</span></div>
-      <div className="activity-strip" role="list" aria-label="Completed attempts by study day">
-        {activity.map(day => <span key={day.date} role="listitem" tabIndex={0} className={`activity-day intensity-${Math.min(3, day.completedAttempts)}`} title={`${dateLabel(day.date)}: ${day.completedAttempts} completed attempts`} aria-label={`${dateLabel(day.date)}: ${day.completedAttempts} completed attempts`} />)}
-      </div>
+      <TooltipProvider>
+        <div className="activity-strip" role="list" aria-label="Completed attempts by study day">
+          {activity.map(day => {
+            const label = `${dateLabel(day.date)}: ${day.completedAttempts} completed ${day.completedAttempts === 1 ? 'attempt' : 'attempts'}`;
+            return <Tooltip key={day.date}>
+              <TooltipTrigger asChild>
+                <span role="listitem" tabIndex={0} className={`activity-day intensity-${Math.min(3, day.completedAttempts)}`} aria-label={label} />
+              </TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>;
+          })}
+        </div>
+      </TooltipProvider>
       <p className="small muted">Each square is one study day. Hover or focus for details.</p>
     </div>
     {compact && <Link className="small" to="/weekly-report">View weekly report →</Link>}
