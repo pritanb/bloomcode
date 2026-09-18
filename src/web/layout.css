@@ -328,6 +328,13 @@
   .review-calendar-day { padding-inline: 0; }
 }
 
+/* One block per attempt, so each tutor note stays tied to the attempt it came from. */
+.attempt-history > li:first-child { border-top: 0; padding-top: 0; }
+.attempt-history h3 { font-size: 1rem; margin: 0; }
+.attempt-history .chips { margin-top: .5rem; }
+.question-notes > div + div { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.question-notes p { margin: 0; }
+.question-notes .muted + p, .attempt-history .muted + p { margin-top: .25rem; }
 .notebook-entry-button { width: 100%; justify-content: flex-start; text-align: left; height: auto; white-space: normal; overflow-wrap: anywhere; }
 .notebook-list > li:first-child { border-top: 0; }
 .notebook-list > li > .row + .row { margin-top: .75rem; }

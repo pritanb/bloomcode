@@ -43,7 +43,6 @@ import { api, ApiError } from './api';
 import {
   Icon,
   SectionTitle,
-  AttemptList,
   dateLabel,
   duration,
   Empty,
@@ -653,6 +652,76 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
     </form>
   );
 }
+// Tutor notes are appended to the question notes over time, each led by its date.
+const notedEntry = /^(\d{4}-\d{2}-\d{2}) tutor note:\s*/;
+function QuestionNotes({ notes }: { notes: string }) {
+  const entries = notes.split(/\n\s*\n/).map(entry => entry.trim()).filter(Boolean);
+  if (!entries.length) return <p className="small muted">No question notes yet.</p>;
+  return (
+    <div className="question-notes">
+      {entries.map((entry, index) => {
+        const dated = notedEntry.exec(entry);
+        return (
+          <div key={index}>
+            {dated && <p className="small muted">Tutor note · {dateLabel(dated[1])}</p>}
+            <p className="preserve">{dated ? entry.slice(dated[0].length) : entry}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function AttemptHistory({ items }: { items: Attempt[] }) {
+  const ordered = [...items].sort((a, b) =>
+    (b.finishedAt ?? b.startedAt).localeCompare(a.finishedAt ?? a.startedAt) || b.id.localeCompare(a.id),
+  );
+  if (!ordered.length)
+    return <Empty>No practice recorded yet. Start a question to save your first attempt.</Empty>;
+  return (
+    <ol className="movement-list attempt-history">
+      {ordered.map((a, index) => (
+        <li key={a.id}>
+          <div className="row between">
+            <h3>
+              Attempt {ordered.length - index}
+              <span className="small muted"> · {dateLabel(a.finishedAt ?? a.startedAt)}</span>
+            </h3>
+            <Link className="small" to={`/attempts/${a.id}`}>Open saved attempt</Link>
+          </div>
+          <div className="chips">
+            <Badge variant="secondary">{enumLabel(a.outcome ?? a.status)}</Badge>
+            <Badge variant="secondary">{duration(a.activeSeconds)}</Badge>
+            <Badge variant="secondary">{helpLabel(a.help)}</Badge>
+            <Badge variant="secondary">{enumLabel(a.evidence)}</Badge>
+            {a.confidence !== null && <Badge variant="secondary">Confidence {a.confidence}/5</Badge>}
+            {(a.mistakeLabels ?? []).map(label => (
+              <Badge variant="secondary" key={label}>{enumLabel(label)}</Badge>
+            ))}
+          </div>
+          {a.notes && (
+            <>
+              <p className="small muted">Attempt notes</p>
+              <p className="preserve">{a.notes}</p>
+            </>
+          )}
+          {a.takeaway && <p className="preserve"><strong>Takeaway: </strong>{a.takeaway}</p>}
+          {a.feedback && (
+            <div className="feedback preserve">
+              <strong className="small">Tutor note</strong>
+              <br />
+              {a.feedback}
+            </div>
+          )}
+          {!a.notes && !a.takeaway && !a.feedback && (
+            <p className="small muted">
+              {a.status === 'completed' ? 'Nothing recorded for this attempt.' : 'Attempt in progress.'}
+            </p>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
 export function ProblemDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -736,7 +805,7 @@ export function ProblemDetail() {
           />
         ) : (
           <>
-            <p className="preserve">{p.notes || 'No question notes yet.'}</p>
+            <QuestionNotes notes={p.notes} />
             <h3>LeetCode topics</h3>
             <p>{p.leetcodeTopics?.join(', ') || 'No additional topics recorded.'}</p>
             <h3>Tags</h3>
@@ -774,7 +843,7 @@ export function ProblemDetail() {
       </Card>
       <Card className="panel">
         <SectionTitle icon={History}>Practice history</SectionTitle>
-        <AttemptList items={query.data.attempts} />
+        <AttemptHistory items={query.data.attempts} />
       </Card>
     </>
   );
