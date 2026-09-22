@@ -16,6 +16,8 @@ export interface Problem {
   lastAttemptAt: string | null; lastSolveSeconds: number | null; lastSolveHelp: Help | null;
   lastOutcome: Outcome | null; nextReviewDate: string | null; attemptCount: number;
 }
+/** Progress of the tutor report written automatically after a web submission. */
+export interface AutoReviewStatus { status: 'none' | 'pending' | 'generating' | 'failed' | 'done'; error: string | null; tutorConnected: boolean }
 export interface Attempt {
   scoreDecisions?: ScoreDecision[];
   mistakeLabels?: MistakeLabel[]; takeaway?: string;

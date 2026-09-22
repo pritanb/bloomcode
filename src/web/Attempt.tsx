@@ -24,6 +24,7 @@ import { api, ApiError } from './api';
 import { AttemptQueue } from './attemptQueue';
 import { AttemptComparison } from './AttemptComparison';
 import { AttemptReflection } from './AttemptReflection';
+import { TutorReport } from './TutorReport';
 import {
   Icon,
   SectionTitle,
@@ -161,6 +162,15 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
       setError(e);
     }
   }
+  const onReportReady = useCallback(async () => {
+    try {
+      const saved = await api.get<Attempt>(`/attempts/${initial.id}`);
+      queue.current = saved;
+      setAttempt(saved);
+    } catch {
+      /* The Refresh button still reloads it. */
+    }
+  }, [initial.id, queue]);
   const completed = attempt.status === 'completed';
   const notesField = <>
     <Field label="Attempt notes">
@@ -270,12 +280,10 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
               unchanged.
             </p>
           )}
-          {attempt.feedback && (
-            <div className="stack">
-              <h3>Tutor note</h3>
-              <div className="feedback preserve">{attempt.feedback}</div>
-            </div>
-          )}
+          <div className="stack">
+            <h3>Tutor report</h3>
+            <TutorReport attempt={attempt} onReady={onReportReady} />
+          </div>
           <p>
             Next review:{' '}
             {attempt.nextReviewDate
@@ -391,6 +399,7 @@ function FinishForm({
             confidence: confidence ? Number(confidence) : null,
             code: draft.code,
             notes: draft.notes,
+            requestReview: true,
           });
         }}
       >

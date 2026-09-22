@@ -14,6 +14,7 @@ import { ApiError } from './errors.js';
 import { Store } from './store.js';
 import { dirname } from 'node:path';
 import { loadToken } from './auth.js';
+import { AutoReviewQueue, registerAutoReview } from './auto-review.js';
 import { registerTransfer } from './transfer.js';
 import { registerPlans } from './plans.js';
 import { registerScoring } from './scoring.js';
@@ -78,7 +79,9 @@ export async function createApp(options:AppOptions) {
  store.transaction(()=>{for(const tag of store.all<{id:string;hue?:number}>('tags'))if(tag.hue===undefined)store.put('tags',tag);});
  registerCatalogue(app,store,clock);
  registerAttempts(app,store,clock);
- registerCloseout(app,store,clock);
+ const reviews=new AutoReviewQueue(clock);
+ registerCloseout(app,store,clock,reviews);
+ registerAutoReview(app,store,reviews);
  registerImport(app,store,clock);
  registerTopics(app,store);
  registerScoring(app,store,clock);

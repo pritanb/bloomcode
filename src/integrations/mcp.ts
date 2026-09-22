@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { pathToFileURL } from 'node:url';
 import { LocalApi, ApiError } from './local-api.js';
+import { startAutoReviews } from './auto-review.js';
 const id = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
 const version = z.number().int().nonnegative();
 const key = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_.:-]+$/);
@@ -21,8 +22,8 @@ const descriptions: Record<keyof typeof schemas,string> = {
   get_today:'Get or resume the stable daily plan; does not start an attempt. No hidden pattern context.',
   search_questions:'Search at most 100 questions. Metadata can reveal patterns: use only with consent, never to peek at an active mixed assessment.',
   get_attempt_context:'Read saved code, history and score versions for a requested review. Backend blocks active mixed assessment disclosure.',
-  finish_attempt:'Finalise a reported attempt using its current version and a caller-chosen unique idempotency key. Retry with the SAME key and identical payload after uncertainty. Topic scores move automatically under conservative evidence rules; use save_review for manual decisions. Reads back the saved attempt.',
-  save_review:'Record tutor feedback on a finished attempt, and optionally adjust topic scores. Scores already move automatically when an attempt is finished, so omit "decisions" to leave a note without changing any score; supply them only to override that judgement. Supply the current attempt/topic versions and a stable idempotency key. Repeat evidence cannot justify increases above 3. Reads back context.',
+  finish_attempt:'Finalise a reported attempt using its current version and a caller-chosen unique idempotency key. Retry with the SAME key and identical payload after uncertainty. Topic scores move automatically under conservative evidence rules. ALWAYS follow a successful finish with save_review in the same turn: the learner reads that note in the app as the summary of this attempt. Reads back the saved attempt.',
+  save_review:'Record the tutor note shown against a finished attempt, and optionally adjust topic scores. Write one for EVERY finished attempt, straight after finish_attempt, as immediate feedback the learner can act on: what went well, what was missed, and what to practise next. Scores already move automatically when an attempt is finished, so omit "decisions" to leave a note without changing any score; supply them only to override that judgement. Supply the current attempt/topic versions and a stable idempotency key. Repeat evidence cannot justify increases above 3. Reads back context.',
   set_review_date:'Set a manual, snoozed, recommended or no-review schedule using its current version; reads back the target. On conflict re-read, do not blindly overwrite.'
 };
 export const toolDefinitions = Object.entries(schemas).map(([name,schema]) => ({name,description:descriptions[name as keyof typeof schemas],inputSchema:z.toJSONSchema(schema) as {type:'object'},annotations:{readOnlyHint:name==='search_questions'||name==='get_attempt_context',destructiveHint:false,openWorldHint:false}}));
@@ -45,7 +46,8 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
       const saved=identity.safeParse(name==='save_review'?(committed as {attempt?:unknown})?.attempt:committed);
       const readback=identity.safeParse(name==='save_review'?(current as {attempt?:unknown})?.attempt:current);
       if(!saved.success||!readback.success||saved.data.id!==attemptId||readback.data.id!==attemptId||readback.data.version<saved.data.version)throw new ApiError('COMMITTED_READBACK_MISMATCH','Write returned but its attempt identity/version did not match read-back. Re-read before further edits; retain the original idempotency key.');
-      result={committed,current,verified:true};
+      const pending=name==='finish_attempt'&&!(committed as {feedback?:string|null})?.feedback;
+      result={committed,current,verified:true,...(pending?{reviewPending:true,nextStep:'No tutor note is saved for this attempt yet. Call save_review now so the learner sees a summary of it in the app.'}:{})};
     } else if(name==='set_review_date') {
       const {targetId,...body}=schemas.set_review_date.parse(args);
       const committed=await api.request('PATCH',`/api/reviews/${targetId}`,body);
@@ -65,6 +67,11 @@ export async function startMcp() {
   const server=new Server({name:'leetcode-tutor',version:'0.1.0'},{capabilities:{tools:{}}});
   server.setRequestHandler(ListToolsRequestSchema,async()=>({tools:toolDefinitions}));
   server.setRequestHandler(CallToolRequestSchema,async request=>callTool(api,request.params.name,request.params.arguments??{}));
+  // Reports for web submissions need the client's model; only clients that
+  // offer sampling (Hermes does) get the background reviewer.
+  let stop:(()=>void)|undefined;
+  server.oninitialized=()=>{if(server.getClientCapabilities()?.sampling)stop??=startAutoReviews(server,api);};
+  server.onclose=()=>stop?.();
   await server.connect(new StdioServerTransport());
   return server;
 }

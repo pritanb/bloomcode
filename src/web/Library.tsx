@@ -705,16 +705,15 @@ function AttemptHistory({ items }: { items: Attempt[] }) {
             </>
           )}
           {a.takeaway && <p className="preserve"><strong>Takeaway: </strong>{a.takeaway}</p>}
-          {a.feedback && (
+          {a.feedback ? (
             <div className="feedback preserve">
               <strong className="small">Tutor note</strong>
               <br />
               {a.feedback}
             </div>
-          )}
-          {!a.notes && !a.takeaway && !a.feedback && (
+          ) : (
             <p className="small muted">
-              {a.status === 'completed' ? 'Nothing recorded for this attempt.' : 'Attempt in progress.'}
+              {a.status === 'completed' ? 'No tutor note for this attempt.' : 'Attempt in progress.'}
             </p>
           )}
         </li>

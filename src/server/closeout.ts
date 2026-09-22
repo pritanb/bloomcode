@@ -9,6 +9,7 @@ import { type AttemptRecord, attemptView, checkVersion, version } from './attemp
 import { ApiError, conflict } from './errors.js';
 import { applyAutoScore } from './auto-score.js';
 import { idempotent } from './idempotency.js';
+import type { AutoReviewQueue } from './auto-review.js';
 export const outcome=z.enum(['solved','not_solved','stopped']);
 export const help=z.enum(['none','small','major','solution','unknown']);
 export const seconds=z.number().int().min(0).max(604800).nullable();
@@ -22,12 +23,12 @@ export function updateTarget(s:Store,problemId:string,recommendedDate:string|nul
  else if(t.action==='recommended')t.effectiveDate=recommendedDate;
  s.put('review_targets',t);s.put('problems',{...p,nextReviewDate:t.effectiveDate});return t;
 }
-export function registerCloseout(app:FastifyInstance,s:Store,clock:()=>Date){
+export function registerCloseout(app:FastifyInstance,s:Store,clock:()=>Date,reviews?:AutoReviewQueue){
  app.post<{Params:{id:string}}>('/api/attempts/:id/finish',req=>{
-  const b=z.object({version,outcome,help,activeSeconds:seconds,code:z.string().max(1000000).optional(),notes:z.string().max(100000).optional(),confidence:z.number().min(1).max(5).nullable().optional(),reviewDate:date.nullable().optional(),reviewAction:z.enum(['recommended','manual','none']).optional()}).strict().parse(req.body);
-  return idempotent(s,`finish:${req.params.id}`,req.headers['idempotency-key'],b,()=>{
+  const b=z.object({version,outcome,help,activeSeconds:seconds,code:z.string().max(1000000).optional(),notes:z.string().max(100000).optional(),confidence:z.number().min(1).max(5).nullable().optional(),reviewDate:date.nullable().optional(),reviewAction:z.enum(['recommended','manual','none']).optional(),requestReview:z.boolean().optional()}).strict().parse(req.body);
+  const result=idempotent(s,`finish:${req.params.id}`,req.headers['idempotency-key'],b,()=>{
    const a=s.get<AttemptRecord>('attempts',req.params.id);checkVersion(a,b.version);if(a.status==='completed')throw conflict('Attempt already completed');
-   const {reviewDate:_date,reviewAction:_action,...answer}=b;Object.assign(a,answer,{version:a.version+1,status:'completed',finishedAt:clock().toISOString(),runningSince:null,needsGapDecision:false,gapSeconds:0});
+   const {reviewDate:_date,reviewAction:_action,requestReview:_review,...answer}=b;Object.assign(a,answer,{version:a.version+1,status:'completed',finishedAt:clock().toISOString(),runningSince:null,needsGapDecision:false,gapSeconds:0});
    const p=s.get<Problem>('problems',a.problemId);s.put('problems',{...p,exposed:true,lastAttemptAt:a.finishedAt,lastOutcome:a.outcome,attemptCount:p.attemptCount+1,...(a.outcome==='solved'?{lastSolveSeconds:a.activeSeconds,lastSolveHelp:a.help}:{})});
    const r=recommendation(a);a.nextReviewDate=updateTarget(s,p.id,r.date,r.stage,{action:b.reviewAction??'recommended',date:b.reviewDate}).effectiveDate;
    s.put('attempts',a);completeAssignment(s,a);s.put('answer_versions',{id:randomUUID(),attemptId:a.id,code:a.code,notes:a.notes,language:a.language,version:a.version,recordedAt:clock().toISOString()});
@@ -35,6 +36,8 @@ export function registerCloseout(app:FastifyInstance,s:Store,clock:()=>Date){
    s.put('audit_events',{id:randomUUID(),action:'finish_attempt',attemptId:a.id,...(decisions.length?{decisionIds:decisions.map(d=>d.id)}:{}),recordedAt:clock().toISOString()});
    return attemptView(a);
   });
+  if(b.requestReview)reviews?.request(req.params.id);
+  return result;
  });
  app.get('/api/reviews',()=>s.all<ReviewTarget>('review_targets'));
  app.patch<{Params:{id:string}}>('/api/reviews/:id',req=>{
