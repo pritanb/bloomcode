@@ -54,6 +54,9 @@ import {
   TableCell,
   useAction,
 } from './ui';
+// The library opens on the most recent practice; the API keeps its own title order.
+const defaultSort = 'lastAttempt';
+const defaultDirection = 'desc';
 const filterOptions: Record<string, string[]> = {
   status: ['all', 'solved', 'not_solved', 'stopped', 'not_submitted'],
   tagMode: ['any', 'all'],
@@ -392,6 +395,8 @@ export function Library() {
   queryParams.delete('tagDifficultyMax');
   if (!queryParams.has('page')) queryParams.set('page', '1');
   if (!queryParams.has('pageSize')) queryParams.set('pageSize', '25');
+  if (!queryParams.has('sort')) queryParams.set('sort', defaultSort);
+  if (!queryParams.has('direction')) queryParams.set('direction', defaultDirection);
   const query = useQuery({
     queryKey: ['problems', queryParams.toString()],
     queryFn: () => api.get<ProblemPage>(`/problems?${queryParams}`),
@@ -550,10 +555,10 @@ export function Library() {
               </h2>
             </div>
             {query.data.items.length ? (
-              <ProblemTable problems={query.data.items} sort={params.get('sort') ?? 'title'} direction={params.get('direction') === 'desc' ? 'desc' : 'asc'} onSort={sort => {
+              <ProblemTable problems={query.data.items} sort={params.get('sort') ?? defaultSort} direction={(params.get('direction') ?? defaultDirection) === 'desc' ? 'desc' : 'asc'} onSort={sort => {
                 const next = new URLSearchParams(params);
                 next.set('sort', sort);
-                next.set('direction', (params.get('sort') ?? 'title') === sort && (params.get('direction') ?? 'asc') === 'asc' ? 'desc' : 'asc');
+                next.set('direction', (params.get('sort') ?? defaultSort) === sort && (params.get('direction') ?? defaultDirection) === 'asc' ? 'desc' : 'asc');
                 next.set('page', '1');
                 setParams(next, { replace: true });
               }} />
