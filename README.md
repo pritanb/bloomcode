@@ -10,7 +10,7 @@ A local-first app for planning LeetCode practice, saving solutions and notes, an
 
 ## Get started
 
-**[Download for Mac — Apple silicon](https://github.com/pritanb/leetcode-tutor/releases/latest)**
+**[Download experimental preview — Apple silicon Mac](https://github.com/pritanb/leetcode-tutor/releases/tag/v0.1.0)**
 
 Unzip the download, move **LeetCode Tutor.app** to Applications, and open it. Choose your timezone, daily target and a starter list. Node.js is not needed for the desktop app.
 

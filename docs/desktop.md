@@ -4,7 +4,7 @@ LeetCode Tutor uses Electron to package its study interface, local server and ru
 
 ## Install and open
 
-1. Download the Apple silicon ZIP from the [latest release](https://github.com/pritanb/leetcode-tutor/releases/latest). Unzip the desktop build archive and move **LeetCode Tutor.app** to Applications.
+1. Download the Apple silicon ZIP from the [experimental preview release](https://github.com/pritanb/leetcode-tutor/releases/tag/v0.1.0). Unzip the desktop build archive and move **LeetCode Tutor.app** to Applications.
 2. Open it, then drag its icon to the Dock for one-click access.
 3. For a new workspace, choose your timezone, daily target and starter question list.
 
