@@ -2,8 +2,14 @@ import type { ReviewTarget, Topic } from '../../src/shared/contracts';
 import { test, expect, createProblem, currentAttempt, finish, openLibrary, startTargeted } from './helpers';
 
 test('result report autosaves notes and code, reloads, and saves LeetCode time with no review', async ({ page, api }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Make room for practice' })).toBeVisible();
+  await page.getByRole('button', { name: 'Create my workspace' }).click();
+  await expect(page.getByRole('heading', { name: 'Your study desk' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your study desk' })).toBeVisible();
   await openLibrary(page);
-  const problem = await createProblem(api, 'reverse-linked-list', 'Journey Draft Recovery');
+  const problem = await createProblem(api, 'reverse-linked-list-qa', 'Journey Draft Recovery');
   const before = await api.read<Topic[]>('/topics');
   await startTargeted(page, problem);
   await page.getByRole('button', { name: 'Save attempt', exact: true }).click();

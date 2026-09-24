@@ -8,15 +8,20 @@
     "dev:web": "vite",
     "build": "vite build && tsup",
     "test:smoke": "npm run build && node tests/smoke/runtime.mjs",
-    "start": "node dist/server/index.js",
-    "mcp": "tsx src/integrations/mcp.ts",
+    "start": "node --env-file-if-exists=.env dist/server/index.js",
+    "mcp": "node --env-file-if-exists=.env --import tsx src/integrations/mcp.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "lint": "eslint .",
-    "import:sheet": "tsx scripts/import-sheet.ts",
-    "backup": "tsx scripts/backup.ts",
-    "restore": "tsx scripts/restore.ts"
+    "import:sheet": "node --env-file-if-exists=.env --import tsx scripts/import-sheet.ts",
+    "backup": "node --env-file-if-exists=.env --import tsx scripts/backup.ts",
+    "restore": "node --env-file-if-exists=.env --import tsx scripts/restore.ts",
+    "local": "node --env-file-if-exists=.env scripts/launch-local.mjs",
+    "import:pack": "node --env-file-if-exists=.env --import tsx scripts/import-pack.ts",
+    "import:lists": "node --env-file-if-exists=.env --import tsx scripts/import-lists.ts",
+    "export": "node --env-file-if-exists=.env --import tsx scripts/export.ts",
+    "demo": "node --import tsx scripts/demo.mjs"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",
@@ -69,5 +74,8 @@
     "typescript-eslint": "^8.70.0",
     "vite": "^8.3.0",
     "vitest": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=22.23.0"
   }
 }

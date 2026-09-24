@@ -9,3 +9,6 @@ test-results/
 !.env.example
 private/
 .DS_Store
+*.log
+api-token
+output/playwright/

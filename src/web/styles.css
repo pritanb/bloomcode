@@ -130,3 +130,6 @@
     @apply font-sans;
     }
 }
+.welcome { max-width: 42rem; margin: 0 auto; padding: 2rem 1rem; }
+
+.demo-banner { padding: 0.625rem 1rem; background: var(--accent); color: var(--accent-foreground); border-bottom: 1px solid var(--border); text-align: center; font-size: 0.875rem; }

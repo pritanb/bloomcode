@@ -16,6 +16,7 @@ async function launchAgainst(buildId?: string) {
   await mkdir(join(dir, 'scripts'));
   await mkdir(join(dir, 'dist/server'), { recursive: true });
   await copyFile('scripts/launch-local.mjs', join(dir, 'scripts/launch-local.mjs'));
+  await copyFile('scripts/runtime.mjs', join(dir, 'scripts/runtime.mjs'));
   await writeFile(join(dir, 'dist/server/build-id'), 'current-build');
   await writeFile(join(dir, 'api-token'), 'disposable-test-token');
   server = createServer((req, res) => {

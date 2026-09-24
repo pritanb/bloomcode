@@ -37,7 +37,7 @@ try {
   const cookie = session.headers.getSetCookie()[0].split(';')[0];
   const settings = await fetch(`${address}/api/settings`, { headers: { cookie } });
   assert.equal(settings.status, 200);
-  assert.equal((await settings.json()).dataMode, 'isolated-pilot');
+  assert.equal((await settings.json()).dataMode, 'local');
   assert.equal((await fetch(`${address}/api/settings`)).status, 401);
   console.log('Production smoke passed: flat entrypoints, SQLite migration, build identity, launcher reuse, SPA deep link, authenticated settings and anonymous rejection.');
 } finally {

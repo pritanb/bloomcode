@@ -6,7 +6,7 @@ import type { Attempt, AutoReviewStatus } from '../shared/contracts';
 import { api } from './api';
 import { Icon } from './ui';
 const working = (s?: AutoReviewStatus['status']) => s === 'pending' || s === 'generating';
-/** The tutor report for a finished attempt: shown once saved, with progress while Hermes writes it. */
+/** The tutor report for a finished attempt: shown once saved, with progress while the connected tutor writes it. */
 export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: () => void }) {
   const cache = useQueryClient();
   const key = ['auto-review', attempt.id];
@@ -32,7 +32,7 @@ export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: (
           ? 'Your tutor is writing a report on this attempt…'
           : status.data?.tutorConnected
             ? 'Queued for your tutor…'
-            : 'Waiting for Hermes to connect. The report is written once Hermes is running with the LeetCode Tutor tools.'}
+            : 'Your attempt is saved. Connect an MCP tutor with sampling support for automatic reports, or ask your tutor to review it in chat. You can keep practising without a report.'}
       </p>
     );
   return (

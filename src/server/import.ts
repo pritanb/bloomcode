@@ -26,7 +26,7 @@ function importedEvidenceExists(s:Store,b:ImportPayload,kind:'attempts'|'movemen
  }
  return exists;
 }
-function applyImport(s:Store,b:ImportPayload,clock:()=>Date):ImportReport {
+export function applyImport(s:Store,b:ImportPayload,clock:()=>Date):ImportReport {
  const counts:Record<string,number>={problems:0,attempts:0,topics:0,movements:0,planned:0,records:0},warnings:string[]=[],unresolved:ImportRecord[]=b.records.filter(r=>r.status==='unresolved');
  const fingerprint=createHash('sha256').update(canonical({...b,dryRun:false})).digest('hex'),prior=s.all<Batch>('import_batches').find(x=>x.id===b.importId);
  if(prior){if(prior.fingerprint!==fingerprint)throw conflict('Import ID already used for different source data');return {dryRun:b.dryRun,counts,warnings:['Import already applied; no records changed'],unresolved};}

@@ -1,4 +1,5 @@
 
+import { SetupGate } from './Welcome';
 import { lazy, Suspense, useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
@@ -37,6 +38,9 @@ const navigation = [
 ];
 
 export function App() {
+  return <SetupGate><Workspace /></SetupGate>;
+}
+function Workspace() {
   const [collapsed, setCollapsed] = useState(false);
   const focused = useLocation().pathname.startsWith('/attempts/');
   if (focused) {

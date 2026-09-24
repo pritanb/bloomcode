@@ -9,7 +9,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import { openDb } from './db.js';
 import { settings } from './schema.js';
-export interface AppOptions { dbPath:string; token?:string; serveStatic?:boolean|string; clock?:()=>Date }
+export interface AppOptions { dbPath:string; demo?:boolean; token?:string; serveStatic?:boolean|string; clock?:()=>Date }
 import { ApiError } from './errors.js';
 import { Store } from './store.js';
 import { dirname } from 'node:path';
@@ -24,6 +24,7 @@ import { registerCloseout } from './closeout.js';
 import { registerAttempts } from './attempts.js';
 import { migratePatternNotebooks } from './pattern-migration.js';
 import { registerStudyTools } from './study-tools.js';
+import { registerSetup } from './setup.js';
 import { registerCatalogue } from './catalogue.js';
 declare const __TUTOR_BUILD_ID__: string;
 // Captured in the bundle, never read from mutable files on each health check.
@@ -77,6 +78,7 @@ export async function createApp(options:AppOptions) {
  const store=new Store(db.sqlite);
  migratePatternNotebooks(store);
  store.transaction(()=>{for(const tag of store.all<{id:string;hue?:number}>('tags'))if(tag.hue===undefined)store.put('tags',tag);});
+ registerSetup(app,store,clock,options.demo);
  registerCatalogue(app,store,clock);
  registerAttempts(app,store,clock);
  const reviews=new AutoReviewQueue(clock);

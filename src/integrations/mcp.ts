@@ -68,9 +68,9 @@ export async function startMcp() {
   server.setRequestHandler(ListToolsRequestSchema,async()=>({tools:toolDefinitions}));
   server.setRequestHandler(CallToolRequestSchema,async request=>callTool(api,request.params.name,request.params.arguments??{}));
   // Reports for web submissions need the client's model; only clients that
-  // offer sampling (Hermes does) get the background reviewer.
+  // offer sampling and have not disabled background reviews get the background reviewer.
   let stop:(()=>void)|undefined;
-  server.oninitialized=()=>{if(server.getClientCapabilities()?.sampling)stop??=startAutoReviews(server,api);};
+  server.oninitialized=()=>{if(process.env.TUTOR_AUTO_REVIEW!=='0'&&server.getClientCapabilities()?.sampling)stop??=startAutoReviews(server,api);};
   server.onclose=()=>stop?.();
   await server.connect(new StdioServerTransport());
   return server;

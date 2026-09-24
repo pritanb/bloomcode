@@ -49,7 +49,7 @@ export interface PlanItem {
   reason: string; suggestedMinutes: number; attemptId: string | null;
 }
 export interface DailyPlan { id: string; date: string; timezone: string; items: PlanItem[]; version: number }
-export interface Settings { autoScore?: boolean; recommendations?: import('./recommendations.js').RecommendationSettings; questionsPerDay?: number; timezone: string; budgetMinutes: number; primaryCount: number; optionalCount: number; dataMode: string; lastBackupAt: string | null }
+export interface Settings { onboardingComplete?: boolean; autoScore?: boolean; recommendations?: import('./recommendations.js').RecommendationSettings; questionsPerDay?: number; timezone: string; budgetMinutes: number; primaryCount: number; optionalCount: number; dataMode: string; lastBackupAt: string | null }
 export interface Dashboard { plan: DailyPlan | null; topics: Topic[]; movements: ScoreDecision[]; recentAttempts: Attempt[]; activeAttempt: Attempt | null; settings: Settings; activity: ActivityDay[]; latestReflection: { attemptId: string; takeaway: string } | null }
 export interface ProblemPage { items: Problem[]; total: number; page: number; pageSize: number }
 export interface TopicDetail { topic: Topic; decisions: ScoreDecision[]; attempts: Attempt[]; problems: Problem[]; stats: { attemptCount: number; knownTimeCount: number; medianSeconds: number | null } }

@@ -1,14 +1,16 @@
 # Operations
 
+See [README](../README.md#your-workspace) for platform defaults and legacy-directory preservation, and [Tutor integration](tutor-integration.md) for optional MCP clients. No client registration or spreadsheet cutover is required for a fresh workspace.
+
 ## Start and stop
 
-Requires Node.js 22+, npm and the installed project dependencies. The pilot is isolated from the Sheet and Hermes configuration.
+Requires Node.js 22.23 or later, npm and the installed project dependencies. Each workspace has its own data directory.
 
 ```sh
-cd /Users/pritanbarai/Projects/leetcode-tutor
+cd /path/to/leetcode-tutor
 npm ci
 npm run build
-./scripts/start-local.sh
+npm run local
 ```
 
 Alternatively double-click **scripts/LeetCode Tutor.command** in Finder. This starts `dist/server/index.js`, waits for `/health` **and an authenticated settings read**, then opens `http://127.0.0.1:4317`. An already healthy app is reused. No LaunchAgent, login item, background agent service or Hermes configuration is installed. The server stays running after the launcher exits.
@@ -17,7 +19,7 @@ Defaults:
 
 | Setting/file | Value or purpose |
 |---|---|
-| `DATA_DIR` | `~/Library/Application Support/LeetcodeTutor-dev` |
+| `DATA_DIR` | Platform default from the README; an existing macOS `LeetcodeTutor-dev` database is preserved |
 | `PORT` | `4317`; loopback only |
 | `NODE_BINARY` | Optional absolute Node executable for the shell launcher |
 | `NO_OPEN=1` | Check/start without opening a browser |
@@ -36,14 +38,14 @@ If startup fails: check the log, missing build/dependencies, Node version, port 
 The adapter uses the MCP SDK over stdio and forwards only named HTTP operations. Start the app first, then have an explicitly approved MCP client launch:
 
 ```sh
-node /Users/pritanbarai/Projects/leetcode-tutor/dist/server/mcp.js
+node /absolute/path/to/leetcode-tutor/dist/server/mcp.js
 ```
 
 For development: `npm run mcp`. The client must supply the same `DATA_DIR` and `PORT` if defaults changed. Use an absolute Node executable if the client has a restricted PATH. Do **not** include the token in the MCP configuration; the adapter reads `api-token` locally. Stdout is reserved for the MCP protocol. Registration/cutover in Hermes remains a separate approval; these scripts do not perform it.
 
 Tools: `get_today`, `search_questions`, `get_attempt_context`, `finish_attempt`, `save_review`, `set_review_date`. Search is limited to 100 results per page. There is no SQL, shell, arbitrary-URL fetch or judge. Searches reveal catalogue metadata; do not use them to peek at an active hidden assessment. Backend context restrictions still apply.
 
-**Tutor reports for web submissions.** Saving a result in the web app queues the attempt for a report (in memory in the app process; a restart drops the queue and the learner can ask again from the attempt page). When the connected client supports MCP sampling, the adapter polls `POST /api/auto-reviews/claim` every 3 s, asks the client's model to write the report (`sampling/createMessage`, one request per attempt) and saves it through the normal review endpoint as the attempt's tutor note. It never changes scores. Claims are bearer-only and leased for 3 minutes, so several adapter processes (for example the Hermes gateway and desktop app) never write the same report twice. Hermes allows 30 s per sampling request by default and this one is configured for 60 s (`mcp_servers.leetcode-tutor.sampling.timeout`); raise it further if reports time out. Attempts finished by the tutor through `finish_attempt` are not queued: the tutor writes that note itself with `save_review`.
+**Tutor reports for web submissions.** Saving a result in the web app queues the attempt for a report (in memory in the app process; a restart drops the queue and the learner can ask again from the attempt page). When the connected client supports MCP sampling and `TUTOR_AUTO_REVIEW` is not `0`, the adapter polls `POST /api/auto-reviews/claim` every 3 s, asks the client's model to write the report (`sampling/createMessage`, one request per attempt) and saves it through the normal review endpoint as the attempt's tutor note. It never changes scores. Claims are bearer-only and leased for 3 minutes to coordinate multiple adapter processes. The adapter allows up to 180 seconds for sampling; a client may enforce a shorter limit. Configure that limit in your client if reports time out. Attempts finished by the tutor through `finish_attempt` are not queued: the tutor writes that note itself with `save_review`.
 
 For finish/review writes, generate a unique idempotency key **once per intended operation**, retain it, and resend **identical** arguments/key after uncertain network delivery. Attempt and topic versions are mandatory. A 409 is a conflict, not permission to overwrite: fetch current state and reconcile. The adapter reads back committed attempts/context and returns both `committed` and `current`; a later current version may legitimately be newer than the idempotent committed response. `COMMITTED_READBACK_*` errors mean the write may already exist—do not create a new key. Tool failures return `isError: true` and structured error code/message; tokens are not logged.
 
@@ -51,13 +53,13 @@ For finish/review writes, generate a unique idempotency key **once per intended 
 
 ```sh
 # Private, exclusive-create JSON export of all durable user tables
-npx tsx scripts/export.ts --output /absolute/existing-directory/tutor-export.json
+npm run export -- --output /absolute/existing-directory/tutor-export.json
 
 # Consistent SQLite backup, restricted by the backend to DATA_DIR/backups
 npm run backup
 
-# Separate fresh restore pilot, on a different port (keep original running)
-DATA_DIR=/absolute/new-restore-directory PORT=4318 NO_OPEN=1 ./scripts/start-local.sh
+# Separate fresh restore workspace (POSIX shell; use PowerShell $env:NAME on Windows)
+DATA_DIR=/absolute/new-restore-directory PORT=4318 NO_OPEN=1 npm run local
 DATA_DIR=/absolute/new-restore-directory PORT=4318 npm run restore -- \
   --input /absolute/existing-directory/tutor-export.json --confirm-empty
 ```

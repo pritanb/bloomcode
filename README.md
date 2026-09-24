@@ -1,113 +1,85 @@
 # LeetCode Tutor
 
-A local study workspace built with **React + Vite, Fastify and SQLite/Drizzle**. The study desk shows a small daily plan; the question library keeps the detailed organisation out of the daily workflow.
+A local-first app for planning LeetCode practice, saving solutions and notes, and scheduling reviews. Your progress stays on your computer; an AI tutor is optional.
 
-## Open the app
+**TypeScript · React · Fastify · SQLite / Drizzle · MCP**
 
-Double-click `scripts/LeetCode Tutor.command`, or run:
+[Get started](#get-started) · [Screenshots](#screenshots) · [Engineering](#engineering) · [Documentation](#documentation)
 
-```sh
-cd /Users/pritanbarai/Projects/leetcode-tutor
-./scripts/start-local.sh
-```
+![Study desk with a daily plan, review calendar and recent practice](docs/screenshots/study-desk.jpg)
 
-Open **http://127.0.0.1:4317**. The launcher starts or reuses this app's authenticated local server only when it matches the current build. After rebuilding, an older running server must be stopped before launching again; the launcher reports this instead of opening incompatible frontend/backend versions. It never automatically kills an existing server. It does not install a login item or a background scheduling service.
+## Get started
 
-For a fresh checkout, use Node.js 22 or later:
+Install **Node.js 22.23 or later**, clone or download this repository, then run these commands from its folder:
 
 ```sh
 npm ci
 npm run build
-./scripts/start-local.sh
+npm run local
 ```
 
-## Study workflow
+Open [localhost:4317](http://127.0.0.1:4317). Choose your timezone, daily target and a starter list: Blind 75, NeetCode 150, NeetCode 250, or an empty library.
 
-- **Study desk** — start or resume a question, swap it, snooze it or skip it. The plan refreshes for the local study date when the app is opened, and the open dashboard checks periodically. Missed days don't create catch-up quotas.
-- **Question library** — search questions; combine custom pattern tags, per-question tag difficulty, list membership, completion status, LeetCode difficulty and solve-time bands. Filters stay in the URL.
-- **Attempt workspace** — Python/Java code editing, notes, active timer, pause/resume, automatic draft saving and reload recovery. Mixed practice hides topic and solution metadata. Finish with an outcome, help level, optional confidence and either known or unknown time.
-- **Review scheduling** — accept the recommendation, choose a date or opt out. A manual choice is not silently replaced by a recommendation.
-- **Weekly recap & activity** — counts from saved study dates, supporting attempts and recorded score changes, plus a 28-day practice strip.
-- **Mistake notebook** — optional mistake labels and takeaways on completed attempts, searchable across questions.
-- **Attempt comparison** — explicitly reveal the previous completed solution after finishing, alongside recorded time, help and notes.
-- **Review calendar** — browse seven-day windows and reschedule with the existing manual-date rules.
-- **Tag notebooks** — every tag has recognition cues, pitfalls and notes, with assigned questions appearing automatically. Imported and custom tags use the same notebook and question assignment controls. Mixed practice blocks notebook access; revealing linked questions records exposure.
-- **Topic progress** — the existing decimal 1–5 scores, evidence, explicit score decisions and no-change rationales. Topic proficiency and a question's per-tag 1–10 difficulty are separate concepts.
-- **Settings & data** — choose questions per day, study timezone and daily recommendation policy; download a portable export.
+Solve on LeetCode, then save your result here. The app stores code; it does not execute it or submit answers to LeetCode.
 
-Code is **stored, not executed**. This app is not a LeetCode judge and does not automatically submit answers, scrape paid statements or invoke a model. Submit on LeetCode and record the result here. Finishing an attempt moves topic scores automatically under conservative evidence rules: independent unseen solves can raise a score towards 5, every other result is capped at 3, and misses on known material lower it slightly. The tutor-review API/MCP adapter can still record manual feedback and score decisions, which override the automatic movement. Automatic scoring can be turned off in Settings.
+`npm run local` runs in the background. Use `npm start` for a foreground server you can stop with Ctrl+C. Windows support has not yet been verified end to end.
 
-### Daily recommendation policy
+## Try the demo
 
-Settings offers **All questions** or **one available list only**, mixed/balanced selection or topic-by-topic progression, a starting topic, and completed-question exclusion or a capped refresher allowance. Existing installations keep the original balanced selection until settings are changed. A chosen list is a hard boundary for new assignments, due reviews, refreshers and swaps; an exhausted pool produces a shorter or empty plan, never outside-list filler.
+After installing and building, run `npm run demo` and open [localhost:4331](http://127.0.0.1:4331).
 
-NeetCode lists use the checked-in NeetCode 250 category/question order. Other lists use alphabetical topic order, assigning each question to its first alphabetical non-archived topic tag (or Uncategorized). Progress counts imported completion flags and any saved solved attempt once per question. Failed retries never remove completion credit. An unstarted assignment is still eligible tomorrow; an unfinished draft resumes first, including after restart. Topics advance only after completion, not because all remaining questions are snoozed. You can choose a later starting topic explicitly.
+Explore 150 questions, sample practice history and example tutor feedback. You can edit and save freely: the demo uses a separate temporary database and never opens your personal workspace. Stop with Ctrl+C; restart for fresh sample data. This is a local demo, not a public website.
 
-Refreshers revisit completed questions within the same source limit, preferring Blind 75 / NeetCode 150 membership as a curated core—not measured popularity. Slots are part of the daily count, not extra work. Manual review dates and “no review” choices remain authoritative. Known-topic assignments use the app's targeted-practice evidence path, not unseen mixed evidence; no score is automatically changed.
+## Screenshots
 
-Saving settings does **not** replace an existing plan. **Rebuild unstarted current plan** explicitly applies saved settings while retaining active drafts, completed/skipped assignments, saved attempts, scores and review choices. Preserved work may remain outside a newly selected list or above a reduced daily target. Recommendation settings and assignment kinds are included in export/restore; older snapshots without them retain legacy defaults.
+### Practice workspace
 
-## Data and cutover
+Record results, edit code and keep notes together, with automatic draft saving and light/dark themes.
 
-The default data directory is:
+![Dark-mode practice workspace with Python code and notes](docs/screenshots/practice-workspace.jpg)
 
-```text
-~/Library/Application Support/LeetcodeTutor-dev/
-```
+<details>
+<summary>Question library and tutor feedback</summary>
 
-It contains the SQLite database, private local API credential, source-import artefacts and backups. It is outside the repository. Keep it private. Never put its credential in a prompt, Git commit or MCP configuration.
+**Question library** — filter by topic, difficulty, result and solve time.
 
-**This app is the authoritative study tracker.** Cutover was approved on 2026-09-17 using the imported Sheet history plus current app data; the legacy unresolved timings, URLs and composite topic labels remain preserved as explicit unknowns in the source archive rather than guessed. The Sheet is a read-only historical archive — never write study updates to it, and do not maintain two histories. The `leetcode-tutor` MCP server is registered in the default Hermes profile (see [operations](docs/operations.md#mcp-adapter)).
+![Question library with filters, submission history and review dates](docs/screenshots/question-library.jpg)
 
-[Migration and provenance](docs/migration.md) describes the read-only Sheet mapper, unresolved fields and separately verified NeetCode 150 / NeetCode 250 / Blind 75 manifests.
+**Tutor feedback** — save an optional review alongside a completed attempt.
 
-## Backups and recovery
+![Completed attempt with illustrative tutor feedback](docs/screenshots/tutor-report.jpg)
 
-```sh
-npm run backup
-node --import tsx scripts/export.ts --output /absolute/existing-directory/tutor-export.json
-```
+</details>
 
-The backup command uses SQLite's consistent backup operation and verifies database/foreign-key integrity. Portable restore only accepts an empty target and compares all exported tables after restoration. New exports use snapshot version 3. Versions 1 and 2 still restore: former standalone notebook entries merge into matching pattern tags, with notes and question links preserved. Existing tag difficulty, scores and schedules remain unchanged. See [operations](docs/operations.md) for the isolated restore drill, start/stop procedure and troubleshooting. Backups on this Mac do not replace an encrypted off-device copy.
+## Engineering
 
-## Hermes / MCP
+- **Reliable saves:** autosaved drafts, version checks and repeat-safe submissions protect saved work.
+- **Consistent study records:** daily plans persist across reloads; manual review dates and recorded score decisions stay explicit.
+- **Shared backend:** the React UI and MCP tutor adapter use the same authenticated local API.
+- **Extensible data:** versioned question packs, validated imports, SQLite backups and portable exports.
+- **Focused tests:** critical function tests, a browser save/reload flow and [automated GitHub checks](.github/workflows/checks.yml).
 
-The built stdio adapter is `dist/server/mcp.js`. It exposes six bounded tools for today's plan, question search, attempt context, attempt completion, tutor review and review dates. It calls the same authenticated API as the UI, not the database directly.
+See the [technical design](docs/technical-design.md) for architecture details.
 
-Registration in Hermes is **not performed automatically**. See [operations](docs/operations.md#mcp-adapter) for the command and configuration requirements. The application must be running before an MCP client uses it.
+## Your workspace
 
-## Development and verification
+Data is stored outside the repository:
 
-```sh
-npm run dev         # Fastify, 127.0.0.1:4317
-npm run dev:web     # Vite UI, in another terminal
+- **macOS:** `~/Library/Application Support/LeetCodeTutor/`
+- **Linux:** `~/.local/share/leetcode-tutor/` (or under `XDG_DATA_HOME`)
+- **Windows:** `%LOCALAPPDATA%\LeetCodeTutor\`
 
-npm run typecheck
-npm run lint
-npm test
-npm run test:smoke  # Builds, boots production server and checks real runtime
-npm run test:e2e    # Playwright user journeys against the build
-```
+Existing macOS databases in `LeetcodeTutor-dev` keep their location. Copy [.env.example](.env.example) to `.env` to choose a different data directory or port. The app and integrations must use matching settings.
 
-If Chromium is missing: `npx playwright install chromium`. **Use the lightweight workflow in [Testing policy](docs/testing.md):** critical function tests and one optional browser solve/save/reload flow. Cosmetic changes need an affected-screen check, not the entire suite. Browser tests use an isolated temporary database and port 4318; they refuse to reuse another running server.
+Export your records from Settings, or run `npm run backup` while the app is running. Keep credentials, exports and backups private. See [Operations](docs/operations.md) before updating or restoring.
 
-The Vite development proxy translates legitimate local same-origin requests while preserving the backend's Host, Origin and CSRF checks. The production app serves its own static UI and binds only to loopback. This is a personal single-user application, not a publicly deployable multi-user service.
+## Documentation
 
-## UI
+- [Question packs and extensions](docs/extensions.md) — add your own lists or integrations.
+- [Optional AI tutor](docs/tutor-integration.md) — connect an MCP client; automatic reports require sampling support.
+- [Import existing progress](docs/migration.md) — bring in spreadsheet history.
+- [Contributing](CONTRIBUTING.md) · [Testing](docs/testing.md) · [UI design](docs/design-system.md).
 
-The UI uses the actual shadcn/ui Radix Nova registry components, Tailwind CSS v4, warm off-white surfaces, restrained indigo accents and system sans-serif text. Dark mode uses charcoal surfaces; theme selection follows the system until explicitly changed. See [UI design system](docs/design-system.md) for component and layout conventions.
+## License
 
-## Repository map
-
-| Path | Responsibility |
-|---|---|
-| `src/web/` | React screens, CodeMirror and API client |
-| `src/server/` | Fastify, auth, domain operations and SQLite access |
-| `src/shared/contracts.ts` | Browser/API/MCP data contracts |
-| `src/integrations/` | MCP, Sheet mapping, public-list provenance and CLI helpers |
-| `drizzle/` | Tracked database migration |
-| `scripts/` | Launcher, imports, backup/export/restore |
-| `tests/` | Domain, integration, component, release regression and browser tests |
-| `docs/` | Product/technical design, migration and operations |
-
-Original implementation specifications: [product design](docs/prd.md), [technical design](docs/technical-design.md), [API contract](BUILD-CONTRACT.md).
+A project license has not yet been selected. Third-party notices are in [docs/licenses](docs/licenses/) and the [bundled manifests](src/integrations/manifests/README.md).

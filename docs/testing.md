@@ -1,10 +1,10 @@
 # Testing policy
 
-This is a personal, single-user study app. Keep tests proportional to the risk of losing work or producing incorrect study records—not the number of screens or components.
+This is a local-first, single-user study app. Keep tests proportional to the risk of losing work or producing incorrect study records—not the number of screens or components.
 
 ## Kept
 
-`npm test` runs 36 critical function tests:
+`npm test` runs the critical function suite:
 
 - Saved drafts, timer gaps, optimistic versions and duplicate-safe closeout.
 - Scoring transactions, rollback and pattern-disclosure safeguards.
@@ -13,7 +13,7 @@ This is a personal, single-user study app. Keep tests proportional to the risk o
 - Local API authentication/CSRF, browser mutation ordering and lost-response retry.
 - One real MCP protocol flow and verified-list ingestion.
 
-`npm run test:e2e` runs one browser flow: open a result report, enter notes and required solution code, autosave, reload, enter LeetCode solve time, and verify the saved result. It uses a disposable database. Build first if application code has changed.
+`npm run test:e2e` includes two startup compatibility checks and one browser practice flow: create a fresh workspace, open a result report, enter notes and required solution code, autosave, reload, enter LeetCode solve time, and verify the saved result. It uses a disposable database. Build first if application code has changed.
 
 The reduced suites were exercised in 6.87 seconds (functions) and 5.5 seconds (browser, including startup) on this Mac. These are observations, not performance guarantees.
 

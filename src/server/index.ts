@@ -1,7 +1,7 @@
-import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolveDataDir } from '../../scripts/runtime.mjs';
+import { join } from 'node:path';
 import { createApp } from './app.js';
-const dataDir=resolve(process.env.DATA_DIR??join(homedir(),'Library','Application Support','LeetcodeTutor-dev'));
+const dataDir=resolveDataDir();
 const port=Number(process.env.PORT??4317);
 if(!Number.isInteger(port)||port<0||port>65535)throw new Error('PORT must be an integer between 0 and 65535');
 const app=await createApp({dbPath:join(dataDir,'leetcode.sqlite'),serveStatic:true});

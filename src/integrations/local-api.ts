@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { resolveDataDir } from '../../scripts/runtime.mjs';
 import { join } from 'node:path';
-export const defaultDataDir = () => process.env.DATA_DIR || join(homedir(), 'Library/Application Support/LeetcodeTutor-dev');
+export const defaultDataDir = resolveDataDir;
 export class ApiError extends Error {
   constructor(public code: string, message: string, public status = 0) { super(message); }
 }

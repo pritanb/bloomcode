@@ -1,11 +1,11 @@
 import { access, mkdir, open, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
-import { homedir } from 'node:os';
+import { resolveDataDir } from './runtime.mjs';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
-const dataDir=process.env.DATA_DIR||join(homedir(),'Library/Application Support/LeetcodeTutor-dev');
+const dataDir=resolveDataDir();
 const port=process.env.PORT||'4317';
 const base=`http://127.0.0.1:${port}`;
 async function ready() {

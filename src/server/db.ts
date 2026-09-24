@@ -14,6 +14,6 @@ export function openDb(path:string) {
   sqlite.pragma('journal_mode = WAL'); sqlite.pragma('foreign_keys = ON'); sqlite.pragma('busy_timeout = 5000');
   const orm=drizzle(sqlite,{schema});
   migrate(orm,{migrationsFolder:fileURLToPath(new URL('../../drizzle/',import.meta.url))});
-  if(!orm.select().from(schema.settings).get()) orm.insert(schema.settings).values({id:'singleton',data:{timezone:'Australia/Sydney',budgetMinutes:40,primaryCount:1,optionalCount:1,dataMode:'isolated-pilot',lastBackupAt:null}}).run();
+  if(!orm.select().from(schema.settings).get()) orm.insert(schema.settings).values({id:'singleton',data:{onboardingComplete:false,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',budgetMinutes:40,primaryCount:1,optionalCount:1,dataMode:'local',lastBackupAt:null}}).run();
   return {sqlite,orm};
 }
