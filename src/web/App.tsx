@@ -1,4 +1,5 @@
 
+import { DesktopTitleBar, isDesktopMac } from './DesktopTitleBar';
 import { SetupGate } from './Welcome';
 import { lazy, Suspense, useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
@@ -38,10 +39,15 @@ const navigation = [
 ];
 
 export function App() {
-  return <SetupGate><Workspace /></SetupGate>;
-}
-function Workspace() {
   const [collapsed, setCollapsed] = useState(false);
+  const focused = useLocation().pathname.startsWith('/attempts/');
+  return <div className={isDesktopMac ? 'desktop-app' : undefined}>
+    <SetupGate chrome={hasWorkspace => <DesktopTitleBar collapsed={collapsed} sidebarAvailable={hasWorkspace && !focused} toggleSidebar={() => setCollapsed(value => !value)} />}>
+      <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed(value => !value)} />
+    </SetupGate>
+  </div>;
+}
+function Workspace({ collapsed, toggleSidebar }: { collapsed: boolean; toggleSidebar: () => void }) {
   const focused = useLocation().pathname.startsWith('/attempts/');
   if (focused) {
     return (
@@ -84,12 +90,12 @@ function Workspace() {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-footer">
+        {!isDesktopMac && <div className="sidebar-footer">
           <ThemeSwitch />
-        <Button variant="ghost" size="icon" className="sidebar-toggle" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="sidebar-navigation" onClick={() => setCollapsed(value => !value)}>
+        <Button variant="ghost" size="icon" className="sidebar-toggle" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="sidebar-navigation" onClick={toggleSidebar}>
           <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
         </Button>
-        </div>
+        </div>}
       </aside>
       <main id="main" tabIndex={-1}>
         <Routes>

@@ -1,0 +1,28 @@
+name: Build desktop app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS Apple silicon
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run electron:make -- --arch=arm64
+      - name: Upload unsigned app archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: leetcode-tutor-macos-arm64
+          path: dist/electron/make/zip/darwin/arm64/*.zip
+          if-no-files-found: error
+          retention-days: 14

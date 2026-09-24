@@ -2,15 +2,25 @@
 
 A local-first app for planning LeetCode practice, saving solutions and notes, and scheduling reviews. Your progress stays on your computer; an AI tutor is optional.
 
-**TypeScript · React · Fastify · SQLite / Drizzle · MCP**
+**Electron · TypeScript · React · Fastify · SQLite / Drizzle · MCP**
 
 [Get started](#get-started) · [Screenshots](#screenshots) · [Engineering](#engineering) · [Documentation](#documentation)
 
-![Study desk with a daily plan, review calendar and recent practice](docs/screenshots/study-desk.jpg)
+![Study desk with a daily plan, review calendar and recent practice](docs/screenshots/desktop-study-desk.png)
 
 ## Get started
 
-Install **Node.js 22.23 or later**, clone or download this repository, then run these commands from its folder:
+**[Download for Mac — Apple silicon](https://github.com/pritanb/leetcode-tutor/releases/latest)**
+
+Unzip the download, move **LeetCode Tutor.app** to Applications, and open it. Choose your timezone, daily target and a starter list. Node.js is not needed for the desktop app.
+
+This early desktop release is not Developer ID signed or notarized, so macOS may block the download. See [installation instructions](docs/desktop.md) for details. Intel Macs, Windows and Linux desktop builds are not yet supported.
+
+Solve on LeetCode, then save your result here. The app stores code; it does not execute it or submit answers to LeetCode.
+
+### Run from source
+
+Install **Node.js 22.23 or later**, clone this repository, then run:
 
 ```sh
 npm ci
@@ -18,11 +28,7 @@ npm run build
 npm run local
 ```
 
-Open [localhost:4317](http://127.0.0.1:4317). Choose your timezone, daily target and a starter list: Blind 75, NeetCode 150, NeetCode 250, or an empty library.
-
-Solve on LeetCode, then save your result here. The app stores code; it does not execute it or submit answers to LeetCode.
-
-`npm run local` runs in the background. Use `npm start` for a foreground server you can stop with Ctrl+C. Windows support has not yet been verified end to end.
+Open [localhost:4317](http://127.0.0.1:4317). `npm run local` starts a background server; use `npm start` for a foreground server. For desktop development, see [building the Electron app](docs/desktop.md#build-from-source).
 
 ## Try the demo
 
@@ -38,23 +44,19 @@ Record results, edit code and keep notes together, with automatic draft saving a
 
 ![Dark-mode practice workspace with Python code and notes](docs/screenshots/practice-workspace.jpg)
 
-<details>
-<summary>Question library and tutor feedback</summary>
+### Practice history
 
-**Question library** — filter by topic, difficulty, result and solve time.
+Compare your attempt notes with tutor feedback side by side.
 
-![Question library with filters, submission history and review dates](docs/screenshots/question-library.jpg)
+![Practice history with attempt notes and illustrative tutor feedback in two columns](docs/screenshots/practice-history.png)
 
-**Tutor feedback** — save an optional review alongside a completed attempt.
-
-![Completed attempt with illustrative tutor feedback](docs/screenshots/tutor-report.jpg)
-
-</details>
+Screenshots use sample records. Tutor feedback is illustrative; connecting an AI tutor is optional.
 
 ## Engineering
 
 - **Reliable saves:** autosaved drafts, version checks and repeat-safe submissions protect saved work.
 - **Consistent study records:** daily plans persist across reloads; manual review dates and recorded score decisions stay explicit.
+- **Desktop lifecycle:** a bundled local server starts with Electron, shuts down on quit, and prevents concurrent access to the same workspace.
 - **Shared backend:** the React UI and MCP tutor adapter use the same authenticated local API.
 - **Extensible data:** versioned question packs, validated imports, SQLite backups and portable exports.
 - **Focused tests:** critical function tests, a browser save/reload flow and [automated GitHub checks](.github/workflows/checks.yml).
@@ -76,7 +78,7 @@ Export your records from Settings, or run `npm run backup` while the app is runn
 ## Documentation
 
 - [Question packs and extensions](docs/extensions.md) — add your own lists or integrations.
-- [Optional AI tutor](docs/tutor-integration.md) — connect an MCP client; automatic reports require sampling support.
+- [Optional AI tutor](docs/tutor-integration.md) — connect an MCP client using the separate Node.js adapter; automatic reports require sampling support.
 - [Import existing progress](docs/migration.md) — bring in spreadsheet history.
 - [Contributing](CONTRIBUTING.md) · [Testing](docs/testing.md) · [UI design](docs/design-system.md).
 

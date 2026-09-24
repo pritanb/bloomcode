@@ -703,24 +703,19 @@ function AttemptHistory({ items }: { items: Attempt[] }) {
               <Badge variant="secondary" key={label}>{enumLabel(label)}</Badge>
             ))}
           </div>
-          {a.notes && (
-            <>
-              <p className="small muted">Attempt notes</p>
-              <p className="preserve">{a.notes}</p>
-            </>
-          )}
-          {a.takeaway && <p className="preserve"><strong>Takeaway: </strong>{a.takeaway}</p>}
-          {a.feedback ? (
-            <div className="feedback preserve">
-              <strong className="small">Tutor note</strong>
-              <br />
-              {a.feedback}
-            </div>
-          ) : (
-            <p className="small muted">
-              {a.status === 'completed' ? 'No tutor note for this attempt.' : 'Attempt in progress.'}
-            </p>
-          )}
+          <div className="attempt-history-columns">
+            <section className="attempt-history-notes" aria-label="Attempt notes">
+              <h4>Attempt notes</h4>
+              {a.notes ? <p className="preserve">{a.notes}</p> : <p className="muted">No notes recorded.</p>}
+              {a.takeaway && <div className="attempt-history-takeaway"><h4>Takeaway</h4><p className="preserve">{a.takeaway}</p></div>}
+            </section>
+            <section className="attempt-history-feedback" aria-label="Tutor note">
+              <h4>Tutor note</h4>
+              {a.feedback ? <p className="preserve">{a.feedback}</p> : <p className="muted">
+                {a.status === 'completed' ? 'No tutor note for this attempt.' : 'Attempt in progress.'}
+              </p>}
+            </section>
+          </div>
         </li>
       ))}
     </ol>

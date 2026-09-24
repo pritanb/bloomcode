@@ -8,14 +8,14 @@ import { SelectField, SelectOption } from '@/components/select-field';
 import { api } from './api';
 import { ErrorNotice, Field, Loading, PageTitle, useAction } from './ui';
 
-export function SetupGate({ children }: { children: ReactNode }) {
+export function SetupGate({ children, chrome }: { children: ReactNode; chrome?: (hasWorkspace: boolean) => ReactNode }) {
   const setup = useQuery({ queryKey: ['setup'], queryFn: () => api.get<{ required: boolean; demo?: boolean }>('/setup') });
-  if (setup.isPending) return <Loading />;
-  if (setup.isError) return <ErrorNotice error={setup.error} retry={() => void setup.refetch()} />;
-  return setup.data.required ? <Welcome /> : <>
+  if (setup.isPending) return <>{chrome?.(false)}<Loading /></>;
+  if (setup.isError) return <>{chrome?.(false)}<ErrorNotice error={setup.error} retry={() => void setup.refetch()} /></>;
+  return <>{chrome?.(!setup.data.required)}{setup.data.required ? <Welcome /> : <>
     {setup.data.demo && <div className="demo-banner" role="status"><strong>Demo workspace</strong> · Sample data. Changes are discarded when the demo stops.</div>}
     {children}
-  </>;
+  </>}</>;
 }
 
 function Welcome() {

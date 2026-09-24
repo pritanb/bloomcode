@@ -21,7 +21,11 @@
     "import:pack": "node --env-file-if-exists=.env --import tsx scripts/import-pack.ts",
     "import:lists": "node --env-file-if-exists=.env --import tsx scripts/import-lists.ts",
     "export": "node --env-file-if-exists=.env --import tsx scripts/export.ts",
-    "demo": "node --import tsx scripts/demo.mjs"
+    "demo": "node --import tsx scripts/demo.mjs",
+    "desktop:build": "npm run electron:package",
+    "electron:dev": "npm run build && node scripts/electron.mjs dev",
+    "electron:package": "npm run build && node scripts/electron.mjs package",
+    "electron:make": "npm run build && node scripts/electron.mjs make"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",

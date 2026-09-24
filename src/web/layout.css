@@ -397,3 +397,27 @@
 .score-movements li { padding: .5rem 0; border-bottom: 1px solid var(--border); gap: 1rem; }
 .score-movements li:last-child { border: 0; }
 .score-movements strong { font-variant-numeric: tabular-nums; }
+
+/* The desktop toolbar shares one row with macOS window controls. */
+.desktop-app { padding-top: 52px; }
+.desktop-titlebar { position: fixed; inset: 0 0 auto; z-index: 40; height: 52px; display: flex; align-items: center; padding-left: 96px; border-bottom: 1px solid var(--sidebar-border); background: var(--sidebar); color: var(--muted-foreground); -webkit-app-region: drag; user-select: none; }
+.desktop-window-actions { display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag; }
+.desktop-window-actions button { width: 32px; height: 32px; border-radius: 6px; }
+.desktop-window-actions .icon { width: 18px; height: 18px; }
+.desktop-app .app { min-height: calc(100vh - 52px); }
+.desktop-app .sidebar { top: 52px; height: calc(100vh - 52px); }
+
+.desktop-theme-action { margin-left: auto; padding-right: 16px; -webkit-app-region: no-drag; }
+
+/* Keep each attempt's reflection and feedback together without nested cards. */
+.attempt-history > li { container: attempt-history / inline-size; }
+.attempt-history-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; margin-top: 1.25rem; }
+.attempt-history-columns section { min-width: 0; line-height: 1.65; }
+.attempt-history-columns h4 { margin: 0 0 .625rem; font-size: .8125rem; font-weight: 600; color: var(--muted-foreground); }
+.attempt-history-columns p { margin: 0; }
+.attempt-history-feedback { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+.attempt-history-takeaway { margin-top: 1.5rem; }
+@container attempt-history (min-width: 680px) {
+  .attempt-history-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
+  .attempt-history-feedback { border-top: 0; padding-top: 0; border-left: 1px solid var(--border); padding-left: 2rem; }
+}
