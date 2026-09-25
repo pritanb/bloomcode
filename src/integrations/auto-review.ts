@@ -3,12 +3,11 @@ import { analyzeNext } from './learning-insights.js';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Attempt, Topic } from '../shared/contracts.js';
 import { ApiError, type LocalApi } from './local-api.js';
+import { samplingGenerate, type Api, type Generate } from './generate.js';
 
-// Writes the tutor report for attempts submitted in the web app. The adapter
-// has no model of its own, so it asks the connected MCP client (Hermes) to
-// generate the text via sampling, then saves it as the attempt's tutor note.
+// Writes the tutor report for attempts submitted in the web app. The model is
+// supplied by the caller: the MCP client via sampling, or the app's Codex worker.
 type Context = { attempt: Attempt; history: Attempt[]; topics: Topic[] };
-type Sample = (prompt: string) => Promise<string>;
 const POLL_MS = 3000;
 export const reviewSystemPrompt = `You are a supportive LeetCode interview tutor reviewing one finished practice attempt.
 Write a short report the learner reads straight after submitting. Plain text only: no Markdown headings, bold, tables or code fences.
@@ -37,12 +36,12 @@ export function reviewPrompt({ attempt: a, history }: Context): string {
   ].join('\n\n');
 }
 /** Claim one queued attempt, generate its report and save it. Returns whether a job was found. */
-export async function reviewNext(api: LocalApi, sample: Sample): Promise<boolean> {
+export async function reviewNext(api: Api, generate: Generate): Promise<boolean> {
   const { job } = (await api.request('POST', '/api/auto-reviews/claim', {})) as { job: { attemptId: string; claimId: string } | null };
   if (!job) return false;
   try {
     const context = (await api.request('GET', `/api/attempts/${job.attemptId}/context`)) as Context;
-    const feedback = (await sample(reviewPrompt(context))).trim();
+    const feedback = (await generate({ kind: 'review', system: reviewSystemPrompt, user: reviewPrompt(context), maxTokens: 1200, timeoutMs: 180_000 })).text.trim();
     if (!feedback) throw new ApiError('EMPTY_REVIEW', 'The tutor returned an empty report.');
     // Re-read the version: the learner may have saved a reflection meanwhile.
     const current = (await api.request('GET', `/api/attempts/${job.attemptId}`)) as Attempt;
@@ -54,36 +53,32 @@ export async function reviewNext(api: LocalApi, sample: Sample): Promise<boolean
   }
   return true;
 }
-export function samplerFor(server: Server): Sample {
-  return async prompt => {
-    const result = await server.createMessage(
-      {
-        systemPrompt: reviewSystemPrompt,
-        messages: [{ role: 'user', content: { type: 'text', text: prompt } }],
-        maxTokens: 1200,
-        includeContext: 'none',
-      },
-      { timeout: 180_000 },
-    );
-    const blocks = Array.isArray(result.content) ? result.content : [result.content];
-    return blocks.map(b => (b.type === 'text' ? b.text : '')).join('');
-  };
-}
-/** Poll for queued reports while the client supports sampling. Returns a stop function. */
-export function startAutoReviews(server: Server, api: LocalApi): () => void {
+/** Poll for queued tutor work until stopped. Returns a stop function. */
+export function startTutorLoop(api: Api, generate: Generate, options: { reportBudgetMs?: number; sequential?: boolean; ready?: () => boolean | Promise<boolean> } = {}): () => void {
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
-  const sample = samplerFor(server);
+  let topicTimer: NodeJS.Timeout | undefined;
+  const ready = options.ready ?? (() => true);
   const tick = async () => {
     let found = false;
-    try { found = await reviewNext(api, sample); if(!found)found=await analyzeNext(api,server); } catch { /* app not running yet; keep polling */ }
+    try {
+      if (await ready()) {
+        found = await reviewNext(api, generate) || await analyzeNext(api, generate, options.reportBudgetMs);
+        // A single runner (Codex) takes topic work in the same queue, one job at a time.
+        if (!found && options.sequential) found = await analyzeTopicsNext(api, generate);
+      }
+    } catch { /* app not running yet; keep polling */ }
     if (!stopped) timer = setTimeout(() => void tick(), found ? 0 : POLL_MS);
   };
-  let topicTimer:NodeJS.Timeout|undefined;
-  const topicTick=async()=>{
-    try{await analyzeTopicsNext(api,server);}catch{/* Independent topic requests retry on the next poll. */}
-    if(!stopped)topicTimer=setTimeout(()=>void topicTick(),POLL_MS);
+  const topicTick = async () => {
+    try { await analyzeTopicsNext(api, generate); } catch { /* Independent topic requests retry on the next poll. */ }
+    if (!stopped) topicTimer = setTimeout(() => void topicTick(), POLL_MS);
   };
-  void tick();void topicTick();
-  return () => { stopped = true; clearTimeout(timer);clearTimeout(topicTimer); };
+  void tick();
+  if (!options.sequential) void topicTick();
+  return () => { stopped = true; clearTimeout(timer); clearTimeout(topicTimer); };
+}
+/** MCP sampling: the connected client (Hermes) runs the model. */
+export function startAutoReviews(server: Server, api: LocalApi): () => void {
+  return startTutorLoop(api, samplingGenerate(server));
 }

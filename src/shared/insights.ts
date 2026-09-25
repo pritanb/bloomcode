@@ -3,6 +3,7 @@ import type { TopicPriority } from './topic-analysis.js';
 export { topicPriorityInput, TOPIC_READINESS_TARGET, TOPIC_PRIORITY_RULES } from './topic-analysis.js';
 export type { TopicPriority } from './topic-analysis.js';
 import type { McpConnectionStatus } from './mcp-connection.js';
+import type { TutorRunnerStatus } from './tutor.js';
 import { z } from 'zod';
 export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 export const EMBEDDING_REVISION = '751bff37182d3f1213fa05d7196b954e230abad9';
@@ -55,6 +56,7 @@ export interface InsightReport {
 }
 export interface InsightStatus {
   connection?: McpConnectionStatus;
+  runner?: TutorRunnerStatus;
   enabled: boolean; hidden: boolean; total: number; analyzed: number; pending: number; failed: number;
   worker?: { lastContactAt: string | null; activeKind: 'attempt' | 'report' | null; startedAt: string | null; expiresAt: string | null; timedOut: boolean };
   tutorConnected: boolean; embeddingStatus: 'idle' | 'loading' | 'ready' | 'failed'; error: string | null;

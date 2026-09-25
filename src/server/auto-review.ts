@@ -6,12 +6,12 @@ import type { AttemptRecord } from './attempts.js';
 import { ApiError, conflict } from './errors.js';
 import type { Store } from './store.js';
 
-// Queue of finished attempts waiting for a tutor-written report. The MCP
-// adapter Hermes keeps connected claims each one and asks Hermes's model to
-// write it (MCP sampling), then saves it through the normal review endpoint.
+// Queue of finished attempts waiting for a tutor-written report. The active
+// tutor provider (the app's Codex worker, or the MCP adapter via sampling)
+// claims each one, then saves it through the normal review endpoint.
 // The queue is deliberately in memory: it is transient work, not study data,
 // and a restart only means the learner asks for the report again.
-const LEASE_MS=3*60_000;       // a claim older than this is handed out again
+const LEASE_MS=4*60_000;       // a claim older than this is handed out again
 const TUTOR_SEEN_MS=30_000;    // a tutor that polled this recently counts as connected
 type Job={status:'pending'|'generating'|'failed';claimId:string|null;claimedAt:number;error:string|null};
 export class AutoReviewQueue {
@@ -49,7 +49,7 @@ export class AutoReviewQueue {
  }
 }
 const bearerOnly=(req:FastifyRequest)=>{if(!req.headers.authorization)throw new ApiError(403,'BEARER_REQUIRED','Only the tutor adapter may claim reviews');};
-export function registerAutoReview(app:FastifyInstance,s:Store,queue:AutoReviewQueue){
+export function registerAutoReview(app:FastifyInstance,s:Store,queue:AutoReviewQueue,mayClaim:(req:FastifyRequest)=>boolean=()=>true){
  app.get<{Params:{id:string}}>('/api/attempts/:id/auto-review',req=>queue.status(s.get<AttemptRecord>('attempts',req.params.id)));
  app.post<{Params:{id:string}}>('/api/attempts/:id/auto-review',req=>{
   const a=s.get<AttemptRecord>('attempts',req.params.id);
@@ -57,7 +57,7 @@ export function registerAutoReview(app:FastifyInstance,s:Store,queue:AutoReviewQ
   if(!a.feedback)queue.request(a.id);
   return queue.status(a);
  });
- app.post('/api/auto-reviews/claim',req=>{bearerOnly(req);return {job:queue.claim(s)};});
+ app.post('/api/auto-reviews/claim',req=>{bearerOnly(req);return {job:mayClaim(req)?queue.claim(s):null};});
  app.post<{Params:{id:string}}>('/api/auto-reviews/:id/fail',req=>{
   bearerOnly(req);
   const b=z.object({claimId:z.string().min(1).max(100),message:z.string().min(1).max(500)}).strict().parse(req.body);

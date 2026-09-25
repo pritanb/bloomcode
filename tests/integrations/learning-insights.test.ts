@@ -3,6 +3,7 @@ import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ApiError, type LocalApi } from '../../src/integrations/local-api.js';
 import { selectFocusTopics } from '../../src/integrations/topic-analysis.js';
 import { analyzeNext } from '../../src/integrations/learning-insights.js';
+import { samplingGenerate } from '../../src/integrations/generate.js';
 import { conciseReportResult, reportResult } from '../../src/shared/insights.js';
 const finding={title:'Check your search bounds',kind:'focus',action:'Explain why both bounds contain the answer before searching.',explanation:'Two notes describe difficulty choosing the upper bound.',evidenceIds:['e1'],caveat:'Self-reported evidence.',suggestions:[]};
 const valid={findings:[finding],limitation:'Retrieved evidence only.'};
@@ -13,7 +14,7 @@ function harness(outputs:unknown[], failure?:ApiError) {
     return {ok:true};
   });
   const createMessage=vi.fn(async()=>({model:'test',content:{type:'text',text:JSON.stringify(outputs.shift())}}));
-  return {request,createMessage,run:()=>analyzeNext({request} as unknown as LocalApi,{createMessage} as unknown as Server)};
+  return {request,createMessage,run:()=>analyzeNext({request} as unknown as LocalApi,samplingGenerate({createMessage} as unknown as Server))};
 }
 it('enforces writing limits without breaking legacy saved reports',()=>{
   for(const [field,words] of [['title',7],['action',26],['explanation',36]] as const){
@@ -42,7 +43,7 @@ it('corrects invalid citations but does not retry stale claims',async()=>{
 it('selects exactly three topics from all 18 in one request, preserving AI order',async()=>{
   const topics=Array.from({length:18},(_,i)=>({id:`t${i}`,name:`Topic ${i}`,score:2,provisional:true,lastReviewed:null,recentAttempts:[],scoreMovements:[]}));
   const createMessage=vi.fn(async()=>({content:{type:'text',text:'{"topicNumbers":[8,2,15]}'}}));
-  expect(await selectFocusTopics({createMessage} as unknown as Server,topics)).toEqual(['t7','t1','t14']);
+  expect(await selectFocusTopics(samplingGenerate({createMessage} as unknown as Server),topics)).toEqual(['t7','t1','t14']);
   expect(createMessage).toHaveBeenCalledTimes(1);
   expect(JSON.stringify(createMessage.mock.calls)).toContain('Topic 17');
 });
@@ -50,7 +51,7 @@ it('rejects incomplete, duplicate or unknown selections without additional AI re
   const topics=Array.from({length:4},(_,i)=>({id:`t${i}`,name:`Topic ${i}`,score:null,provisional:true,lastReviewed:null,recentAttempts:[],scoreMovements:[]}));
   for(const topicNumbers of [[1],[1,1,2],[1,2,5]]){
     const createMessage=vi.fn(async()=>({content:{type:'text',text:JSON.stringify({topicNumbers})}}));
-    await expect(selectFocusTopics({createMessage} as unknown as Server,topics)).rejects.toThrow();
+    await expect(selectFocusTopics(samplingGenerate({createMessage} as unknown as Server),topics)).rejects.toThrow();
     expect(createMessage).toHaveBeenCalledTimes(1);
   }
 });

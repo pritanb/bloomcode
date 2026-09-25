@@ -31,9 +31,9 @@ test('a web submission queues a report that one claim generates, and a failure c
   let prompt = '';
   expect(await reviewNext(api, async () => { throw new Error('Sampling timed out'); })).toBe(true);
   expect(await status()).toMatchObject({ status: 'failed', error: 'Sampling timed out', tutorConnected: true });
-  expect(await reviewNext(api, async () => 'never asked')).toBe(false); // failed jobs wait for the learner
+  expect(await reviewNext(api, async () => ({ text: 'never asked', model: null }))).toBe(false); // failed jobs wait for the learner
   await api.request('POST', `/api/attempts/${attemptId}/auto-review`, {});
-  expect(await reviewNext(api, async text => { prompt = text; return 'Summary:\nClean one-pass hash map.'; })).toBe(true);
+  expect(await reviewNext(api, async request => { prompt = request.user; return { text: 'Summary:\nClean one-pass hash map.', model: null }; })).toBe(true);
   expect(prompt).toContain('Two Sum');
   expect(prompt).toContain('def two_sum');
   expect((await status()).status).toBe('done');
@@ -43,7 +43,7 @@ test('a finish without the web flag (the tutor finishing in chat) queues nothing
   const { api, finish, status } = await backend();
   await finish(false);
   expect((await status()).status).toBe('none');
-  expect(await reviewNext(api, async () => 'unused')).toBe(false);
+  expect(await reviewNext(api, async () => ({ text: 'unused', model: null }))).toBe(false);
 });
 test('the browser session cannot claim review work', async () => {
   const { url } = await backend();

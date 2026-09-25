@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { TutorRunnerStatus } from './tutor.js';
 import type { Topic } from './contracts.js';
 import type { McpConnectionStatus } from './mcp-connection.js';
 const id=z.string().min(1).max(200);
@@ -23,7 +24,7 @@ export type TopicAnalysisRecord=z.infer<typeof topicAnalysisRecordSchema>;
 export type AnalysisTopic=Pick<Topic,'id'|'name'|'score'|'provisional'|'lastReviewed'>;
 export interface TopicAnalysisStatus {
   enabled:boolean;hidden:boolean;topics:AnalysisTopic[];report:TopicAnalysisRecord['report'];stale:boolean;
-  status:TopicAnalysisRecord['status'];connection?:McpConnectionStatus;
+  status:TopicAnalysisRecord['status'];connection?:McpConnectionStatus;runner?:TutorRunnerStatus;
 }
 
 export interface TopicAnalysisContext extends AnalysisTopic {

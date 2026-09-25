@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Settings as SettingsData, Snapshot, Dashboard, DailyPlan } from '../shared/contracts';
 import { defaultRecommendations, type RecommendationOptions, type RecommendationSettings } from '../shared/recommendations';
 import { api } from './api';
+import { TutorSettings } from './TutorSettings';
 import {
   Icon,
   SectionTitle,
@@ -186,6 +187,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
         <ErrorNotice error={rebuild.error} />
         {rebuild.isSuccess&&<p className="positive" role="status">Current plan rebuilt using saved settings.</p>}
       </Card>
+      <TutorSettings />
       <Card className="panel">
         <SectionTitle icon={Database}>Your data</SectionTitle>
         <dl className="data-status">

@@ -10,13 +10,15 @@ export function McpNotifications() {
   const lastState = useRef<McpConnectionStatus['state'] | null>(null);
   const [visible, setVisible] = useState(false);
   const connection = query.isError ? undefined : query.data;
+  // Only the sampling provider depends on an MCP client staying connected.
+  const sampling = !connection?.provider || connection.provider === 'mcp-sampling';
   useEffect(() => {
     if (!connection) return; // An unavailable app server is not evidence of an MCP disconnect.
     if (connection.state === 'disconnected' && lastState.current !== 'disconnected') setVisible(true);
     if (connection.state === 'connected') setVisible(false);
     lastState.current = connection.state;
   }, [connection]);
-  if (!visible) return null;
+  if (!visible || !sampling) return null;
   return <aside className="connection-toast" role="alert" aria-label="MCP connection lost">
     <Unplug className="icon" aria-hidden="true" />
     <div><strong>MCP tutor disconnected</strong><p>Reconnect LeetCode Tutor in your tutor app.</p></div>

@@ -24,6 +24,26 @@ Client configuration envelopes differ; use your client's MCP settings. On Window
 
 The example disables automatic reports. Ask your tutor to review a finished attempt through `get_attempt_context` and `save_review`. The tool schema returned by `tools/list` describes required versions and idempotency keys.
 
+## Choose who runs the tutor
+
+**Settings → AI tutor** chooses who generates tutor reports, Learning Insights and topic picks:
+
+- **Codex (your ChatGPT plan)**: the app runs the signed-in Codex CLI on this Mac for each job. No MCP client needs to be open, and a rebuild takes effect immediately. **Test Codex** checks the setup.
+- **Connected MCP client (Hermes)**: the MCP adapter asks the client to run the model through MCP sampling, as described below. Existing workspaces default to this setting.
+- **Off**: jobs stay queued and saved work is unaffected.
+
+Only the selected provider receives work, so switching never processes a job twice. The MCP tools in the previous section work with every setting.
+
+### Codex
+
+- **Detection**: the app looks for the Codex CLI bundled in ChatGPT.app first, then `~/.local/bin`, `/opt/homebrew/bin` and `/usr/local/bin`. Older standalone CLIs may reject newer models for ChatGPT accounts. You can set the path under **Advanced**; it must end in `codex`.
+- **Isolation**: each job runs in an empty temporary directory with a read-only sandbox, with the user configuration ignored (no MCP servers), with shell, browser and other tools disabled, and with no session files. The prompt is sent on stdin. Codex's own instructions are replaced with a short generator instruction, which leaves about 8k tokens of fixed overhead per call. Only the final message is used, and it passes the same validation as sampling results.
+- **Defaults**: model `gpt-6-luna`. Reasoning effort is high for tutor reports, attempt analysis and topic picks, and xhigh for the learning report. All of these can be changed under **Advanced**.
+- **Usage**: usage counts toward your ChatGPT plan limits. After a usage-limit, sign-in, missing-install or unavailable-model error, the app pauses and shows the reason instead of failing every queued job. Saving the settings or a successful test resumes work.
+- **Privacy**: the same saved code, notes and metadata go to OpenAI as with the Hermes `openai-codex` provider.
+
+Settings are stored in `tutor-settings.json` beside the database. This machine-specific file is not part of portable exports.
+
 ## Automatic reports
 
 For a client that advertises MCP sampling, omit `TUTOR_AUTO_REVIEW` or set it to `1` to enable polling for requested reports. Existing sampling-capable integrations retain their behavior. `TUTOR_AUTO_REVIEW=0` disables background sampling without disabling the tools. Clients without sampling never start the background reviewer.

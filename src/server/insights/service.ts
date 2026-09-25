@@ -14,6 +14,8 @@ export function source(a: AttemptRecord) {
 }
 export const fingerprint = (a: AttemptRecord) => hash({version:ANALYSIS_VERSION,...source(a),language:a.language,evidence:a.evidence,finishedAt:a.finishedAt,problem:a.problem,feedback:a.feedback,activeSeconds:a.activeSeconds});
 const modelKey = `${EMBEDDING_MODEL}@${EMBEDDING_REVISION}:q8:mean`;
+// Reports may take two long calls (Codex at high effort), so they get a longer lease.
+export const leaseMs = (job:{attemptId:string|null}) => job.attemptId ? 240_000 : 600_000;
 const freshJob = (id:string,attemptId:string|null,fingerprint:string):InsightJob => ({id,kind:'job',attemptId,fingerprint,status:'pending',claimId:null,claimedAt:0,error:null,model:null,durationMs:0,limitation:'',evidenceIds:[],questionIds:[]});
 export class Insights {
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
@@ -117,7 +119,7 @@ export class Insights {
     const reportJob=this.jobs().find(j=>j.id==='report-job');
     if(reportJob?.status==='running'&&reportJob.fingerprint!==this.corpusFingerprint())this.put(freshJob('report-job',null,this.corpusFingerprint()));
     const now=this.clock().getTime(),jobs=this.jobs();
-    if(jobs.some(j=>j.status==='running'&&now-j.claimedAt<240_000))return null;
+    if(jobs.some(j=>j.status==='running'&&now-j.claimedAt<leaseMs(j)))return null;
     const attempts=this.attempts(),pending=jobs.filter(j=>j.attemptId&&(j.status==='pending'||j.status==='running')).sort((a,b)=>attempts.findIndex(x=>x.id===a.attemptId)-attempts.findIndex(x=>x.id===b.attemptId));
     const coverage=this.coverage(),report=this.latestReport(),fp=this.corpusFingerprint();
     const oldReportJob=jobs.find(j=>j.id==='report-job');
@@ -203,10 +205,10 @@ export class Insights {
     const worker={lastContactAt:Number.isFinite(this.tutorSeenAt)?new Date(this.tutorSeenAt).toISOString():null,
       activeKind:running?(running.attemptId?'attempt' as const:'report' as const):null,
       startedAt:running?new Date(running.claimedAt).toISOString():null,
-      expiresAt:running?new Date(running.claimedAt+240_000).toISOString():null,
-      timedOut:!!running&&now-running.claimedAt>=240_000};
+      expiresAt:running?new Date(running.claimedAt+leaseMs(running)).toISOString():null,
+      timedOut:!!running&&now-running.claimedAt>=leaseMs(running)};
     const reportStatus:InsightStatus['reportStatus']=hidden||!this.enabled()?'idle'
-      :reportJob?.fingerprint===currentFingerprint&&reportJob.status==='running'&&this.clock().getTime()-reportJob.claimedAt<240_000?'generating'
+      :reportJob?.fingerprint===currentFingerprint&&reportJob.status==='running'&&this.clock().getTime()-reportJob.claimedAt<leaseMs(reportJob)?'generating'
       :reportJob?.fingerprint===currentFingerprint&&reportJob.status==='failed'?'failed'
       :report&&!stale?'ready':coverage.analyzed>0?'waiting':'idle';
     const ids=new Set(active.map(o=>o.id));

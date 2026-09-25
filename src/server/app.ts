@@ -1,4 +1,5 @@
 import { registerInsights } from './insights/routes.js';
+import { registerTutor } from './tutor/routes.js';
 import type { Embed } from './insights/embeddings.js';
 import Fastify from 'fastify';
 import { recommendationSchema } from '../shared/recommendations.js';
@@ -83,15 +84,16 @@ export async function createApp(options:AppOptions) {
  registerSetup(app,store,clock,options.demo);
  registerCatalogue(app,store,clock);
  registerAttempts(app,store,clock);
+ const tutor=registerTutor(app,options.dbPath,token,clock);
  const reviews=new AutoReviewQueue(clock);
  registerCloseout(app,store,clock,reviews);
- registerAutoReview(app,store,reviews);
+ registerAutoReview(app,store,reviews,tutor.mayClaim);
  registerImport(app,store,clock);
  registerTopics(app,store);
  registerScoring(app,store,clock);
  registerPlans(app,store,clock);
  registerStudyTools(app,store,clock);
  registerTransfer(app,store,clock,options.dbPath);
- registerInsights(app,store,clock,options.dbPath,header=>!!header?.startsWith('Bearer ')&&equal(header.slice(7),token),options.embed);
+ registerInsights(app,store,clock,options.dbPath,header=>!!header?.startsWith('Bearer ')&&equal(header.slice(7),token),tutor,options.embed);
  return app;
 }
