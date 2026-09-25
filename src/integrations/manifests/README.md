@@ -22,7 +22,7 @@ The downloaded application bytes were used only as temporary retrieval evidence;
 From the repository root:
 
 ```sh
-npx vitest run tests/integrations/lists.test.ts tests/integrations/lists-api.test.ts
+npx vitest run tests/integrations/list-projection.test.ts tests/integrations/lists-api.test.ts
 npm run typecheck
 npx tsx scripts/import-lists.ts --dry-run
 ```

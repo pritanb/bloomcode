@@ -34,4 +34,4 @@ Restore requires all schema-version-1 tables and an empty database (the initial 
 
 ## Verification
 
-`npm exec vitest run tests/backend` exercises temporary on-disk SQLite databases, Fastify inject and a real loopback child server. It covers catalogue filters and bucket boundaries, hidden-safe attempts, restart/timer recovery, transactional finish/review rollback and idempotency, scoring evidence, scheduling, import reconciliation, export/restore, native backups, browser/MCP authentication, static serving and migration tracking. No test writes the pilot database, live workbook or Hermes configuration.
+`npm exec vitest run tests/server` exercises temporary on-disk SQLite databases, Fastify inject and a real loopback child server. It covers catalogue filters and bucket boundaries, hidden-safe attempts, restart/timer recovery, transactional finish/review rollback and idempotency, scoring evidence, scheduling, import reconciliation, export/restore, native backups, browser/MCP authentication, static serving and migration tracking. No test writes the pilot database, live workbook or Hermes configuration.
