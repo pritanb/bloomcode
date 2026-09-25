@@ -293,3 +293,13 @@ it('persists plan order while rejecting stale or incomplete reorders', async () 
  expect(moved.items[0].id).toBe(ids[0]);
  expect((await request('GET','/api/dashboard')).json().recentAttempts).toEqual([]);
 });
+
+it('follows the system timezone for the study day when the local app asks it to', async () => {
+ const system = Intl.DateTimeFormat().resolvedOptions().timeZone;
+ const other = system === 'Pacific/Kiritimati' ? 'Pacific/Pago_Pago' : 'Pacific/Kiritimati';
+ expect((await request('PATCH', '/api/settings', { timezone: other })).json().timezone).toBe(other);
+ await app.close(); app = await createApp({ dbPath: join(dir, 'test.sqlite'), token: 'test-token', clock: () => now });
+ expect((await request('GET', '/api/settings')).json().timezone).toBe(other);
+ await app.close(); app = await createApp({ dbPath: join(dir, 'test.sqlite'), token: 'test-token', clock: () => now, followSystemTimezone: true });
+ expect((await request('GET', '/api/settings')).json().timezone).toBe(system);
+});

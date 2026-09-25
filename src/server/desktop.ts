@@ -50,7 +50,7 @@ try {
     probe.listen(port, '127.0.0.1', () => probe.close(error => error ? reject(error) : resolve()));
   });
   if (stopping) throw new Error('Desktop startup was cancelled.');
-  backend = await createApp({ dbPath: join(dataDir, 'leetcode.sqlite'), serveStatic: process.env.TUTOR_WEB_ROOT || true });
+  backend = await createApp({ dbPath: join(dataDir, 'leetcode.sqlite'), serveStatic: process.env.TUTOR_WEB_ROOT || true, followSystemTimezone: true });
   if (stopping) throw new Error('Desktop startup was cancelled.');
   const address = await backend.listen({ host: '127.0.0.1', port });
   parent.postMessage({ type: 'ready', address });

@@ -12,7 +12,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import { openDb } from './db.js';
 import { settings } from './schema.js';
-export interface AppOptions { dbPath:string; embed?:Embed; demo?:boolean; token?:string; serveStatic?:boolean|string; clock?:()=>Date }
+export interface AppOptions { dbPath:string; embed?:Embed; demo?:boolean; token?:string; serveStatic?:boolean|string; clock?:()=>Date; followSystemTimezone?:boolean }
 import { ApiError } from './errors.js';
 import { Store } from './store.js';
 import { dirname } from 'node:path';
@@ -36,6 +36,13 @@ const equal=(a:string,b:string)=>{const left=Buffer.from(a),right=Buffer.from(b)
 export async function createApp(options:AppOptions) {
  const app=Fastify({bodyLimit:2*1024*1024,logger:false});
  const db=openDb(options.dbPath);
+ // The local app's study day follows the computer's timezone. Tests leave this
+ // off so a pinned settings.timezone stays deterministic.
+ if(options.followSystemTimezone){
+   const system=Intl.DateTimeFormat().resolvedOptions().timeZone;
+   const current=db.orm.select().from(settings).get();
+   if(system&&current&&current.data.timezone!==system)db.orm.update(settings).set({data:{...current.data,timezone:system}}).run();
+ }
  const token=options.token ?? (options.dbPath===':memory:'?randomBytes(32).toString('hex'):loadToken(dirname(options.dbPath)));
  const sessions=new Map<string,{csrf:string,expires:number}>();
  const clock=options.clock ?? (()=>new Date());

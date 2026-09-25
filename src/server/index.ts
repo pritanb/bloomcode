@@ -7,7 +7,7 @@ const port=Number(process.env.PORT??4317);
 if(!Number.isInteger(port)||port<0||port>65535)throw new Error('PORT must be an integer between 0 and 65535');
 const release=await acquireServerLock(dataDir);
 try {
-  const app=await createApp({dbPath:join(dataDir,'leetcode.sqlite'),serveStatic:true});
+  const app=await createApp({dbPath:join(dataDir,'leetcode.sqlite'),serveStatic:true,followSystemTimezone:true});
   app.addHook('onClose',async()=>{await release();});
   try {
     const address=await app.listen({host:'127.0.0.1',port});
