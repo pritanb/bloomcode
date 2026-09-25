@@ -9,9 +9,9 @@ export default defineConfig({
     await copyFile('src/server/insights/embedding-worker.mjs', 'dist/server/embedding-worker.mjs');
   },
   entry: {
-    index: 'src/server/index.ts',
+    index: 'src/server/core/index.ts',
     mcp: 'src/integrations/mcp.ts',
-    desktop: 'src/server/desktop.ts',
+    desktop: 'src/server/core/desktop.ts',
   },
   format: ['esm'],
   outDir: 'dist/server',

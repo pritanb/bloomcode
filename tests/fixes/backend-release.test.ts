@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import type { ImportPayload } from '../../src/shared/contracts.js';
 
 let app: Awaited<ReturnType<typeof createApp>>;

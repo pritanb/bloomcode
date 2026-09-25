@@ -1,5 +1,5 @@
-import { consolidatePatternTables } from '../shared/pattern-migration.js';
-import type { Store } from './store.js';
+import { consolidatePatternTables } from '../../shared/pattern-migration.js';
+import type { Store } from '../db/store.js';
 
 /** Idempotent upgrade of the former standalone notebook; preserves assignments, notes and explicit classifications. */
 export function migratePatternNotebooks(s: Store) {

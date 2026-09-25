@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { createServer, type ProxyOptions } from 'vite';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import config from '../../vite.config.js';
 
 test('Vite forwards legitimate same-origin mutations without accepting foreign origins', async () => {

@@ -1,20 +1,20 @@
-import { restoreLearningReferences } from './insights/restore.js';
-import { learningRecordSchema } from '../shared/insights.js';
+import { restoreLearningReferences } from '../insights/restore.js';
+import { learningRecordSchema } from '../../shared/insights.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { recommendationSchema } from '../shared/recommendations.js';
-import type { Snapshot, Settings } from '../shared/contracts.js';
-import { durableTables, type Table } from './db.js';
-import { Store } from './store.js';
-import { ApiError, conflict } from './errors.js';
-import { date, name, problemUrl } from './catalogue.js';
-import { score, importSchema } from './import.js';
-import { reflectionFields, legacyPatternFields } from './study-tools.js';
-import { migratePatternNotebooks } from './pattern-migration.js';
-import { outcome, help, seconds } from './closeout.js';
+import { recommendationSchema } from '../../shared/recommendations.js';
+import type { Snapshot, Settings } from '../../shared/contracts.js';
+import { durableTables, type Table } from '../db/db.js';
+import { Store } from '../db/store.js';
+import { ApiError, conflict } from '../db/errors.js';
+import { date, name, problemUrl } from '../catalogue/catalogue.js';
+import { score, importSchema } from '../catalogue/import.js';
+import { reflectionFields, legacyPatternFields } from '../topics/study-tools.js';
+import { migratePatternNotebooks } from '../topics/pattern-migration.js';
+import { outcome, help, seconds } from '../attempts/closeout.js';
 const id = z.string().min(1).max(1000),
   text = z.string(),
   nullable = text.nullable(),

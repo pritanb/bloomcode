@@ -1,14 +1,14 @@
-import type { Problem, Settings } from '../shared/contracts.js';
+import type { Problem, Settings } from '../../shared/contracts.js';
 import {
   defaultRecommendations,
   type RecommendationOptions,
   type RecommendationSettings,
-} from '../shared/recommendations.js';
-import manifest from '../integrations/manifests/neetcode250.json';
-import { listProjection } from './list-projection.js';
-import { problemView } from './catalogue.js';
-import type { AttemptRecord } from './attempts.js';
-import type { Store } from './store.js';
+} from '../../shared/recommendations.js';
+import manifest from '../../integrations/manifests/neetcode250.json';
+import { listProjection } from '../catalogue/list-projection.js';
+import { problemView } from '../catalogue/catalogue.js';
+import type { AttemptRecord } from '../attempts/attempts.js';
+import type { Store } from '../db/store.js';
 
 // Source row order, not an invented popularity or difficulty ranking.
 const sourceTopics = [...new Set(manifest.problems.map((row) => row.pattern))];

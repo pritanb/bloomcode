@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { mapQuestionPack } from '../../src/integrations/question-pack.js';
 import { resolveDataDir } from '../../scripts/runtime.mjs';
 import { join, resolve } from 'node:path';

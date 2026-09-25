@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Store } from '../store.js';
-import type { AttemptRecord } from '../attempts.js';
-import { newestAttempt } from '../attempts.js';
+import type { Store } from '../db/store.js';
+import type { AttemptRecord } from '../attempts/attempts.js';
+import { newestAttempt } from '../attempts/attempts.js';
 import type { Problem, Tag } from '../../shared/contracts.js';
 import {
   ANALYSIS_VERSION,
@@ -17,8 +17,8 @@ import {
   type Observation,
   type InsightStatus,
 } from '../../shared/insights.js';
-import { assertMetadataVisible, discloseProblem, type TagLink } from '../catalogue.js';
-import { conflict, ApiError } from '../errors.js';
+import { assertMetadataVisible, discloseProblem, type TagLink } from '../catalogue/catalogue.js';
+import { conflict, ApiError } from '../db/errors.js';
 import { keywordScore, rank } from './retrieval.js';
 import type { Embed } from './embeddings.js';
 export const hash = (value: unknown) =>

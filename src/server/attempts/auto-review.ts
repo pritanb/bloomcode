@@ -1,10 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { AutoReviewStatus } from '../shared/contracts.js';
+import type { AutoReviewStatus } from '../../shared/contracts.js';
 import type { AttemptRecord } from './attempts.js';
-import { ApiError, conflict } from './errors.js';
-import type { Store } from './store.js';
+import { ApiError, conflict } from '../db/errors.js';
+import type { Store } from '../db/store.js';
 
 // Queue of finished attempts waiting for a tutor-written report. The active
 // tutor provider (the app's Codex worker, or the MCP adapter via sampling)

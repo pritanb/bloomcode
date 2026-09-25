@@ -1,6 +1,6 @@
-import type { Store } from '../store.js';
+import type { Store } from '../db/store.js';
 import type { LearningRecord } from '../../shared/insights.js';
-import { ApiError } from '../errors.js';
+import { ApiError } from '../db/errors.js';
 /** Validate logical references that are stored inside JSON, then clear leases/cache. */
 export function restoreLearningReferences(s: Store) {
   const rows = s.all<LearningRecord>('learning_insights');

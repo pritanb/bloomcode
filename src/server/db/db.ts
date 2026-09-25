@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as schema from './schema.js';
+import { repoRoot } from '../paths.js';
 export const durableTables = [
   'settings',
   'problems',
@@ -36,7 +37,7 @@ export function openDb(path: string) {
   sqlite.pragma('foreign_keys = ON');
   sqlite.pragma('busy_timeout = 5000');
   const orm = drizzle(sqlite, { schema });
-  migrate(orm, { migrationsFolder: fileURLToPath(new URL('../../drizzle/', import.meta.url)) });
+  migrate(orm, { migrationsFolder: fileURLToPath(new URL('drizzle/', repoRoot)) });
   if (!orm.select().from(schema.settings).get())
     orm
       .insert(schema.settings)

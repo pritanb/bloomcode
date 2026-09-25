@@ -1,5 +1,5 @@
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import type { Problem, Tag, ProblemList, Settings } from '../shared/contracts.js';
+import type { Problem, Tag, ProblemList, Settings } from '../../shared/contracts.js';
 export const problems = sqliteTable('problems', {
   id: text('id').primaryKey(),
   data: text('data', { mode: 'json' }).$type<Problem>().notNull(),

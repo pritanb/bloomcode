@@ -2,13 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
-import type { Settings } from '../shared/contracts.js';
-import { mapVerifiedLists, PINNED_REVISION } from '../integrations/lists.js';
-import { defaultRecommendations } from '../shared/recommendations.js';
-import { durableTables } from './db.js';
-import { conflict } from './errors.js';
+import type { Settings } from '../../shared/contracts.js';
+import { mapVerifiedLists, PINNED_REVISION } from '../../integrations/lists.js';
+import { defaultRecommendations } from '../../shared/recommendations.js';
+import { durableTables } from '../db/db.js';
+import { conflict } from '../db/errors.js';
 import { applyImport, importSchema } from './import.js';
-import type { Store } from './store.js';
+import { repoRoot } from '../paths.js';
+import type { Store } from '../db/store.js';
 
 const input = z
   .object({
@@ -44,7 +45,7 @@ export function registerSetup(app: FastifyInstance, store: Store, clock: () => D
       let listId: string | null = null;
       if (body.list !== 'none') {
         const raw = readFileSync(
-          new URL('../../src/integrations/manifests/neetcode-problems.json', import.meta.url),
+          new URL('src/integrations/manifests/neetcode-problems.json', repoRoot),
           'utf8',
         );
         const mapped = mapVerifiedLists(raw, PINNED_REVISION, '2026-09-16T00:00:00Z');

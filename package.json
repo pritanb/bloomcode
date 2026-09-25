@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server/index.ts",
+    "dev": "tsx watch src/server/core/index.ts",
     "dev:web": "vite",
     "build": "vite build && tsup",
     "test:smoke": "npm run build && node tests/smoke/runtime.mjs",

@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { resolveDataDir } from '../../scripts/runtime.mjs';
-import { acquireServerLock } from '../../scripts/server-lock.mjs';
+import { resolveDataDir } from '../../../scripts/runtime.mjs';
+import { acquireServerLock } from '../../../scripts/server-lock.mjs';
 import { createApp } from './app.js';
 
 // Electron utility processes expose a narrow parent messaging port, not renderer IPC.

@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Topic, ScoreDecision, Problem } from '../shared/contracts.js';
-import { Store } from './store.js';
-import { newestAttempt, attemptView, type AttemptRecord } from './attempts.js';
-import { problemView, assertMetadataVisible } from './catalogue.js';
+import type { Topic, ScoreDecision, Problem } from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
+import { newestAttempt, attemptView, type AttemptRecord } from '../attempts/attempts.js';
+import { problemView, assertMetadataVisible } from '../catalogue/catalogue.js';
 export interface AttemptTopic {
   id: string;
   attemptId: string;

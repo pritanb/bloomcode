@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ImportPayload } from '../../src/shared/contracts.js';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 
 let app: Awaited<ReturnType<typeof createApp>>;
 let dir: string;

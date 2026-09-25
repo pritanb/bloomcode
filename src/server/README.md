@@ -1,18 +1,25 @@
 # Backend implementation notes
 
+## Layout
+
+- `core/`: process entry points (`index.ts`, `desktop.ts`), `app.ts`, which wires the feature modules, and the local credential (`auth.ts`).
+- `db/`: SQLite connection and migrations, schema, `Store`, `ApiError`, idempotent replay and new-tag hues. Every other folder builds on this one.
+- `attempts/`, `scoring/`, `plans/`, `catalogue/` (including imports and first-run setup), `topics/`, `transfer/` (export/restore/backup), `insights/`, `tutor/` and `mcp/`: feature modules.
+- `paths.ts` resolves the repository root for runtime files (`drizzle/`, `dist/web/`, manifests). It must stay directly under `src/server`, the same depth as the bundled `dist/server/*.js`.
+
 ## Runtime
 
 `createApp({ dbPath, token?, serveStatic?, clock? })` returns an awaited Fastify instance. `serveStatic: true` serves `dist/web`; a string is an optional internal/test static-root override. `clock` is a `() => Date`. `openDb(path)` returns `{ sqlite, orm }`; the caller owns closing the SQLite connection. The app closes its connection on `app.close()`.
 
-`src/server/index.ts` listens only on `127.0.0.1`, uses `PORT=4317` by default and stores the database under `DATA_DIR`, defaulting to `~/Library/Application Support/LeetcodeTutor-dev`. It never seeds study data. Both source execution (`tsx src/server/index.ts`) and the bundled server expect the repository's `drizzle/` directory alongside `src/` or `dist/`.
+`src/server/core/index.ts` listens only on `127.0.0.1`, uses `PORT=4317` by default and stores the database under `DATA_DIR`, defaulting to `~/Library/Application Support/LeetcodeTutor-dev`. It never seeds study data. Both source execution (`tsx src/server/core/index.ts`) and the bundled server expect the repository's `drizzle/` directory alongside `src/` or `dist/`.
 
 The first boot creates a 0600 `api-token` in a 0700 data directory. It is never returned to the browser. Same-origin browser sessions use HttpOnly/SameSite=Strict cookies and per-session CSRF tokens; import, restore and backup always require the local bearer credential. Requests validate loopback remote address, Host, actual listening port and exact Origin. Serve the built UI from this server for the production same-origin flow.
 
 ## Persistence and migration
 
-Drizzle's tracked migration is `drizzle/0000_initial.sql` with its `_journal.json`. `schema.ts` describes the tables. Durable entity payloads are JSON columns with real SQLite foreign-key columns for their relationships, unique pair/name/slug/day indexes and a partial unique index preventing two active or paused attempts. API validation constrains payload values. Scores are absolute decimal values (at most two decimal places), never accumulated deltas.
+Drizzle's tracked migration is `drizzle/0000_initial.sql` with its `_journal.json`. `db/schema.ts` describes the tables. Durable entity payloads are JSON columns with real SQLite foreign-key columns for their relationships, unique pair/name/slug/day indexes and a partial unique index preventing two active or paused attempts. API validation constrains payload values. Scores are absolute decimal values (at most two decimal places), never accumulated deltas.
 
-`db.ts` exports the authoritative **durableTables** export/restore allowlist: settings, problems, tags, lists, problem_tags, list_memberships, attempts, review_targets, answer_versions, audit_events, topics, score_decisions, attempt_topics, import_batches, import_records, import_plans, daily_plans and plan_items. Exports contain decoded rows with stable IDs, not SQLite implementation columns. Credentials, browser sessions, migration bookkeeping and idempotency responses are excluded. The native SQLite backup retains the complete database, including idempotency state.
+`db/db.ts` exports the authoritative **durableTables** export/restore allowlist: settings, problems, tags, lists, problem_tags, list_memberships, attempts, review_targets, answer_versions, audit_events, topics, score_decisions, attempt_topics, import_batches, import_records, import_plans, daily_plans and plan_items. Exports contain decoded rows with stable IDs, not SQLite implementation columns. Credentials, browser sessions, migration bookkeeping and idempotency responses are excluded. The native SQLite backup retains the complete database, including idempotency state.
 
 Restore requires all schema-version-1 tables and an empty database (the initial settings singleton is permitted). It validates rows, identifiers, uniqueness and references, defers FK checking only within the transaction, and rolls everything back on failure. Backups use SQLite's online backup API, generate their own filename only inside the private `backups/` directory and update `lastBackupAt` after success.
 

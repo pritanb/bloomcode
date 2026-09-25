@@ -9,9 +9,9 @@ import {
   type Settings,
   type ScoreDecision,
   type WeeklyRecap,
-} from '../shared/contracts.js';
-import { Store } from './store.js';
-import { assertMetadataVisible, discloseProblem, date } from './catalogue.js';
+} from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
+import { assertMetadataVisible, discloseProblem, date } from '../catalogue/catalogue.js';
 import {
   attemptView,
   checkVersion,
@@ -19,14 +19,14 @@ import {
   studyDate,
   version,
   type AttemptRecord,
-} from './attempts.js';
-import { addDays } from './closeout.js';
-import { conflict } from './errors.js';
-import { patternNotebook } from '../shared/pattern-migration.js';
-import type { TagLink } from './catalogue.js';
-import type { Tag } from '../shared/contracts.js';
+} from '../attempts/attempts.js';
+import { addDays } from '../attempts/closeout.js';
+import { conflict } from '../db/errors.js';
+import { patternNotebook } from '../../shared/pattern-migration.js';
+import type { TagLink } from '../catalogue/catalogue.js';
+import type { Tag } from '../../shared/contracts.js';
 import { decisionView } from './topics.js';
-import type { ItemRecord } from './plans.js';
+import type { ItemRecord } from '../plans/plans.js';
 
 export const reflectionFields = {
   mistakeLabels: z

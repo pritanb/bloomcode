@@ -1,4 +1,4 @@
-import type { McpConnectionStatus } from '../shared/mcp-connection.js';
+import type { McpConnectionStatus } from '../../shared/mcp-connection.js';
 
 export class McpConnection {
   private clients = new Map<string, { at: number; sampling: boolean; automaticReviews: boolean }>();

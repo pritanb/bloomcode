@@ -1,5 +1,5 @@
-import { resolveDataDir } from '../../scripts/runtime.mjs';
-import { acquireServerLock } from '../../scripts/server-lock.mjs';
+import { resolveDataDir } from '../../../scripts/runtime.mjs';
+import { acquireServerLock } from '../../../scripts/server-lock.mjs';
 import { join } from 'node:path';
 import { createApp } from './app.js';
 const dataDir = resolveDataDir();

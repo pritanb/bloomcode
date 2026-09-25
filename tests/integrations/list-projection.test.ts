@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { mapSheetSnapshot } from '../../src/integrations/sheet.js';
 import { mapVerifiedLists, PINNED_REVISION } from '../../src/integrations/lists.js';

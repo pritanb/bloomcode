@@ -1,15 +1,15 @@
-import { assertMetadataVisible } from './catalogue.js';
-import { idempotent } from './idempotency.js';
+import { assertMetadataVisible } from '../catalogue/catalogue.js';
+import { idempotent } from '../db/idempotency.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { Attempt, Problem, Settings } from '../shared/contracts.js';
-import { bumpPlan, type ItemRecord, linkAttempt } from './plans.js';
-import { topicView } from './topics.js';
-import { decisionView } from './topics.js';
-import type { Topic, ScoreDecision } from '../shared/contracts.js';
-import { Store } from './store.js';
-import { ApiError, conflict } from './errors.js';
+import type { Attempt, Problem, Settings } from '../../shared/contracts.js';
+import { bumpPlan, type ItemRecord, linkAttempt } from '../plans/plans.js';
+import { topicView } from '../topics/topics.js';
+import { decisionView } from '../topics/topics.js';
+import type { Topic, ScoreDecision } from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
+import { ApiError, conflict } from '../db/errors.js';
 export interface AttemptRecord extends Attempt {
   context: 'mixed' | 'targeted' | 'review';
   gapSeconds: number;

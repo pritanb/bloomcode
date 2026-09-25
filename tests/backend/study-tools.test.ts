@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { sameTables } from '../../src/integrations/snapshot.js';
 import type { Attempt, Snapshot } from '../../src/shared/contracts.js';
 let app: Awaited<ReturnType<typeof createApp>>;

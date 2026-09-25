@@ -1,5 +1,5 @@
-import manifest from '../integrations/manifests/neetcode250.json';
-import type { Problem } from '../shared/contracts.js';
+import manifest from '../../integrations/manifests/neetcode250.json';
+import type { Problem } from '../../shared/contracts.js';
 
 /**
  * A question's curriculum grouping comes from NeetCode's own categories, not

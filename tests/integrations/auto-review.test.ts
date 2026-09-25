@@ -5,7 +5,7 @@ import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { reviewNext } from '../../src/integrations/auto-review.js';
 import type { Attempt, AutoReviewStatus } from '../../src/shared/contracts.js';
@@ -147,8 +147,8 @@ test('sampling adapter builds a learning report after prioritizing the immediate
   });
   const url = await app.listen({ port: 0, host: '127.0.0.1' });
   const api = new LocalApi({ dataDir: dir, baseUrl: url });
-  const { openDb } = await import('../../src/server/db.js');
-  const { Store } = await import('../../src/server/store.js');
+  const { openDb } = await import('../../src/server/db/db.js');
+  const { Store } = await import('../../src/server/db/store.js');
   const topicDb = openDb(join(dir, 'leetcode.sqlite'));
   new Store(topicDb.sqlite).put('topics', {
     id: 'arrays',

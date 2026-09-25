@@ -10,13 +10,13 @@ import type {
   ProblemList,
   Topic,
   ScoreDecision,
-} from '../shared/contracts.js';
-import { Store } from './store.js';
+} from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
 import { date, name, addProblem, assignLinks, problemUrl } from './catalogue.js';
-import { outcome, help, seconds, updateTarget } from './closeout.js';
-import { canonical } from './idempotency.js';
-import { conflict } from './errors.js';
-import type { AttemptRecord } from './attempts.js';
+import { outcome, help, seconds, updateTarget } from '../attempts/closeout.js';
+import { canonical } from '../db/idempotency.js';
+import { conflict } from '../db/errors.js';
+import type { AttemptRecord } from '../attempts/attempts.js';
 export const score = z
   .number()
   .min(1)

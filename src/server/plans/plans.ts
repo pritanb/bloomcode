@@ -1,10 +1,10 @@
-import { reflectionSafeView } from './attempts.js';
+import { reflectionSafeView } from '../attempts/attempts.js';
 import {
   configuredCandidates,
   recommendationContext,
   recommendationReason,
 } from './recommendations.js';
-import { activityDays } from './study-tools.js';
+import { activityDays } from '../topics/study-tools.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -16,13 +16,13 @@ import type {
   Settings,
   Topic,
   ScoreDecision,
-} from '../shared/contracts.js';
-import { Store } from './store.js';
-import { date, problemView } from './catalogue.js';
-import { type AttemptRecord, attemptView, newestAttempt, studyDate } from './attempts.js';
-import { ApiError, conflict } from './errors.js';
-import { topicView, decisionView } from './topics.js';
-import { updateTarget } from './closeout.js';
+} from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
+import { date, problemView } from '../catalogue/catalogue.js';
+import { type AttemptRecord, attemptView, newestAttempt, studyDate } from '../attempts/attempts.js';
+import { ApiError, conflict } from '../db/errors.js';
+import { topicView, decisionView } from '../topics/topics.js';
+import { updateTarget } from '../attempts/closeout.js';
 export interface PlanRecord extends Omit<DailyPlan, 'items'> {
   id: string;
 }

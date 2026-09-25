@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { mapSheetSnapshot } from '../../src/integrations/sheet.js';
 import { applyAndVerify } from '../../src/integrations/import-client.js';

@@ -4,11 +4,11 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 
 it('runs on loopback with a stable private data-directory credential and rejects a mismatched listening port', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'lc-runtime-'));
-  const child = spawn(process.execPath, ['--import', 'tsx', 'src/server/index.ts'], {
+  const child = spawn(process.execPath, ['--import', 'tsx', 'src/server/core/index.ts'], {
     env: { ...process.env, DATA_DIR: dir, PORT: '0' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

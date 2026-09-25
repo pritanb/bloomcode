@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { Topic, ScoreDecision } from '../shared/contracts.js';
-import { Store } from './store.js';
-import { date } from './catalogue.js';
-import { type AttemptRecord, attemptView, checkVersion, version } from './attempts.js';
-import { ApiError, conflict } from './errors.js';
-import { idempotent } from './idempotency.js';
-import { score } from './import.js';
-import { recommendation, updateTarget } from './closeout.js';
+import type { Topic, ScoreDecision } from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
+import { date } from '../catalogue/catalogue.js';
+import { type AttemptRecord, attemptView, checkVersion, version } from '../attempts/attempts.js';
+import { ApiError, conflict } from '../db/errors.js';
+import { idempotent } from '../db/idempotency.js';
+import { score } from '../catalogue/import.js';
+import { recommendation, updateTarget } from '../attempts/closeout.js';
 export function registerScoring(app: FastifyInstance, s: Store, clock: () => Date) {
   app.post<{ Params: { id: string } }>('/api/attempts/:id/reviews', (req) => {
     const b = z

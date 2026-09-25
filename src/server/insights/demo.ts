@@ -1,7 +1,7 @@
-import { TopicAnalysis } from '../topic-analysis.js';
+import { TopicAnalysis } from '../topics/topic-analysis.js';
 import { randomUUID } from 'node:crypto';
 import type { Topic } from '../../shared/contracts.js';
-import type { Store } from '../store.js';
+import type { Store } from '../db/store.js';
 import { Insights, fingerprint } from './service.js';
 import { ANALYSIS_VERSION, type Observation } from '../../shared/insights.js';
 /** Synthetic fixture only. Never invoked for a personal workspace. */

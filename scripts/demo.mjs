@@ -2,10 +2,10 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb } from '../src/server/db.ts';
-import { Store } from '../src/server/store.ts';
+import { openDb } from '../src/server/db/db.ts';
+import { Store } from '../src/server/db/store.ts';
 import { seedInsightDemo } from '../src/server/insights/demo.ts';
-import { createApp } from '../src/server/app.ts';
+import { createApp } from '../src/server/core/app.ts';
 
 // Always own a new temporary workspace. Never read DATA_DIR or a user's database.
 const port = Number(process.env.DEMO_PORT || 4331);

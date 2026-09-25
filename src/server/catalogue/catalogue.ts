@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { Problem, Tag, ProblemList } from '../shared/contracts.js';
-import { newestAttempt, attemptView, type AttemptRecord } from './attempts.js';
-import type { ReviewTarget } from '../shared/contracts.js';
-import { Store } from './store.js';
-import { conflict, ApiError } from './errors.js';
+import type { Problem, Tag, ProblemList } from '../../shared/contracts.js';
+import { newestAttempt, attemptView, type AttemptRecord } from '../attempts/attempts.js';
+import type { ReviewTarget } from '../../shared/contracts.js';
+import { Store } from '../db/store.js';
+import { conflict, ApiError } from '../db/errors.js';
 import { listProjection } from './list-projection.js';
 export const name = z.string().trim().min(1).max(300);
 export const date = z.iso.date();

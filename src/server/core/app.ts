@@ -1,17 +1,18 @@
-import { registerInsights } from './insights/routes.js';
-import { registerTutor } from './tutor/routes.js';
-import type { Embed } from './insights/embeddings.js';
+import { registerInsights } from '../insights/routes.js';
+import { registerTutor } from '../tutor/routes.js';
+import type { Embed } from '../insights/embeddings.js';
 import Fastify from 'fastify';
-import { recommendationSchema } from '../shared/recommendations.js';
-import { recommendationContext } from './recommendations.js';
+import { recommendationSchema } from '../../shared/recommendations.js';
+import { recommendationContext } from '../plans/recommendations.js';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cookie from '@fastify/cookie';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { z, ZodError } from 'zod';
-import { openDb } from './db.js';
-import { settings } from './schema.js';
+import { openDb } from '../db/db.js';
+import { settings } from '../db/schema.js';
+import { repoRoot } from '../paths.js';
 export interface AppOptions {
   dbPath: string;
   embed?: Embed;
@@ -21,22 +22,22 @@ export interface AppOptions {
   clock?: () => Date;
   followSystemTimezone?: boolean;
 }
-import { ApiError } from './errors.js';
-import { Store } from './store.js';
+import { ApiError } from '../db/errors.js';
+import { Store } from '../db/store.js';
 import { dirname } from 'node:path';
 import { loadToken } from './auth.js';
-import { AutoReviewQueue, registerAutoReview } from './auto-review.js';
-import { registerTransfer } from './transfer.js';
-import { registerPlans } from './plans.js';
-import { registerScoring } from './scoring.js';
-import { registerImport } from './import.js';
-import { registerTopics } from './topics.js';
-import { registerCloseout } from './closeout.js';
-import { registerAttempts } from './attempts.js';
-import { migratePatternNotebooks } from './pattern-migration.js';
-import { registerStudyTools } from './study-tools.js';
-import { registerSetup } from './setup.js';
-import { registerCatalogue } from './catalogue.js';
+import { AutoReviewQueue, registerAutoReview } from '../attempts/auto-review.js';
+import { registerTransfer } from '../transfer/transfer.js';
+import { registerPlans } from '../plans/plans.js';
+import { registerScoring } from '../scoring/scoring.js';
+import { registerImport } from '../catalogue/import.js';
+import { registerTopics } from '../topics/topics.js';
+import { registerCloseout } from '../attempts/closeout.js';
+import { registerAttempts } from '../attempts/attempts.js';
+import { migratePatternNotebooks } from '../topics/pattern-migration.js';
+import { registerStudyTools } from '../topics/study-tools.js';
+import { registerSetup } from '../catalogue/setup.js';
+import { registerCatalogue } from '../catalogue/catalogue.js';
 declare const __TUTOR_BUILD_ID__: string;
 // Captured in the bundle, never read from mutable files on each health check.
 const buildId = typeof __TUTOR_BUILD_ID__ === 'string' ? __TUTOR_BUILD_ID__ : 'development';
@@ -91,7 +92,7 @@ export async function createApp(options: AppOptions) {
   const staticRoot =
     typeof options.serveStatic === 'string'
       ? options.serveStatic
-      : fileURLToPath(new URL('../../dist/web/', import.meta.url));
+      : fileURLToPath(new URL('dist/web/', repoRoot));
   if (options.serveStatic && existsSync(staticRoot))
     await app.register(fastifyStatic, { root: staticRoot });
   app.setNotFoundHandler((req, reply) => {

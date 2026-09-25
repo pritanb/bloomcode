@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import type { Attempt } from '../../src/shared/contracts.js';
 import { Insights } from '../../src/server/insights/service.js';
-import { Store } from '../../src/server/store.js';
-import { openDb } from '../../src/server/db.js';
-import { addProblem } from '../../src/server/catalogue.js';
-import type { AttemptRecord } from '../../src/server/attempts.js';
+import { Store } from '../../src/server/db/store.js';
+import { openDb } from '../../src/server/db/db.js';
+import { addProblem } from '../../src/server/catalogue/catalogue.js';
+import type { AttemptRecord } from '../../src/server/attempts/attempts.js';
 import type { ObservationInput } from '../../src/shared/insights.js';
 const embed = async (texts: string[]) =>
   texts.map(() => Array.from({ length: 384 }, (_, i) => (i === 0 ? 1 : 0)));

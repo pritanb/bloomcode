@@ -2,7 +2,7 @@ import { afterEach, beforeAll, expect, test } from 'vitest';
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { CodexError, findCodex, runCodex } from '../../src/server/tutor/codex.js';
 import { defaultTutorSettings } from '../../src/shared/tutor.js';

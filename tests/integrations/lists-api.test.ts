@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { createApp } from '../../src/server/app.js';
+import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { mapVerifiedLists, PINNED_REVISION } from '../../src/integrations/lists.js';
 import type { ProblemList, ProblemPage, Snapshot } from '../../src/shared/contracts.js';

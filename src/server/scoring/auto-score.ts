@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { Problem, ScoreDecision, Topic } from '../shared/contracts.js';
-import type { AttemptRecord } from './attempts.js';
-import { problemView } from './catalogue.js';
-import { neetcodeCategory } from './neetcode-category.js';
-import type { Store } from './store.js';
+import type { Problem, ScoreDecision, Topic } from '../../shared/contracts.js';
+import type { AttemptRecord } from '../attempts/attempts.js';
+import { problemView } from '../catalogue/catalogue.js';
+import { neetcodeCategory } from '../topics/neetcode-category.js';
+import type { Store } from '../db/store.js';
 
 // Conservative automatic movements applied when an attempt finishes.
 // Increases above 3 stay reserved for independent unseen solves, matching

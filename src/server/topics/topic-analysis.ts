@@ -1,16 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Store } from './store.js';
-import type { Topic, ScoreDecision } from '../shared/contracts.js';
-import type { AttemptRecord } from './attempts.js';
-import { assertMetadataVisible } from './catalogue.js';
-import { conflict, ApiError } from './errors.js';
+import type { Store } from '../db/store.js';
+import type { Topic, ScoreDecision } from '../../shared/contracts.js';
+import type { AttemptRecord } from '../attempts/attempts.js';
+import { assertMetadataVisible } from '../catalogue/catalogue.js';
+import { conflict, ApiError } from '../db/errors.js';
 import {
   TOPIC_REFRESH_MS,
   topicReason,
   type TopicAnalysisContext,
   type TopicAnalysisRecord,
   type TopicAnalysisStatus,
-} from '../shared/topic-analysis.js';
+} from '../../shared/topic-analysis.js';
 import { z } from 'zod';
 
 export class TopicAnalysis {

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
-import { openDb } from '../../src/server/db.js';
-import { Store } from '../../src/server/store.js';
-import { TopicAnalysis } from '../../src/server/topic-analysis.js';
+import { openDb } from '../../src/server/db/db.js';
+import { Store } from '../../src/server/db/store.js';
+import { TopicAnalysis } from '../../src/server/topics/topic-analysis.js';
 import { Insights } from '../../src/server/insights/service.js';
 import { learningRecordSchema } from '../../src/shared/insights.js';
 import { restoreLearningReferences } from '../../src/server/insights/restore.js';
