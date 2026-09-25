@@ -13,7 +13,7 @@ npm run build
 npm run local
 ```
 
-Alternatively double-click **scripts/LeetCode Tutor.command** in Finder. This starts `dist/server/index.js`, waits for `/health` **and an authenticated settings read**, then opens `http://127.0.0.1:4317`. An already healthy app is reused. No LaunchAgent, login item, background agent service or Hermes configuration is installed. The server stays running after the launcher exits.
+`npm run local` starts `dist/server/index.js`, waits for `/health` **and an authenticated settings read**, then opens `http://127.0.0.1:4317`. An already healthy app is reused. No LaunchAgent, login item, background agent service or Hermes configuration is installed. The server stays running after the command exits.
 
 Defaults:
 
