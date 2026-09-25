@@ -52,7 +52,7 @@
   .sidebar-collapsed .sidebar-header { flex-direction: column; gap: .75rem; }
   .sidebar-collapsed .sidebar nav a { justify-content: center; }
   .theme-toolbar { justify-content: flex-end; margin-bottom: .75rem; }
-  #main { width: 100%; max-width: 1440px; min-width: 0; margin: 0 auto; padding: 2.5rem 2rem; }
+  #main { width: 100%; min-width: 0; padding: 2.5rem 2rem; }
   .page-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.75rem; }
   .page-title p { margin-top: .5rem; color: var(--muted-foreground); }
   .budget { display: flex; align-items: center; gap: .5rem; font-size: .8125rem; }
@@ -126,7 +126,7 @@
   .data-status > div { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
   .data-status dt { color: var(--muted-foreground); }
   .data-status dd { text-align: right; overflow-wrap: anywhere; }
-  .attempt-workspace { max-width: 1280px; margin: 0 auto; padding: 2rem; min-width: 0; }
+  .attempt-workspace { width: 100%; padding: 2rem; min-width: 0; }
   .workspace-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
   .workspace-toolbar { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1rem; margin-bottom: 1.25rem; }
   .workspace-toolbar > .field { min-width: 130px; }
@@ -262,7 +262,7 @@
 .brand strong { display: inline; font-size: inherit; margin-left: .25rem; }
 .sidebar nav a { font-size: .875rem; padding: .875rem .75rem; }
 .sidebar nav a.active { font-weight: 600; }
-#main { max-width: 1560px; padding: 2.5rem 2rem; }
+#main { padding: 2.5rem 2rem; }
 .page-title { margin-bottom: 2rem; }
 .page-title p { font-size: 1rem; }
 .panel { box-shadow: none; border: 1px solid var(--border); border-radius: var(--radius); }
@@ -414,4 +414,72 @@
 @container attempt-history (min-width: 680px) {
   .attempt-history-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
   .attempt-history-feedback { border-top: 0; padding-top: 0; border-left: 1px solid var(--border); padding-left: 2rem; }
+}
+
+/* Give the score chart most of the width beside its review history. */
+.topic-progress-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; align-items: start; margin-bottom: 1.5rem; }
+.topic-progress-layout > .panel { margin-bottom: 0; }
+@media (min-width: 1100px) {
+  .topic-progress-layout { grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); }
+  .topic-progress-layout > :only-child { grid-column: 1 / -1; }
+}
+
+/* Fit each page to the window: the page never scrolls; long lists and
+   tables scroll inside their own panel. Narrow or short windows fall back
+   to ordinary page scrolling. */
+.pagination-range { margin-right: auto; }
+.pagination-size { display: flex; align-items: center; gap: .5rem; }
+.pagination-size [data-slot=select-trigger] { width: 4.75rem; }
+.settings-side { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.settings-side > .panel { margin: 0; }
+.problem-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+.problem-detail-side { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.problem-detail-layout .panel { margin: 0; }
+.topic-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; margin-top: 1.5rem; }
+.topic-detail-layout > .panel { margin: 0; }
+@media (min-width: 1100px) {
+  .problem-detail-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+}
+@media (min-width: 901px) and (min-height: 560px) {
+  .app-shell:has(> .app) { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  .app-shell > .app { flex: 1; min-height: 0; }
+  .app-shell > .app > .sidebar { position: relative; top: 0; height: auto; overflow-y: auto; }
+  .app-shell #main { position: relative; overflow-y: auto; }
+  #main:has(> .fill-page) { display: flex; flex-direction: column; }
+  #main:has(> .fill-page) > * { flex-shrink: 0; }
+  #main:has(> .fill-page) > .back-link { align-self: flex-start; }
+  #main > .fill-page { flex: 1 1 0; min-height: 22rem; margin-bottom: 0; }
+
+  /* Question library: the table body scrolls under a pinned header. */
+  .library-results { overflow: hidden; }
+  .mistakes-panel { position: relative; min-height: 0; overflow-y: auto; }
+  .library-results .table-scroll { flex: 1 1 0; min-height: 8rem; overflow: auto; margin-inline: -.25rem; padding-inline: .25rem; }
+  .library-results [data-slot=table-container] { overflow: visible; }
+  .library-results thead th { position: sticky; top: 0; z-index: 1; background: var(--card); box-shadow: inset 0 -1px 0 var(--border); }
+  .library-results > .pagination { margin-top: auto; }
+  .library-results { gap: .875rem; }
+  .library-filter-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .library-filter-details:not([hidden]) { padding-block: .875rem; }
+  #main:has(> .fill-page) { padding-top: 1.75rem; padding-bottom: 1.5rem; }
+  #main:has(> .fill-page) > .page-title { margin-bottom: 1.25rem; }
+
+  /* Two-column pages: each column scrolls on its own. */
+  .settings-grid.fill-page, .management-grid.fill-page, .notebook-layout.fill-page { align-items: stretch; grid-template-rows: minmax(0, 1fr); }
+  .settings-grid.fill-page > *, .topic-detail-layout.fill-page > .panel, .problem-detail-side, .problem-history, .notebook-editor, .notebook-layout.fill-page > .panel { position: relative; min-height: 0; overflow-y: auto; }
+  .management-grid.fill-page > .panel, .notebook-index { min-height: 0; overflow: hidden; }
+  .management-grid.fill-page > .panel > .plain-list, .notebook-index > .movement-list, .library-results .table-scroll { position: relative; }
+  .management-grid.fill-page > .panel > .plain-list, .notebook-index > .movement-list { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+}
+@media (min-width: 1100px) and (min-height: 560px) {
+  .topic-progress-layout.fill-page { grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .topic-progress-layout.fill-page > .panel { position: relative; min-height: 0; overflow-y: auto; }
+  .topic-progress-layout.fill-page .topic-score-chart { flex: 1 1 0; height: auto; min-height: 180px; }
+  .problem-detail-layout.fill-page { grid-template-rows: minmax(0, 1fr); }
+  .topic-detail-layout.fill-page { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .topic-detail-layout > .topic-related { grid-column: 1 / -1; }
+}
+.study-secondary > .panel:last-child { margin-bottom: 0; }
+@media (min-width: 1201px) and (min-height: 560px) {
+  .study-layout.fill-page { grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .study-layout.fill-page > * { position: relative; min-height: 0; overflow-y: auto; }
 }

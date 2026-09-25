@@ -90,7 +90,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
     }
   }
   return (
-    <div className="settings-grid">
+    <div className="settings-grid fill-page">
       <Card className="panel">
         <SectionTitle icon={CalendarDays}>Study rhythm</SectionTitle>
         <p className="muted">
@@ -187,6 +187,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
         <ErrorNotice error={rebuild.error} />
         {rebuild.isSuccess&&<p className="positive" role="status">Current plan rebuilt using saved settings.</p>}
       </Card>
+      <div className="settings-side">
       <TutorSettings />
       <Card className="panel">
         <SectionTitle icon={Database}>Your data</SectionTitle>
@@ -237,6 +238,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           a read-only archive; this app is the authoritative record.
         </p>
       </Card>
+      </div>
     </div>
   );
 }

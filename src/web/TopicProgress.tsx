@@ -32,6 +32,7 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
   const rows = [...ordered].reverse();
   return <>
     <TopicAnalysis />
+    <div className="topic-progress-layout fill-page">
     <Card className="panel topic-timeline">
       <div className="section-heading">
         <div><h2>Score over time</h2><p className="small muted">Track your progress in each topic.</p></div>
@@ -61,7 +62,7 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
         </> : <Empty><h3>No dated score history yet</h3><p>Future score reviews will appear here.</p></Empty>}
       </>}
     </Card>
-    {query.isSuccess && rows.length > 0 && <Card className="panel">
+    {query.isSuccess && rows.length > 0 && <Card className="panel topic-score-updates">
       <div className="section-heading"><h2>Score updates</h2><span className="small muted">{rows.length} recorded reviews</span></div>
       <div className="table-scroll"><Table>
         <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Score</TableHead><TableHead>Change</TableHead></TableRow></TableHeader>
@@ -73,5 +74,6 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
       </Table></div>
       {rows.length > 5 && <Button variant="ghost" onClick={() => setShowAll(value => !value)}>{showAll ? 'Show fewer updates' : `Show all ${rows.length} updates`}</Button>}
     </Card>}
+    </div>
   </>;
 }

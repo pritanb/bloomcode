@@ -46,7 +46,7 @@ export function Patterns() {
       <Button asChild variant="outline"><Link to="/library/manage">Manage tags</Link></Button>
     </PageTitle>
     <Field label="Search patterns"><Input type="search" maxLength={300} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search names, cues, pitfalls and notes…" /></Field>
-    {list.isPending || list.isFetching ? <Loading /> : list.isError ? <ErrorNotice error={list.error} retry={() => void list.refetch()} /> : <div className="notebook-layout">
+    {list.isPending || list.isFetching ? <Loading /> : list.isError ? <ErrorNotice error={list.error} retry={() => void list.refetch()} /> : <div className="notebook-layout fill-page">
       <Card className="panel notebook-index">
         <SectionTitle icon={BookOpen}>Your tags</SectionTitle>
         {list.data.length ? <ul className="movement-list">

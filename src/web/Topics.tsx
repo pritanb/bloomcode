@@ -31,7 +31,7 @@ export function Topics() {
     <>
       <PageTitle
         title="Topic progress"
-        description="See how your topic scores change with practice."
+        description="Find your highest-priority topics and track progress toward interview readiness."
       />
       {query.isPending ? <Loading /> : query.isError ? (
         <ErrorNotice error={query.error} retry={() => void query.refetch()} />
@@ -91,6 +91,7 @@ export function TopicDetail() {
           help and evidence types; compare like for like below.
         </p>
       </div>
+      <div className="topic-detail-layout fill-page">
       <Card className="panel">
         <SectionTitle icon={ListChecks}>Score history & rationale</SectionTitle>
         <MovementList items={d.decisions} />
@@ -133,7 +134,7 @@ export function TopicDetail() {
         </div>
         <AttemptList items={attempts} />
       </Card>
-      <Card className="panel">
+      <Card className="panel topic-related">
         <SectionTitle icon={BookOpen}>Related questions</SectionTitle>
         <p className="small muted">
           Selecting a related question is targeted practice, not an unseen
@@ -145,6 +146,7 @@ export function TopicDetail() {
           <Empty>No questions are linked to this topic yet.</Empty>
         )}
       </Card>
+      </div>
     </>
   );
 }

@@ -30,7 +30,7 @@ export function Mistakes() {
   });
   return <>
     <PageTitle title="Mistake notebook" description="Small lessons from past attempts, ready for your next practice session." />
-    <Card className="panel">
+    <Card className="panel fill-page mistakes-panel">
       <SectionTitle icon={NotebookPen}>Find a lesson</SectionTitle>
       <div className="row history-filters">
         <Field label="Search questions and takeaways">

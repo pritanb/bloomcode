@@ -45,7 +45,7 @@ const navigation = [
 export function App() {
   const [collapsed, setCollapsed] = useState(false);
   const focused = useLocation().pathname.startsWith('/attempts/');
-  return <div className={isDesktopMac ? 'desktop-app' : undefined}>
+  return <div className={isDesktopMac ? 'app-shell desktop-app' : 'app-shell'}>
     <SetupGate chrome={hasWorkspace => <DesktopTitleBar collapsed={collapsed} sidebarAvailable={hasWorkspace && !focused} toggleSidebar={() => setCollapsed(value => !value)} />}>
       <McpNotifications />
       <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed(value => !value)} />

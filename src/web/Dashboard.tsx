@@ -220,7 +220,7 @@ export function Dashboard() {
           <span>Questions per day</span>
         </Link>
       </PageTitle>
-      <div className="study-layout">
+      <div className="study-layout fill-page">
         <div className="study-primary">
           <Card className="panel plan-panel">
             <div className="section-heading">

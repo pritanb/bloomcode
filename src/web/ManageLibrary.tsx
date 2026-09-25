@@ -129,7 +129,7 @@ export function ManageLibrary() {
         title="Tags & lists"
         description="Each tag has a notebook page. Its assigned questions appear there automatically."
       />
-      <div className="management-grid">
+      <div className="management-grid fill-page">
         <Card className="panel">
           <SectionTitle icon={Tags}>Tags</SectionTitle>
           <form

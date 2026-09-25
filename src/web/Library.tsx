@@ -21,6 +21,7 @@ import {
   Pencil,
   Play,
   Plus,
+  SlidersHorizontal,
   Tags,
 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -389,12 +390,13 @@ export function Library() {
     value !== (filterOptions[key]?.[0] ?? '')
   ).length;
   const hasFilters = activeFilters > 0 || !!params.get('search');
+  const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
   const { tags, lists } = useCatalogue();
   const queryParams = new URLSearchParams(params);
   queryParams.delete('tagDifficultyMin');
   queryParams.delete('tagDifficultyMax');
   if (!queryParams.has('page')) queryParams.set('page', '1');
-  if (!queryParams.has('pageSize')) queryParams.set('pageSize', '25');
+  if (!queryParams.has('pageSize')) queryParams.set('pageSize', storedPageSize());
   if (!queryParams.has('sort')) queryParams.set('sort', defaultSort);
   if (!queryParams.has('direction')) queryParams.set('direction', defaultDirection);
   const query = useQuery({
@@ -447,7 +449,7 @@ export function Library() {
           />
         </Card>
       )}
-      <Card className="panel library-results">
+      <Card className="panel library-results fill-page">
         <div className="library-toolbar">
           <div className="library-search">
           <Input
@@ -458,9 +460,14 @@ export function Library() {
             onChange={(e) => filter('search', e.target.value)}
           />
           </div>
+          <Button variant={filtersOpen ? 'secondary' : 'outline'} aria-expanded={filtersOpen} aria-controls="library-filters" onClick={() => setFiltersOpen(open => !open)}>
+            <Icon icon={SlidersHorizontal} />
+            Filters
+            {activeFilters > 0 && <span className="filter-count" aria-label={`${activeFilters} active`}>{activeFilters}</span>}
+          </Button>
           {hasFilters && <Button variant="ghost" onClick={() => setParams({})}>Reset filters</Button>}
         </div>
-        <div id="library-filters" className="library-filter-details">
+        <div id="library-filters" className="library-filter-details" hidden={!filtersOpen}>
           <div className="library-filter-grid">
             <Field label="LeetCode topic"><Input value={params.get('leetcodeTopic') ?? ''} onChange={event => filter('leetcodeTopic', event.target.value)} placeholder="e.g. Binary Search" /></Field>
             <Field label="Latest submission">
@@ -574,13 +581,25 @@ export function Library() {
               </Empty>
             )}
             <div className="pagination">
+              <span className="small muted pagination-range">
+                {query.data.total ? `${(query.data.page - 1) * query.data.pageSize + 1}–${Math.min(query.data.page * query.data.pageSize, query.data.total)} of ${query.data.total}` : '0 of 0'}
+              </span>
+              <div className="pagination-size small muted">
+                <span aria-hidden="true">Per page</span>
+                <SelectField aria-label="Questions per page" value={String(query.data.pageSize)} onValueChange={value => {
+                  try { localStorage.setItem(pageSizeKey, value); } catch { /* The URL still carries the size. */ }
+                  filter('pageSize', value);
+                }}>
+                  {pageSizes.map(size => <SelectOption key={size} value={String(size)}>{size}</SelectOption>)}
+                </SelectField>
+              </div>
               <Button variant="outline"
                 disabled={query.data.page <= 1}
                 onClick={() => filter('page', String(query.data.page - 1))}
               >
                 Previous
               </Button>
-              <span>Page {query.data.page}</span>
+              <span>Page {query.data.page} of {Math.max(1, Math.ceil(query.data.total / query.data.pageSize))}</span>
               <Button variant="outline"
                 disabled={
                   query.data.page * query.data.pageSize >= query.data.total
@@ -595,6 +614,15 @@ export function Library() {
       </Card>
     </>
   );
+}
+const pageSizeKey = 'library-page-size';
+const pageSizes = [25, 50, 100];
+function storedPageSize() {
+  try {
+    const stored = localStorage.getItem(pageSizeKey);
+    if (stored && pageSizes.includes(Number(stored))) return stored;
+  } catch { /* Fall back to the default size. */ }
+  return '25';
 }
 export function ReviewEditor({ review }: { review: ReviewTarget }) {
   const cache = useQueryClient();
@@ -781,6 +809,8 @@ export function ProblemDetail() {
         </div>
       </PageTitle>
       <ErrorNotice error={start.error} />
+      <div className="problem-detail-layout fill-page">
+      <div className="problem-detail-side">
       <Card className="panel">
         <div className="row between">
           <a href={p.url} target="_blank" rel="noreferrer">
@@ -840,10 +870,12 @@ export function ProblemDetail() {
           </Empty>
         )}
       </Card>
-      <Card className="panel">
+      </div>
+      <Card className="panel problem-history">
         <SectionTitle icon={History}>Practice history</SectionTitle>
         <AttemptHistory items={query.data.attempts} />
       </Card>
+      </div>
     </>
   );
 }
