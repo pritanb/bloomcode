@@ -1,31 +1,40 @@
 import { DropdownMenu } from 'radix-ui';
 import { enumLabel } from './labels';
 import { DateField } from '@/components/date-field';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
-  CalendarCheck,
+  BookOpenCheck,
+  CalendarClock,
+  Check,
   ChevronDown,
-  History,
+  Circle,
+  CircleCheck,
+  CirclePlay,
   ListChecks,
   Play,
+  RotateCcw,
+  Sparkles,
+  Target,
+  type LucideIcon,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import type {
+  ActivityDay,
   Attempt,
   Dashboard as DashboardData,
   DailyPlan,
   PlanItem,
+  ReviewTarget,
+  WeeklyRecap as Recap,
 } from '../shared/contracts';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { api } from './api';
-import { ReviewCalendar } from './ReviewCalendar';
-import { WeeklyRecap } from './WeeklyRecap';
+import { ReviewCalendar, reviewWeek } from './ReviewCalendar';
 import {
   Icon,
-  SectionTitle,
   dateLabel,
   duration,
   Empty,
@@ -142,31 +151,40 @@ function PlanActions({ item, featured, onChanged }: { item: PlanItem; featured: 
 }
 
 function PlanRow({ item, featured, onChanged }: { item: PlanItem; featured: boolean; onChanged: PlanChange }) {
+  const done = item.status === 'completed';
   return (
     <li data-plan-id={item.id} className={`plan-row ${item.status}${featured ? ' plan-featured' : ''}`}>
+      <span className="plan-state" aria-hidden="true">
+        <Icon icon={done ? CircleCheck : featured ? CirclePlay : Circle} />
+      </span>
       <div className="plan-content">
         <div className="row between">
           <h3>{item.title}</h3>
-          <Badge variant="secondary" className="badge">{featured ? item.attemptId ? 'In progress' : 'Up next' : ['active', 'queued'].includes(item.status) ? 'Queued' : enumLabel(item.status)}</Badge>
+          <span className="plan-meta">
+            {featured ? item.attemptId ? 'In progress' : 'Up next' : done ? 'Done' : ['active', 'queued'].includes(item.status) ? `~${item.suggestedMinutes} min` : enumLabel(item.status)}
+          </span>
         </div>
-        <p className="small muted" title={item.reason}>{item.reason.split(' · ')[0]}</p>
+        <p className="plan-reason" title={item.reason}>{item.reason.split(' · ')[0]}</p>
         {featured && <PlanActions item={item} featured={featured} onChanged={onChanged} />}
-
       </div>
     </li>
   );
 }
 function RecentPractice({ items }: { items: Attempt[] }) {
-  return items.length ? <ul className="plain-list compact-practice">{items.slice(0, 3).map(attempt => <li key={attempt.id}>
-    <div><Link to={`/attempts/${attempt.id}`}>{attempt.problem.title}</Link><span className="small muted">{dateLabel(attempt.finishedAt)}</span></div>
-    <span className="small muted">{enumLabel(attempt.outcome ?? 'unknown')} · {duration(attempt.activeSeconds)}</span>
-  </li>)}</ul> : <p className="small muted">Your completed attempts will appear here.</p>;
+  return items.length ? <ul className="plain-list desk-recent">{items.slice(0, 4).map(attempt => {
+    const solved = attempt.outcome === 'solved';
+    return <li key={attempt.id}>
+      <span className={`desk-recent-icon${solved ? ' solved' : ''}`} aria-hidden="true"><Icon icon={solved ? Check : RotateCcw} /></span>
+      <div><Link to={`/attempts/${attempt.id}`}>{attempt.problem.title}</Link><span>{dateLabel(attempt.finishedAt)}</span></div>
+      <div className="desk-recent-result"><span className={solved ? 'up' : 'warn'}>{enumLabel(attempt.outcome ?? 'unknown')}</span><span>{duration(attempt.activeSeconds)}</span></div>
+    </li>;
+  })}</ul> : <p className="muted">Your completed attempts will appear here.</p>;
 }
 
 function PlanList({ plan, featuredId, onChanged }: { plan: DailyPlan; featuredId?: string; onChanged: PlanChange }) {
   const items = plan.items;
   return <>
-    <ol className="plan-list">
+    <ol className="plan-list desk-plan">
       {items.filter(item => item.status !== 'skipped').map(item => <PlanRow key={item.id} item={item} featured={item.id === featuredId} onChanged={onChanged} />)}
     </ol>
     {items.some(item => item.status === 'skipped') && <details className="plan-history">
@@ -178,6 +196,60 @@ function PlanList({ plan, featuredId, onChanged }: { plan: DailyPlan; featuredId
   </>;
 }
 
+function StatCard({ label, value, sub, icon, tone }: { label: string; value: ReactNode; sub: ReactNode; icon: LucideIcon; tone: 'solid' | 'sky' | 'emerald' | 'amber' }) {
+  return <Card className="panel stat-card">
+    <span className={`stat-icon ${tone === 'solid' ? 'solid' : `tone-${tone}`}`} aria-hidden="true"><Icon icon={icon} /></span>
+    <p className="stat-label">{label}</p>
+    <p className="stat-value">{value}</p>
+    <p className="stat-sub">{sub}</p>
+  </Card>;
+}
+
+// Consecutive study days ending today (or yesterday, so an unfinished day keeps the streak).
+function currentStreak(activity: ActivityDay[]) {
+  const days = [...activity].sort((a, b) => b.date.localeCompare(a.date));
+  let streak = 0;
+  for (const [index, day] of days.entries()) {
+    if (day.completedAttempts > 0) streak += 1;
+    else if (index > 0 || streak > 0) break;
+  }
+  return streak;
+}
+
+function ActivityCard({ activity }: { activity: ActivityDay[] }) {
+  const streak = currentStreak(activity);
+  const active = activity.filter(day => day.completedAttempts > 0).length;
+  return <Card className="panel desk-activity">
+    <div className="section-heading">
+      <h2 className="section-title">Activity</h2>
+      <Link className="desk-link" to="/weekly-report">Weekly report</Link>
+    </div>
+    <div className="desk-activity-summary">
+      <div><strong>{streak}</strong><span>day streak</span></div>
+      <div><strong>{active}</strong><span>active days in 28</span></div>
+    </div>
+    <TooltipProvider>
+      <div className="activity-strip" role="list" aria-label="Completed attempts by study day">
+        {activity.map(day => {
+          const label = `${dateLabel(day.date)}: ${day.completedAttempts} completed ${day.completedAttempts === 1 ? 'attempt' : 'attempts'}`;
+          return <Tooltip key={day.date}>
+            <TooltipTrigger asChild>
+              <span role="listitem" tabIndex={0} className={`activity-day intensity-${Math.min(3, day.completedAttempts)}`} aria-label={label} />
+            </TooltipTrigger>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>;
+        })}
+      </div>
+    </TooltipProvider>
+    <div className="activity-legend" aria-hidden="true"><span>Less</span><i className="activity-day" /><i className="activity-day intensity-1" /><i className="activity-day intensity-2" /><i className="activity-day intensity-3" /><span>More</span></div>
+  </Card>;
+}
+
+function greeting(now = new Date()) {
+  const hour = now.getHours();
+  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+}
+
 export function Dashboard() {
   const [planNotice, setPlanNotice] = useState('');
   const query = useQuery({
@@ -187,7 +259,7 @@ export function Dashboard() {
       await api.send('/daily-plan/ensure', 'POST', {});
       const dashboard = await api.get<DashboardData>('/dashboard');
       // A running pre-workspace backend can serve newly built static assets.
-      // Reject its older payload before WeeklyRecap tries to render activity.
+      // Reject its older payload before the activity card tries to render it.
       if (!Array.isArray(dashboard.activity)) {
         throw new Error('The local server is out of date. Stop it and launch LeetCode Tutor again.');
       }
@@ -195,6 +267,8 @@ export function Dashboard() {
     },
     refetchInterval: 60000,
   });
+  const recap = useQuery({ queryKey: ['recap', 'desk'], queryFn: () => api.get<Recap>('/recap') });
+  const reviews = useQuery({ queryKey: ['reviews'], queryFn: () => api.get<ReviewTarget[]>('/reviews') });
   if (query.isPending) return <Loading />;
   if (query.isError)
     return (
@@ -207,30 +281,34 @@ export function Dashboard() {
       ?? d.plan?.items.find(item => item.problemId && !['completed', 'skipped'].includes(item.status));
   const completed = d.plan?.items.filter(item => item.status === 'completed').length ?? 0;
   const total = d.plan?.items.filter(item => item.status !== 'skipped').length ?? 0;
+  const today = reviewWeek(d.settings.timezone)[0];
+  const scheduled = (reviews.data ?? []).filter(review => review.action !== 'none' && review.effectiveDate);
+  const overdue = scheduled.filter(review => review.effectiveDate! < today).length;
+  const dueToday = scheduled.filter(review => review.effectiveDate === today).length;
+  const perDay = d.settings.questionsPerDay ?? d.settings.primaryCount + d.settings.optionalCount;
+  const pending = <span className="muted">–</span>;
 
   return (
     <>
       <PageTitle
-        title="Your study desk"
-        description="A little practice, a little progress."
+        title={greeting()}
+        description={total ? `${Math.max(0, total - completed)} of ${total} questions left today · ${dateLabel(d.plan?.date ?? null)}` : dateLabel(d.plan?.date ?? null)}
       >
-        <Link className="budget" to="/settings">
-          <Icon icon={ListChecks} />
-          <strong>{d.settings.questionsPerDay ?? d.settings.primaryCount + d.settings.optionalCount}</strong>
-          <span>Questions per day</span>
-        </Link>
+        <Button asChild variant="outline"><Link to="/settings"><Icon icon={ListChecks} />{perDay} per day</Link></Button>
       </PageTitle>
-      <div className="study-layout fill-page">
-        <div className="study-primary">
+      <div className="desk-stats">
+        <StatCard label="Today's plan" icon={Target} tone="solid" value={<>{completed}<span> / {total}</span></>} sub={total ? <span className="stat-progress"><i style={{ width: `${(completed / total) * 100}%` }} /></span> : 'No plan today'} />
+        <StatCard label="Practised this week" icon={BookOpenCheck} tone="sky" value={recap.data?.distinctQuestions ?? pending} sub={recap.data ? `${recap.data.completedAttempts} completed attempts` : ' '} />
+        <StatCard label="Independent solves" icon={Sparkles} tone="emerald" value={recap.data?.independentSolves ?? pending} sub={recap.data ? <><span className="up">No help</span> used this week</> : ' '} />
+        <StatCard label="Reviews due" icon={CalendarClock} tone="amber" value={reviews.data ? overdue + dueToday : pending} sub={reviews.data ? overdue ? <Link to="/reviews" className="warn">{overdue} overdue</Link> : `${dueToday} due today` : ' '} />
+      </div>
+      <div className="desk-grid fill-page">
+        <div className="desk-column">
           <Card className="panel plan-panel">
             <div className="section-heading">
-              <SectionTitle icon={CalendarCheck}>Your plan</SectionTitle>
-              <span className="small muted">{dateLabel(d.plan?.date ?? null)}</span>
+              <h2 className="section-title">Today's plan</h2>
+              <span className="desk-count">{completed}/{total}</span>
             </div>
-            {total > 0 && <div className="plan-progress">
-              <span>{completed} of {total} completed</span>
-              <progress value={completed} max={total} aria-label="Plan completion" />
-            </div>}
             {d.activeAttempt && !featured && <div className="plan-active-attempt">
               <span className="next-label"><Icon icon={Play} />Continue studying</span>
               <h3>{d.activeAttempt.problem.title}</h3>
@@ -253,18 +331,17 @@ export function Dashboard() {
           </Card>
           <ReviewCalendar timezone={d.settings.timezone} compact />
         </div>
-        <div className="study-secondary">
-          <WeeklyRecap activity={d.activity} compact />
+        <div className="desk-column">
+          <ActivityCard activity={d.activity} />
           <Card className="panel recent-practice">
             <div className="section-heading">
-              <SectionTitle icon={History}>Recent practice</SectionTitle>
-              <Link className="small" to="/topics">Topic progress</Link>
+              <h2 className="section-title">Recent practice</h2>
+              <Link className="desk-link" to="/topics">Topic progress</Link>
             </div>
             <RecentPractice items={d.recentAttempts} />
           </Card>
         </div>
       </div>
-
     </>
   );
 }

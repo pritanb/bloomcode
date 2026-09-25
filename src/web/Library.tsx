@@ -269,6 +269,7 @@ export function ProblemForm({
     </form>
   );
 }
+const outcomeTone = (outcome: string | null | undefined) => outcome === 'solved' ? 'up' : outcome === 'not_solved' ? 'warn' : '';
 const problemHeaders = [
   'Question',
   'Tags',
@@ -296,9 +297,11 @@ export function ProblemTable({ problems, sort = 'title', direction = 'asc', onSo
       {problems.map((p) => (
         <TableRow role="row" key={p.id}>
           <TableCell label={problemHeaders[0]}>
-            <Link className="problem-link" to={`/library/${p.id}`} title={`Open ${p.title}`} >
-              {p.title}
-            </Link>
+            <div className="problem-cell">
+              <Link className="problem-link" to={`/library/${p.id}`} title={`Open ${p.title}`} >
+                {p.title}
+              </Link>
+            </div>
           </TableCell>
           <TableCell label={problemHeaders[1]}>
             <div className="chips" aria-label="Tags">
@@ -316,7 +319,7 @@ export function ProblemTable({ problems, sort = 'title', direction = 'asc', onSo
           </TableCell>
           <TableCell label={problemHeaders[3]}>
             {p.latestSubmission ? <>
-              <Link to={`/attempts/${p.latestSubmission.id}`}>{enumLabel(p.latestSubmission.outcome)}</Link>
+              <Link className={outcomeTone(p.latestSubmission.outcome)} to={`/attempts/${p.latestSubmission.id}`}>{enumLabel(p.latestSubmission.outcome)}</Link>
               <small>{helpLabel(p.latestSubmission.help)} · {languageLabel(p.latestSubmission.language)}</small>
               <small>{dateLabel(p.latestSubmission.finishedAt)}</small>
             </> : 'Not submitted'}
@@ -450,6 +453,11 @@ export function Library() {
         </Card>
       )}
       <Card className="panel library-results fill-page">
+        <div className="section-heading">
+          <h2 className="section-title">
+            {query.isSuccess ? `${query.data.total} question${query.data.total === 1 ? '' : 's'}` : 'Questions'}
+          </h2>
+        </div>
         <div className="library-toolbar">
           <div className="library-search">
           <Input
@@ -538,9 +546,8 @@ export function Library() {
           </div>
         </div>
         {params.get('confidence') && (
-          <p className="small muted">
-            Confidence uses your latest recorded rating, not a topic score.
-            Unrated attempts do not replace an earlier rating. “Not recorded” means no rating has been saved.
+          <p className="small muted library-note">
+            Uses your latest recorded rating, not a topic score. Unrated attempts keep the earlier rating; “Not recorded” means none was saved.
           </p>
         )}
         <ErrorNotice
@@ -556,11 +563,6 @@ export function Library() {
           <ErrorNotice error={query.error} retry={() => void query.refetch()} />
         ) : (
           <>
-            <div className="section-heading">
-              <h2>
-                {query.data.total} question{query.data.total === 1 ? '' : 's'}
-              </h2>
-            </div>
             {query.data.items.length ? (
               <ProblemTable problems={query.data.items} sort={params.get('sort') ?? defaultSort} direction={(params.get('direction') ?? defaultDirection) === 'desc' ? 'desc' : 'asc'} onSort={sort => {
                 const next = new URLSearchParams(params);
@@ -714,6 +716,7 @@ function AttemptHistory({ items }: { items: Attempt[] }) {
     <ol className="movement-list attempt-history">
       {ordered.map((a, index) => (
         <li key={a.id}>
+          <div className="attempt-history-body">
           <div className="row between">
             <h3>
               Attempt {ordered.length - index}
@@ -722,7 +725,7 @@ function AttemptHistory({ items }: { items: Attempt[] }) {
             <Link className="small" to={`/attempts/${a.id}`}>Open saved attempt</Link>
           </div>
           <div className="chips">
-            <Badge variant="secondary">{enumLabel(a.outcome ?? a.status)}</Badge>
+            <Badge variant="secondary" className={`outcome-badge ${outcomeTone(a.outcome)}`}>{enumLabel(a.outcome ?? a.status)}</Badge>
             <Badge variant="secondary">{duration(a.activeSeconds)}</Badge>
             <Badge variant="secondary">{helpLabel(a.help)}</Badge>
             <Badge variant="secondary">{enumLabel(a.evidence)}</Badge>
@@ -743,6 +746,7 @@ function AttemptHistory({ items }: { items: Attempt[] }) {
                 {a.status === 'completed' ? 'No tutor note for this attempt.' : 'Attempt in progress.'}
               </p>}
             </section>
+          </div>
           </div>
         </li>
       ))}
@@ -811,9 +815,9 @@ export function ProblemDetail() {
       <ErrorNotice error={start.error} />
       <div className="problem-detail-layout fill-page">
       <div className="problem-detail-side">
-      <Card className="panel">
+      <Card className="panel problem-summary">
         <div className="row between">
-          <a href={p.url} target="_blank" rel="noreferrer">
+          <a className="problem-source" href={p.url} target="_blank" rel="noreferrer">
             <Icon icon={ExternalLink} />
             Open in LeetCode
           </a>
@@ -834,9 +838,15 @@ export function ProblemDetail() {
           />
         ) : (
           <>
-            <QuestionNotes notes={p.notes} />
+            <div className="problem-fact">
+              <h3>Question notes</h3>
+              <QuestionNotes notes={p.notes} />
+            </div>
+            <div className="problem-fact">
             <h3>LeetCode topics</h3>
             <p>{p.leetcodeTopics?.join(', ') || 'No additional topics recorded.'}</p>
+            </div>
+            <div className="problem-fact">
             <h3>Tags</h3>
             <div className="chips">
               {p.tags.map((t) => (
@@ -846,6 +856,8 @@ export function ProblemDetail() {
               ))}
               {!p.tags.length && <p className="small muted">No tags assigned.</p>}
             </div>
+            </div>
+            <div className="problem-fact">
             <h3>Lists</h3>
             <div className="chips">
               {p.lists.map((l) => (
@@ -853,6 +865,7 @@ export function ProblemDetail() {
                   {l.name}
                 </Badge>
               ))}
+            </div>
             </div>
           </>
         )}
@@ -872,7 +885,10 @@ export function ProblemDetail() {
       </Card>
       </div>
       <Card className="panel problem-history">
-        <SectionTitle icon={History}>Practice history</SectionTitle>
+        <div className="section-heading">
+          <SectionTitle icon={History}>Practice history</SectionTitle>
+          <span className="desk-count">{query.data.attempts.length} attempt{query.data.attempts.length === 1 ? '' : 's'}</span>
+        </div>
         <AttemptHistory items={query.data.attempts} />
       </Card>
       </div>

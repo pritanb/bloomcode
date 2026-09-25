@@ -189,7 +189,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
     </section>;
   const draftStatus = <span role="status" className={error ? 'negative' : 'muted small'}>{completed ? 'Final answer saved' : error ? 'Not saved' : saving ? 'Saving draft…' : dirty ? 'Unsaved changes' : 'Notes and code saved'}</span>;
   return (
-    <>
+    <div className="attempt-page">
       <div className="workspace-top">
         <Link
           to="/"
@@ -239,67 +239,74 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
         </div>
       )}
       {completed ? (
-        <Card className="completion panel">
-          <div className="row between">
-            <div>
-              <h2>Attempt saved</h2>
-              <p>
-                {enumLabel(attempt.outcome)} ·{' '}
-                {duration(attempt.activeSeconds)} active time ·{' '}
-                {helpLabel(attempt.help)}
+        <div className="attempt-layout">
+          <aside className="attempt-side">
+            <Card className="completion panel">
+              <div className="completion-head">
+                <span className="completion-mark" aria-hidden="true">
+                  <Icon icon={Check} />
+                </span>
+                <h2>Attempt saved</h2>
+              </div>
+              <dl className="completion-facts">
+                <div><dt>Outcome</dt><dd>{enumLabel(attempt.outcome)}</dd></div>
+                <div><dt>Active time</dt><dd>{duration(attempt.activeSeconds)}</dd></div>
+                <div><dt>Help</dt><dd>{helpLabel(attempt.help)}</dd></div>
+              </dl>
+              <p className="completion-next">
+                Next review:{' '}
+                {attempt.nextReviewDate
+                  ? dateLabel(attempt.nextReviewDate)
+                  : 'Not scheduled'}
               </p>
-            </div>
-            <span className="completion-mark" aria-hidden="true">
-              <Icon icon={Check} />
-            </span>
+              {attempt.scoreDecisions?.length ? (
+                <div className="stack completion-scores">
+                  <h3>Topic scores updated</h3>
+                  <ul className="plain-list score-movements">
+                    {attempt.scoreDecisions.map(d => (
+                      <li key={d.id} className="row between">
+                        <Link to={`/topics/${d.topicId}`}>{d.topicName}</Link>
+                        <span className="small">
+                          {d.oldScore} → <strong>{d.newScore}</strong>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="small muted">
+                    Applied automatically from this result. Independent unseen
+                    solves can raise a score towards 5; other evidence is capped at
+                    3. Change this in Settings.
+                  </p>
+                </div>
+              ) : (
+                <p className="small muted completion-scores">
+                  No topic score changed. A score moves only when the evidence
+                  supports it — help beyond a small hint, a miss on unseen
+                  material, or a score already at its evidence cap leaves it
+                  unchanged.
+                </p>
+              )}
+              <div className="completion-actions">
+                <Button asChild variant="default"><Link  to="/">
+                  Done for now
+                </Link></Button>
+                <Button variant="outline" onClick={() => void reloadSaved()}>
+                  <Icon icon={RefreshCw} />
+                  Refresh
+                </Button>
+              </div>
+            </Card>
+          </aside>
+          <div className="attempt-main">
+            <Card className="panel tutor-panel">
+              <h2 className="section-title">Tutor report</h2>
+              <TutorReport attempt={attempt} onReady={onReportReady} />
+            </Card>
+            <AttemptReflection attempt={attempt} onSaved={saved => { queue.current = saved; setAttempt(saved); }} />
+            <AttemptComparison attempt={attempt} />
+            <Card className="panel attempt-record">{notesField}{codeField}{draftStatus}</Card>
           </div>
-          {attempt.scoreDecisions?.length ? (
-            <div className="stack">
-              <h3>Topic scores updated</h3>
-              <ul className="plain-list score-movements">
-                {attempt.scoreDecisions.map(d => (
-                  <li key={d.id} className="row between">
-                    <Link to={`/topics/${d.topicId}`}>{d.topicName}</Link>
-                    <span className="small">
-                      {d.oldScore} → <strong>{d.newScore}</strong>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="small muted">
-                Applied automatically from this result. Independent unseen
-                solves can raise a score towards 5; other evidence is capped at
-                3. Change this in Settings.
-              </p>
-            </div>
-          ) : (
-            <p className="small muted">
-              No topic score changed. A score moves only when the evidence
-              supports it — help beyond a small hint, a miss on unseen
-              material, or a score already at its evidence cap leaves it
-              unchanged.
-            </p>
-          )}
-          <div className="stack">
-            <h3>Tutor report</h3>
-            <TutorReport attempt={attempt} onReady={onReportReady} />
-          </div>
-          <p>
-            Next review:{' '}
-            {attempt.nextReviewDate
-              ? dateLabel(attempt.nextReviewDate)
-              : 'Not scheduled'}
-          </p>
-          <div className="row">
-            <Button asChild variant="default"><Link  to="/">
-              Done for now
-            </Link></Button>
-            <Button variant="outline" onClick={() => void reloadSaved()}>
-              <Icon icon={RefreshCw} />
-              Refresh
-            </Button>
-          </div>
-        </Card>
+        </div>
       ) : null}
       {!completed && (
         <FinishForm
@@ -341,8 +348,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
           }}
         />
       )}
-      {completed && <><AttemptReflection attempt={attempt} onSaved={saved => { queue.current = saved; setAttempt(saved); }} /><AttemptComparison attempt={attempt} /><div className="stack">{notesField}{codeField}{draftStatus}</div></>}
-    </>
+    </div>
   );
 }
 function FinishForm({

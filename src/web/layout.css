@@ -431,10 +431,10 @@
 .pagination-size { display: flex; align-items: center; gap: .5rem; }
 .pagination-size [data-slot=select-trigger] { width: 4.75rem; }
 .settings-side { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
-.settings-side > .panel { margin: 0; }
+.settings-side > .panel { margin: 0; flex-shrink: 0; }
 .problem-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
 .problem-detail-side { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
-.problem-detail-layout .panel { margin: 0; }
+.problem-detail-layout .panel { margin: 0; flex-shrink: 0; }
 .topic-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; margin-top: 1.5rem; }
 .topic-detail-layout > .panel { margin: 0; }
 @media (min-width: 1100px) {

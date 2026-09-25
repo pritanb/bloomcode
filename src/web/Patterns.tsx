@@ -1,14 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BookOpen } from 'lucide-react';
+import { Bookmark, BookOpen } from 'lucide-react';
 import type { PatternDetail, PatternEntry, PatternSummary } from '../shared/contracts';
 import { api } from './api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CopyButton, dateLabel, Empty, ErrorNotice, Field, Loading, PageTitle, SectionTitle } from './ui';
+import { CopyButton, dateLabel, Empty, ErrorNotice, Field, Icon, Loading, PageTitle } from './ui';
 
 type Draft = Pick<PatternEntry, 'recognitionCues' | 'pitfalls' | 'notes'>;
 type Recovery = { draft: Draft; version?: number };
@@ -43,20 +43,30 @@ export function Patterns() {
   // check. The server blocks these reads during active and paused mixed work.
   return <>
     <PageTitle title="Pattern notebook" description="One notebook page for every tag. Tagged questions appear automatically.">
-      <Button asChild variant="outline"><Link to="/library/manage">Manage tags</Link></Button>
+      <div className="notebook-actions">
+        <div className="notebook-search"><Field label="Search patterns"><Input type="search" maxLength={300} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search names, cues, pitfalls and notes…" /></Field></div>
+        <Button asChild variant="outline"><Link to="/library/manage">Manage tags</Link></Button>
+      </div>
     </PageTitle>
-    <Field label="Search patterns"><Input type="search" maxLength={300} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search names, cues, pitfalls and notes…" /></Field>
     {list.isPending || list.isFetching ? <Loading /> : list.isError ? <ErrorNotice error={list.error} retry={() => void list.refetch()} /> : <div className="notebook-layout fill-page">
       <Card className="panel notebook-index">
-        <SectionTitle icon={BookOpen}>Your tags</SectionTitle>
-        {list.data.length ? <ul className="movement-list">
-          {list.data.map(entry => <li key={entry.id}>
+        <div className="section-heading">
+          <h2 className="section-title">Your tags</h2>
+          <span className="desk-count">{list.data.length}</span>
+        </div>
+        {list.data.length ? <ul className="movement-list notebook-tags">
+          {list.data.map(entry => <li key={entry.id} className={selected === entry.id ? 'selected' : undefined}>
             <Button variant={selected === entry.id ? 'secondary' : 'ghost'} className="notebook-entry-button" aria-pressed={selected === entry.id} onClick={() => choose(entry.id)}>{entry.title}</Button>
             <p className="small muted">{entry.archived ? 'Archived · ' : ''}{entry.updatedAt ? `Updated ${dateLabel(entry.updatedAt)}` : 'No notebook notes yet'}</p>
           </li>)}
-        </ul> : <Empty>{search ? 'No patterns match this search.' : 'Create a tag in the library to start your notebook.'}</Empty>}
+        </ul> : <Empty>{search ? <><h3>No matching patterns</h3><p>Try another search.</p></> : <><h3>No tags yet</h3><p>Create a tag in the library to start your notebook.</p></>}</Empty>}
       </Card>
-      {selected ? <PatternSelection key={selected} id={selected} onDirty={value => { dirty.current = value; }} onSaved={() => { dirty.current = false; void list.refetch(); }} /> : <Card className="panel"><Empty>Select a tag to write its recognition cues, pitfalls and notes.</Empty><Button asChild variant="outline"><Link to="/library/manage">Manage tags</Link></Button></Card>}
+      {selected ? <PatternSelection key={selected} id={selected} onDirty={value => { dirty.current = value; }} onSaved={() => { dirty.current = false; void list.refetch(); }} /> : <Card className="panel notebook-placeholder"><Empty>
+        <span className="nb-tile tone-brand" aria-hidden="true"><Icon icon={Bookmark} /></span>
+        <h3>Pick a tag to open its page</h3>
+        <p>Write recognition cues, pitfalls and notes for each pattern.</p>
+        <Button asChild variant="outline"><Link to="/library/manage">Manage tags</Link></Button>
+      </Empty></Card>}
 
     </div>}
   </>;
@@ -138,8 +148,13 @@ function PatternEditor({ id, initial, onDirty, onSaved }: { id: string; initial:
     finally { setBusy(false); }
   };
   return <Card className="panel notebook-editor">
-    <SectionTitle icon={BookOpen}>{initial.title}{initial.archived ? ' (archived)' : ''}</SectionTitle>
-    {initial.description && <p className="muted preserve">{initial.description}</p>}
+    <div className="notebook-editor-head">
+      <span className="nb-tile tone-brand" aria-hidden="true"><Icon icon={BookOpen} /></span>
+      <div>
+        <h2 className="section-title">{initial.title}{initial.archived ? ' (archived)' : ''}</h2>
+        {initial.description && <p className="muted preserve">{initial.description}</p>}
+      </div>
+    </div>
     <form className="stack" onSubmit={event => { event.preventDefault(); void save(); }}>
       <Field label="Recognition cues"><Textarea rows={3} maxLength={1000000} value={draft.recognitionCues} disabled={busy} onChange={event => change('recognitionCues', event.target.value)} placeholder="What in a question suggests this pattern?" /></Field>
       <Field label="Common pitfalls"><Textarea rows={3} maxLength={1000000} value={draft.pitfalls} disabled={busy} onChange={event => change('pitfalls', event.target.value)} placeholder="What do you tend to miss?" /></Field>
@@ -151,13 +166,16 @@ function PatternEditor({ id, initial, onDirty, onSaved }: { id: string; initial:
       {recovery && dirty && <p className="small muted">Recovered changes stay in this tab until you save.</p>}
       {!storageAvailable && dirty && <p role="alert" className="small">This browser could not keep a recovery draft. Save or copy your notes before leaving.</p>}
     </form>
-    <section className="stack" aria-label="Questions with this pattern">
-      <h3>Questions with this pattern</h3>
+    <section className="stack notebook-examples" aria-label="Questions with this pattern">
+      <div className="section-heading">
+        <h3 className="section-title">Questions with this pattern</h3>
+        <span className="desk-count">{initial.examples.length}</span>
+      </div>
       <p className="small muted">Assign or remove this pattern when editing a question in your library.</p>
-      {initial.examples.length ? <ul className="movement-list">{initial.examples.map(problem => <li key={problem.id} className="row between">
+      {initial.examples.length ? <ul className="movement-list notebook-example-list">{initial.examples.map(problem => <li key={problem.id} className="row between">
         <Link to={`/library/${problem.id}`}>{problem.title}</Link>
         <span className="small muted">{problem.patternDifficulty === null ? 'Pattern difficulty not set' : `Pattern difficulty ${problem.patternDifficulty}/10`}</span>
-      </li>)}</ul> : <Empty>No questions carry this pattern yet.</Empty>}
+      </li>)}</ul> : <Empty><h3>No questions yet</h3><p>Tagged questions appear here automatically.</p></Empty>}
       <Button asChild variant="outline"><Link to={`/library?tags=${encodeURIComponent(id)}`}>View in question library</Link></Button>
     </section>
   </Card>;

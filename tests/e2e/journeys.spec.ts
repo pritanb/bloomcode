@@ -5,9 +5,9 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make room for practice' })).toBeVisible();
   await page.getByRole('button', { name: 'Create my workspace' }).click();
-  await expect(page.getByRole('heading', { name: 'Your study desk' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Your study desk' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening)$/ })).toBeVisible();
   await openLibrary(page);
   const problem = await createProblem(api, 'reverse-linked-list-qa', 'Journey Draft Recovery');
   const before = await api.read<Topic[]>('/topics');

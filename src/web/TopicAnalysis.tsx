@@ -20,7 +20,7 @@ export function TopicAnalysis() {
   const updating = data?.enabled && (data.status === 'pending' || data.status === 'running');
   const problem = tutorProblem(data?.runner);
   return <Card className="panel topic-analysis">
-    <div className="section-heading"><h2 className="row"><Brain className="icon" aria-hidden="true" />Where to focus</h2>
+    <div className="section-heading"><h2 className="section-title"><Brain className="icon" aria-hidden="true" />Where to focus</h2>
       {data && !data.hidden && <Button variant="outline" disabled={action.isPending || !!updating || !data.topics.length} onClick={() => action.mutate()}>{updating || action.isPending ? 'Refreshing…' : topics.length ? 'Refresh' : 'Generate recommendations'}</Button>}
     </div>
     {query.isPending ? <Loading /> : query.isError ? <div><p>Couldn’t load your recommendations.</p><Button variant="outline" onClick={() => void query.refetch()}>Retry</Button></div> : data?.hidden ? <p>Finish your mixed assessment to see topic recommendations.</p> : <>
@@ -29,7 +29,7 @@ export function TopicAnalysis() {
           <span className="focus-rank" aria-hidden="true">{i + 1}</span>
           <h3 className="focus-name">{topic.name}</h3>
           <div>
-            <p className="focus-score">{topic.score === null ? <span className="muted">Not yet assessed</span> : <><strong>{topic.score.toFixed(1)}</strong><span className="small muted">/ 5</span></>}</p>
+            <p className="focus-score">{topic.score === null ? <span className="muted">Not yet assessed</span> : <><strong>{topic.score.toFixed(1)}</strong><span>/ 5</span></>}</p>
             <div className="focus-meter" role="img" aria-label={topic.score === null ? 'Not yet assessed' : `Score ${topic.score} of 5, target ${TOPIC_READINESS_TARGET}`}><i style={{ width: `${((topic.score ?? 0) / 5) * 100}%` }} /></div>
           </div>
           {topic.reason && <p className="small focus-reason" title={topic.reason}>{topic.reason}</p>}

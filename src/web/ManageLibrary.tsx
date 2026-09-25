@@ -27,14 +27,25 @@ function TagRow({ tag }: { tag: Tag }) {
     api.send<Tag>(`/tags/${tag.id}`, 'PATCH', data),
   );
   return (
-    <li className="tag-manager-row">
+    <li className={`tag-manager-row${tag.archived ? ' archived' : ''}`}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           edit.mutate({ name, description, hue });
         }}
       >
-        <div className="form-grid">
+        <div className="tag-manager-fields">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="tag-colour-swatch" aria-label={`Edit colour for ${tag.name}`} title="Edit tag colour" style={{ backgroundColor: `hsl(${hue} 65% 55%)` }} />
+            </PopoverTrigger>
+            <PopoverContent align="start">
+              <Field label={`Colour for ${tag.name}`}>
+                <input type="range" min="0" max="359" step="1" value={hue} onChange={e => setHue(Number(e.target.value))} className="tag-hue-picker" />
+              </Field>
+              <p className="small muted">Choose a colour, then Save changes.</p>
+            </PopoverContent>
+          </Popover>
           <Field label={`Name for ${tag.name}`}>
             <Input
               value={name}
@@ -49,7 +60,7 @@ function TagRow({ tag }: { tag: Tag }) {
             />
           </Field>
         </div>
-        <div className="row">
+        <div className="row tag-manager-actions">
           <Button variant="outline"
             disabled={
               edit.isPending ||
@@ -66,19 +77,8 @@ function TagRow({ tag }: { tag: Tag }) {
           >
             {tag.archived ? 'Restore' : 'Archive'}
           </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" className="tag-colour-swatch" aria-label={`Edit colour for ${tag.name}`} title="Edit tag colour" style={{ backgroundColor: `hsl(${hue} 65% 55%)` }} />
-            </PopoverTrigger>
-            <PopoverContent align="end">
-              <Field label={`Colour for ${tag.name}`}>
-                <input type="range" min="0" max="359" step="1" value={hue} onChange={e => setHue(Number(e.target.value))} className="tag-hue-picker" />
-              </Field>
-              <p className="small muted">Choose a colour, then Save changes.</p>
-            </PopoverContent>
-          </Popover>
-          <Button asChild variant="ghost"><Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>Open notebook</Link></Button>
           {tag.archived && <Badge variant="secondary" className="badge">Archived</Badge>}
+          <Button asChild variant="ghost" className="tag-manager-open"><Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>Open notebook</Link></Button>
         </div>
         <ErrorNotice error={edit.error} />
       </form>
@@ -131,9 +131,12 @@ export function ManageLibrary() {
       />
       <div className="management-grid fill-page">
         <Card className="panel">
-          <SectionTitle icon={Tags}>Tags</SectionTitle>
+          <div className="section-heading">
+            <SectionTitle icon={Tags}>Tags</SectionTitle>
+            {tags.data && <span className="desk-count">{tags.data.length}</span>}
+          </div>
           <form
-            className="stack inset"
+            className="manage-create"
             onSubmit={(e) => {
               e.preventDefault();
               addTag.mutate();
@@ -159,15 +162,14 @@ export function ManageLibrary() {
             <ErrorNotice error={addTag.error} />
           </form>
           <p className="small muted">
-            Archived tags stay on existing questions but are hidden from new
-            assignments.
+            Archived tags stay on existing questions but are hidden from new assignments.
           </p>
           {tags.isPending ? (
             <Loading />
           ) : tags.isError ? (
             <ErrorNotice error={tags.error} retry={() => void tags.refetch()} />
           ) : tags.data.length ? (
-            <ul className="plain-list">
+            <ul className="plain-list tag-manager-list">
               {[...tags.data].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
                 <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}-${t.kind}`} tag={t} />
               ))}
@@ -177,9 +179,12 @@ export function ManageLibrary() {
           )}
         </Card>
         <Card className="panel">
-          <SectionTitle icon={List}>Question lists</SectionTitle>
+          <div className="section-heading">
+            <SectionTitle icon={List}>Question lists</SectionTitle>
+            {lists.data && <span className="desk-count">{lists.data.length}</span>}
+          </div>
           <form
-            className="stack inset"
+            className="manage-create"
             onSubmit={(e) => {
               e.preventDefault();
               addList.mutate();
@@ -212,9 +217,7 @@ export function ManageLibrary() {
             <ErrorNotice error={addList.error} />
           </form>
           <p className="small muted">
-            Edit a question to change memberships. Popular lists appear only
-            after importing a verified manifest; creating a name does not import
-            its questions.
+            Edit a question to change its lists. A new list starts empty: popular lists appear only after importing a verified manifest.
           </p>
           {lists.isPending ? (
             <Loading />
@@ -224,9 +227,11 @@ export function ManageLibrary() {
               retry={() => void lists.refetch()}
             />
           ) : lists.data.length ? (
-            <ul className="plain-list">
+            <ul className="plain-list list-manager-list">
               {lists.data.map((l) => (
                 <li className="list-row" key={l.id}>
+                  <span className="list-row-icon" aria-hidden="true"><Icon icon={List} /></span>
+                  <div>
                   <Link to={`/library?listId=${encodeURIComponent(l.id)}`}>
                     {l.name}
                   </Link>
@@ -250,6 +255,7 @@ export function ManageLibrary() {
                       </>
                     )}
                   </small>
+                  </div>
                 </li>
               ))}
             </ul>

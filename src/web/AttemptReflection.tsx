@@ -39,7 +39,7 @@ export function AttemptReflection({ attempt, onSaved }: { attempt: Attempt; onSa
     document.addEventListener('click', guardLink, true);
     return () => { window.removeEventListener('beforeunload', warn); document.removeEventListener('click', guardLink, true); };
   }, [dirty, busy]);
-  return <Card className="panel"><form className="stack" onSubmit={async event => {
+  return <Card className="panel attempt-reflection"><form className="stack" onSubmit={async event => {
     event.preventDefault(); setBusy(true); setError(null); setSaved(false);
     try {
       const result = await api.send<Attempt>(`/attempts/${attempt.id}/reflection`, 'PATCH', { version: attempt.version, mistakeLabels: labels, takeaway });
@@ -47,7 +47,7 @@ export function AttemptReflection({ attempt, onSaved }: { attempt: Attempt; onSa
       await cache.invalidateQueries();
     } catch (failure) { setError(failure); } finally { setBusy(false); }
   }}>
-    <h2>What will you remember?</h2>
+    <h2 className="section-title">What will you remember?</h2>
     <p className="small muted">Optional reflections for your mistake notebook.</p>
     <fieldset disabled={busy} className="stack"><legend>Mistakes to revisit</legend><div className="reflection-labels">
       {choices.map(([value, label]) => <label className="row" key={value}><Checkbox checked={labels.includes(value)} onCheckedChange={checked => { setSaved(false); setLabels(old => checked === true ? [...old, value] : old.filter(item => item !== value)); }} />{label}</label>)}

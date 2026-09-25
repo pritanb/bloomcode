@@ -4,14 +4,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SelectField, SelectOption } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { CalendarDays, Database, Download, Save } from 'lucide-react';
+import { CalendarDays, Database, Download, Palette, Save } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Settings as SettingsData, Snapshot, Dashboard, DailyPlan } from '../shared/contracts';
 import { defaultRecommendations, type RecommendationOptions, type RecommendationSettings } from '../shared/recommendations';
 import { api } from './api';
 import { TutorSettings } from './TutorSettings';
+import { AccentPicker } from './theme';
 import {
   Icon,
   SectionTitle,
@@ -43,11 +43,10 @@ export function Settings() {
   );
 }
 function SettingsForm({ settings }: { settings: SettingsData }) {
-  const [timezone, setTimezone] = useState(settings.timezone);
   const [questions, setQuestions] = useState(settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount);
   const [recommendations, setRecommendations] = useState(settings.recommendations ?? defaultRecommendations);
   const [autoScore, setAutoScore] = useState(settings.autoScore ?? true);
-  const unsaved=timezone!==settings.timezone||questions!==(settings.questionsPerDay??settings.primaryCount+settings.optionalCount)||autoScore!==(settings.autoScore??true)||JSON.stringify(recommendations)!==JSON.stringify(settings.recommendations??defaultRecommendations);
+  const unsaved=questions!==(settings.questionsPerDay??settings.primaryCount+settings.optionalCount)||autoScore!==(settings.autoScore??true)||JSON.stringify(recommendations)!==JSON.stringify(settings.recommendations??defaultRecommendations);
   const change = (update: Partial<RecommendationSettings>) => setRecommendations(current => ({...current,...update}));
   const options = useQuery({queryKey:['recommendation-options',recommendations.listId,recommendations.startTopic],queryFn:()=>api.get<RecommendationOptions>(`/recommendations/options?${new URLSearchParams({listId:recommendations.listId??'',startTopic:recommendations.startTopic??''})}`)});
   const rebuild = useAction(async () => {
@@ -57,7 +56,6 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
   });
   const save = useAction(() =>
     api.send<SettingsData>('/settings', 'PATCH', {
-      timezone,
       questionsPerDay: questions,
       autoScore,
       recommendations,
@@ -91,83 +89,81 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
   }
   return (
     <div className="settings-grid fill-page">
-      <Card className="panel">
+      <Card className="panel settings-main">
         <SectionTitle icon={CalendarDays}>Study rhythm</SectionTitle>
-        <p className="muted">
-          Choose how many questions to do each day.
-        </p>
         <form
-          className="stack"
+          className="settings-form"
           onSubmit={(e) => {
             e.preventDefault();
             save.mutate();
           }}
         >
-          <Field label="Questions per day">
-            <Input required type="number" min="1" max="20" step="1"
-              value={questions} onChange={(e) => setQuestions(Number(e.target.value))}
-              aria-describedby="questions-help" />
-          </Field>
-          <p id="questions-help" className="small muted">
-            We’ll plan up to this many questions each day, depending on what’s available.
-          </p>
-          <Disclosure title="Advanced">
-            <Field label="Study timezone">
-              <SelectField value={timezone} onValueChange={setTimezone} required>
-                {[...new Set([timezone, 'UTC', ...Intl.supportedValuesOf('timeZone')])].sort().map(zone => <SelectOption key={zone} value={zone}>{zone}</SelectOption>)}
+          <section className="settings-group">
+            <h3>How many</h3>
+            <Field label="Questions per day">
+              <Input className="settings-number" required type="number" min="1" max="20" step="1"
+                value={questions} onChange={(e) => setQuestions(Number(e.target.value))}
+                aria-describedby="questions-help" />
+            </Field>
+            <p id="questions-help" className="settings-help">Up to this many each day, when enough questions are available.</p>
+          </section>
+          <section className="settings-group">
+            <h3>Which questions</h3>
+            <Field label="List">
+              <SelectField value={recommendations.listId??'all'} onValueChange={value=>change({listId:value==='all'?null:value,startTopic:null})}>
+                <SelectOption value="all">All questions</SelectOption>
+                {options.data?.lists.map(list=><SelectOption key={list.id} value={list.id}>{list.name}</SelectOption>)}
               </SelectField>
             </Field>
-          </Disclosure>
-          <Separator />
-          <h3>Daily recommendations</h3>
-          <Field label="Recommend only from">
-            <SelectField value={recommendations.listId??'all'} onValueChange={value=>change({listId:value==='all'?null:value,startTopic:null})}>
-              <SelectOption value="all">All questions</SelectOption>
-              {options.data?.lists.map(list=><SelectOption key={list.id} value={list.id}>{list.name}</SelectOption>)}
-            </SelectField>
-          </Field>
-          <p className="small muted">A specific list is a strict limit, including reviews and swaps. If it has too few eligible questions, your plan stays shorter.</p>
-          <Field label="Selection strategy">
-            <SelectField value={recommendations.strategy} onValueChange={value=>change({strategy:value as RecommendationSettings['strategy'],...(value==='topic'&&recommendations.completed==='legacy'?{completed:'exclude' as const}:{})})}>
-              <SelectOption value="balanced">Mixed / balanced</SelectOption>
-              <SelectOption value="topic">Topic by topic</SelectOption>
-            </SelectField>
-          </Field>
-          {recommendations.strategy==='topic'&&<>
-            <Field label="Start progression from">
-              <SelectField value={recommendations.startTopic??'automatic'} onValueChange={value=>change({startTopic:value==='automatic'?null:value})}>
-                <SelectOption value="automatic">First unfinished topic</SelectOption>
-                {options.data?.topics.map(topic=><SelectOption key={topic.name} value={topic.name}>{topic.name} ({topic.completed}/{topic.total} completed)</SelectOption>)}
+            <p className="settings-help">A list is a hard limit, including reviews and swaps. A short list makes a shorter plan.</p>
+            <Field label="Order">
+              <SelectField value={recommendations.strategy} onValueChange={value=>change({strategy:value as RecommendationSettings['strategy'],...(value==='topic'&&recommendations.completed==='legacy'?{completed:'exclude' as const}:{})})}>
+                <SelectOption value="balanced">Mix topics</SelectOption>
+                <SelectOption value="topic">One topic at a time</SelectOption>
               </SelectField>
             </Field>
-            <p className="small muted">{options.data?.orderDescription} Advance only when every question in the current topic has completion evidence. A saved queue is not a completion.</p>
-            <p role="status">{unsaved?'Preview current topic':'Current topic'}: <strong>{options.data?.currentTopic??'No unfinished topic in this progression'}</strong></p>
-            <p className="small muted">Existing imported completions and any recorded solved attempt count. A later retry never erases them. Snoozed questions wait for their review date.</p>
-          </>}
-          <Field label="Previously completed questions">
-            <SelectField value={recommendations.completed} onValueChange={value=>change({completed:value as RecommendationSettings['completed']})}>
-              <SelectOption value="legacy">Include as before (no separate limit)</SelectOption>
-              <SelectOption value="exclude">Exclude completed questions</SelectOption>
-              <SelectOption value="refreshers">Include limited refreshers</SelectOption>
-            </SelectField>
-          </Field>
-          {recommendations.completed==='refreshers'&&<>
-            <Field label="Maximum refresher slots per day"><Input type="number" min="0" max="20" step="1" required value={recommendations.refresherSlots} onChange={e=>change({refresherSlots:Number(e.target.value)})}/></Field>
-            <p className="small muted">Included in your daily question count. Refreshers can revisit earlier topics within your chosen list. Blind 75 / NeetCode 150 membership is preferred as a curated core—not a popularity rating. Manual review dates and “no review” choices still apply.</p>
-          </>}
-          <ErrorNotice error={options.error} retry={()=>void options.refetch()} />
-          <p className="small muted">
-            Applies to your next daily plan. Your current plan and unfinished work stay unchanged.
-          </p>
-          <Separator />
-          <h3>Topic scores</h3>
-          <div className="row">
-            <Checkbox id="auto-score" checked={autoScore} onCheckedChange={value=>setAutoScore(value===true)} />
-            <label htmlFor="auto-score">Move topic scores automatically when an attempt finishes</label>
-          </div>
-          <p className="small muted">Conservative rules: independent unseen solves can raise a score towards 5; every other result is capped at 3, and misses on known material lower it slightly. Scores never change without a recorded decision, and a manual review can still override any movement.</p>
+            {recommendations.strategy==='topic'&&<>
+              <Field label="Start from">
+                <SelectField value={recommendations.startTopic??'automatic'} onValueChange={value=>change({startTopic:value==='automatic'?null:value})}>
+                  <SelectOption value="automatic">First unfinished topic</SelectOption>
+                  {options.data?.topics.map(topic=><SelectOption key={topic.name} value={topic.name}>{topic.name} ({topic.completed}/{topic.total} completed)</SelectOption>)}
+                </SelectField>
+              </Field>
+              <p className="settings-current" role="status">{unsaved?'Next topic':'Current topic'}: <strong>{options.data?.currentTopic??'No unfinished topic'}</strong></p>
+              <div className="settings-more">
+                <Disclosure title="When a topic is finished">
+                  <p className="settings-help">{options.data?.orderDescription} The topic advances only after every question has completion evidence. A saved queue is not a completion. Imported completions and recorded solves count, and a later retry does not erase them. Snoozed questions wait for their review date.</p>
+                </Disclosure>
+              </div>
+            </>}
+            <Field label="Completed questions">
+              <SelectField value={recommendations.completed} onValueChange={value=>change({completed:value as RecommendationSettings['completed']})}>
+                <SelectOption value="legacy">No extra limit</SelectOption>
+                <SelectOption value="exclude">Leave them out</SelectOption>
+                <SelectOption value="refreshers">Allow a few refreshers</SelectOption>
+              </SelectField>
+            </Field>
+            {recommendations.completed==='refreshers'&&<>
+              <Field label="Refresher slots per day"><Input className="settings-number" type="number" min="0" max="20" step="1" required value={recommendations.refresherSlots} onChange={e=>change({refresherSlots:Number(e.target.value)})}/></Field>
+              <p className="settings-help">These count toward the daily total and can revisit earlier topics within your list. Blind 75 / NeetCode 150 questions are preferred as a curated core, not a popularity rating. Manual review dates and “no review” choices still apply.</p>
+            </>}
+            <ErrorNotice error={options.error} retry={()=>void options.refetch()} />
+            <p className="settings-note">Saved for the next plan. Today’s plan stays until you rebuild it below.</p>
+          </section>
+          <section className="settings-group">
+            <h3>Scores</h3>
+            <div className="settings-check">
+              <Checkbox id="auto-score" checked={autoScore} onCheckedChange={value=>setAutoScore(value===true)} />
+              <label htmlFor="auto-score">Update topic scores when an attempt finishes</label>
+            </div>
+            <div className="settings-more">
+              <Disclosure title="How scores move">
+                <p className="settings-help">Independent unseen solves can raise a score towards 5. Every other result is capped at 3, and misses on known material lower it slightly. Scores never change without a recorded decision, and a manual review can still override any movement.</p>
+              </Disclosure>
+            </div>
+          </section>
           <ErrorNotice error={save.error} />
-          <div className="row">
+          <div className="settings-actions">
             <Button variant="default" disabled={save.isPending}>
               <Icon icon={Save} />
               {save.isPending ? 'Saving…' : 'Save settings'}
@@ -179,17 +175,23 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
             )}
           </div>
         </form>
-        <Separator />
-        <h3>Apply saved settings today</h3>
-        <p className="small muted">Rebuild only unstarted assignments in your current plan. Active drafts, completed and skipped items stay—even outside the selected list. Saved attempts, scores and manual review choices are never changed. Save settings first.</p>
-        <Button variant="outline" disabled={unsaved||rebuild.isPending||save.isPending} onClick={()=>rebuild.mutate()}>{rebuild.isPending?'Rebuilding…':'Rebuild unstarted current plan'}</Button>
-        {unsaved&&<p className="small muted">Save your changes to enable rebuilding.</p>}
-        <ErrorNotice error={rebuild.error} />
-        {rebuild.isSuccess&&<p className="positive" role="status">Current plan rebuilt using saved settings.</p>}
+        <section className="settings-callout">
+          <h3>Today’s plan</h3>
+          <p className="settings-help">Rebuilds only unstarted questions in today’s plan. In-progress drafts, finished and skipped items stay, even outside the selected list. Saved attempts, scores and manual review choices are never changed.</p>
+          <Button variant="outline" disabled={unsaved||rebuild.isPending||save.isPending} onClick={()=>rebuild.mutate()}>{rebuild.isPending?'Rebuilding…':'Rebuild today’s plan'}</Button>
+          {unsaved&&<p className="small muted">Save first.</p>}
+          <ErrorNotice error={rebuild.error} />
+          {rebuild.isSuccess&&<p className="positive" role="status">Today’s plan now uses your saved settings.</p>}
+        </section>
       </Card>
       <div className="settings-side">
-      <TutorSettings />
       <Card className="panel">
+        <SectionTitle icon={Palette}>Appearance</SectionTitle>
+        <p className="settings-help">Accent colour for buttons, highlights and charts. Saved on this device.</p>
+        <AccentPicker />
+      </Card>
+      <TutorSettings />
+      <Card className="panel settings-data">
         <SectionTitle icon={Database}>Your data</SectionTitle>
         <dl className="data-status">
           <div>
@@ -205,38 +207,42 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
             </dd>
           </div>
         </dl>
-        <h3>Portable export</h3>
-        <p>
-          Download questions, answers, notes, lists, review dates and score
-          history as JSON. Keep this file private: it contains your study
-          records.
-        </p>
-        <Button variant="outline" disabled={exporting} onClick={() => void download()}>
-          <Icon icon={Download} />
-          {exporting ? 'Preparing export…' : 'Download export'}
-        </Button>
-        {exported && (
-          <p className="positive" role="status">
-            Export prepared for download.
+        <section className="settings-group">
+          <h3>Portable export</h3>
+          <p className="settings-help">
+            Download questions, answers, notes, lists, review dates and score
+            history as JSON.
           </p>
-        )}
-        <ErrorNotice error={error} retry={() => void download()} />
-        <Separator />
-        <h3>Backup & restore</h3>
-        <p>
-          Local database backups and restore use the authenticated command-line
-          tools. Restore is only allowed into an empty database.
-        </p>
-        <p className="small muted">
-          See the project’s operations guide for the verified commands. Browser
-          sessions cannot access the administrative token.
-        </p>
-        <Separator />
-        <h3>Migration stays explicit</h3>
-        <p className="small muted">
-          This app never writes to your source spreadsheet. The spreadsheet is
-          a read-only archive; this app is the authoritative record.
-        </p>
+          <p className="settings-caveat">Keep this file private: it contains your study records.</p>
+          <Button variant="outline" disabled={exporting} onClick={() => void download()}>
+            <Icon icon={Download} />
+            {exporting ? 'Preparing export…' : 'Download export'}
+          </Button>
+          {exported && (
+            <p className="positive" role="status">
+              Export prepared for download.
+            </p>
+          )}
+          <ErrorNotice error={error} retry={() => void download()} />
+        </section>
+        <section className="settings-group">
+          <h3>Backup & restore</h3>
+          <p className="settings-caveat">
+            Local database backups and restore use the authenticated command-line
+            tools. Restore is only allowed into an empty database.
+          </p>
+          <p className="settings-help">
+            See the project’s operations guide for the verified commands. Browser
+            sessions cannot access the administrative token.
+          </p>
+        </section>
+        <section className="settings-group">
+          <h3>Migration stays explicit</h3>
+          <p className="settings-caveat">
+            This app never writes to your source spreadsheet. The spreadsheet is
+            a read-only archive; this app is the authoritative record.
+          </p>
+        </section>
       </Card>
       </div>
     </div>

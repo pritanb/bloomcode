@@ -53,7 +53,8 @@ export function App() {
   </div>;
 }
 function Workspace({ collapsed, toggleSidebar }: { collapsed: boolean; toggleSidebar: () => void }) {
-  const focused = useLocation().pathname.startsWith('/attempts/');
+  const { pathname } = useLocation();
+  const focused = pathname.startsWith('/attempts/');
   if (focused) {
     return (
       <main className="attempt-workspace">

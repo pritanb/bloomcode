@@ -1,0 +1,94 @@
+/* Question library, question detail and Tags & lists. */
+
+/* Status tile shared by the question table and practice history. */
+
+/* Difficulty badges use the shared tone tokens so they follow the theme. */
+.theme-v2 :is(.problem-table, .problem-summary) .level { border: 0; }
+.theme-v2 :is(.problem-table, .problem-summary) .level.easy { background: var(--tone-emerald-bg); color: var(--tone-emerald); }
+.theme-v2 :is(.problem-table, .problem-summary) .level.medium { background: var(--tone-amber-bg); color: var(--tone-amber); }
+.theme-v2 :is(.problem-table, .problem-summary) .level.hard { background: var(--tone-rose-bg); color: var(--tone-rose); }
+
+/* Library card */
+.theme-v2 .library-results { gap: 1rem; }
+.theme-v2 .library-results > .section-heading { min-height: 1.75rem; }
+.theme-v2 .library-toolbar { gap: .625rem; }
+.theme-v2 .library-search { max-width: 26rem; }
+.theme-v2 .library-search [data-slot=input] { height: 2.5rem; padding-inline: .875rem; }
+.theme-v2 .library-toolbar > [data-slot=button] { height: 2.5rem; }
+.theme-v2 .library-filter-details:not([hidden]) { padding: 1rem; border: 0; border-radius: 1rem; background: var(--muted); }
+.theme-v2 .library-filter-details [data-slot=input],
+.theme-v2 .library-filter-details [data-slot=select-trigger],
+.theme-v2 .library-filter-details .tag-filter-trigger { background: var(--card); }
+.theme-v2 .library-note { margin: -.25rem 0 0; }
+
+/* Question table */
+.problem-cell { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.theme-v2 .problem-table .problem-link { display: block; min-width: 0; font-weight: 500; color: var(--foreground); text-decoration: none; letter-spacing: -.005em; }
+.theme-v2 .problem-table .problem-link:hover { text-decoration: underline; text-decoration-color: var(--border); }
+.theme-v2 .problem-table td small { margin-top: .125rem; font-size: .8125rem; line-height: 1.4; color: var(--muted-foreground); }
+.theme-v2 .problem-table td { font-variant-numeric: tabular-nums; }
+.theme-v2 .problem-table td a.up { color: var(--up); }
+.theme-v2 .problem-table td a.warn { color: var(--warn); }
+.theme-v2 .problem-table .library-tag { border: 0; }
+@media (min-width: 701px) {
+  .theme-v2 .library-results thead th { background: var(--card); }
+}
+
+/* Pagination */
+.theme-v2 .library-results > .pagination { gap: .75rem; padding-top: .875rem; font-size: .875rem; font-variant-numeric: tabular-nums; }
+.theme-v2 .library-results > .pagination .pagination-range,
+.theme-v2 .library-results > .pagination .pagination-size { font-size: .8125rem; }
+.theme-v2 .library-results > .pagination > span:not([class]) { color: var(--muted-foreground); }
+
+/* Question detail: facts as labelled groups */
+.theme-v2 .problem-summary { gap: 0; }
+.theme-v2 .problem-summary > .row.between { padding-bottom: 1rem; }
+.theme-v2 .problem-source { font-weight: 500; color: var(--foreground); }
+.theme-v2 .problem-source .icon { color: var(--muted-foreground); }
+.problem-fact { display: flex; flex-direction: column; gap: .5rem; padding: 1rem 0; border-top: 1px solid var(--border); }
+.problem-fact:last-child { padding-bottom: 0; }
+.theme-v2 .problem-fact > h3 { margin: 0; font-size: .8125rem; font-weight: 500; color: var(--muted-foreground); }
+.problem-fact > p, .problem-fact .question-notes p { margin: 0; }
+.problem-fact .chips > p { margin: 0; }
+.theme-v2 .problem-summary > form { padding-top: .25rem; }
+
+/* Practice history as a lesson list */
+.theme-v2 .problem-history .section-heading { flex-wrap: nowrap; }
+.theme-v2 .attempt-history > li { display: grid; grid-template-columns: minmax(0, 1fr); gap: .875rem; align-items: start; padding: 1.25rem 0; border-top: 1px solid var(--border); }
+.theme-v2 .attempt-history > li:first-child { padding-top: .25rem; border-top: 0; }
+.attempt-history-body { min-width: 0; }
+.theme-v2 .attempt-history h3 { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: -.01em; line-height: 2rem; }
+.theme-v2 .attempt-history h3 .small { font-family: var(--font-ui); font-weight: 400; font-size: .8125rem; letter-spacing: 0; }
+.theme-v2 .attempt-history .chips { margin-top: .375rem; gap: .375rem; }
+.theme-v2 .attempt-history .outcome-badge.up { background: var(--tone-emerald-bg); color: var(--tone-emerald); }
+.theme-v2 .attempt-history .outcome-badge.warn { background: var(--tone-rose-bg); color: var(--tone-rose); }
+.theme-v2 .attempt-history-columns { margin-top: 1rem; padding: 1rem 1.125rem; border-radius: 1rem; background: var(--muted); }
+.theme-v2 .attempt-history-columns h4 { font-weight: 500; }
+.theme-v2 .attempt-history-feedback { border-color: var(--border); }
+
+/* Tags & lists */
+.manage-create { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .75rem; align-items: end; padding: 1rem; border-radius: 1rem; background: var(--muted); }
+.manage-create > [data-slot=button] { justify-self: start; }
+.manage-create > .error { grid-column: 1 / -1; margin: 0; }
+.theme-v2 .manage-create [data-slot=input] { background: var(--card); }
+.management-grid.fill-page > .panel > .small { margin: -.25rem 0 0; }
+
+.tag-manager-list, .list-manager-list { display: flex; flex-direction: column; gap: .5rem; }
+.theme-v2 .tag-manager-row { padding: .875rem 1rem; border: 1px solid var(--border); border-top: 1px solid var(--border); border-radius: 1rem; }
+.theme-v2 .tag-manager-row.archived { background: var(--muted); }
+.tag-manager-fields { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: .75rem; align-items: end; }
+.theme-v2 .tag-manager-fields .tag-colour-swatch { width: 2.25rem; height: 2.25rem; margin: 0; border: 3px solid var(--card); border-radius: .75rem; outline-color: var(--border); }
+.tag-manager-fields .field > label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tag-manager-actions { margin-top: .75rem; gap: .375rem; }
+.tag-manager-actions .tag-manager-open { margin-left: auto; }
+
+.theme-v2 .list-row { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); align-items: center; gap: .75rem; padding: .75rem .875rem; border: 1px solid var(--border); border-radius: 1rem; }
+.list-row-icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: .75rem; background: var(--tone-sky-bg); color: var(--tone-sky); }
+.list-row > div { display: flex; flex-direction: column; min-width: 0; }
+.theme-v2 .list-row a:first-child { font-weight: 500; color: var(--foreground); }
+.theme-v2 .list-row small { margin-top: .125rem; font-size: .8125rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+@media (max-width: 700px) {
+  .tag-manager-fields { grid-template-columns: auto minmax(0, 1fr); }
+  .tag-manager-fields > .field:last-child { grid-column: 1 / -1; }
+}

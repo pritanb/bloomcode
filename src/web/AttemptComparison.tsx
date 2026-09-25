@@ -4,7 +4,8 @@ import type { Attempt } from '../shared/contracts';
 import { api } from './api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { dateLabel, duration, ErrorNotice, Loading } from './ui';
+import { ChevronDown } from 'lucide-react';
+import { dateLabel, duration, ErrorNotice, Icon, Loading } from './ui';
 import { enumLabel, helpLabel, languageLabel } from './labels';
 
 export function previousAttempt(current: Attempt, history: Attempt[]): Attempt | undefined {
@@ -25,8 +26,8 @@ export function AttemptComparison({ attempt }: { attempt: Attempt }) {
   });
   if (attempt.status !== 'completed') return null;
   const previous = query.data && previousAttempt(attempt, query.data.history);
-  return <Card className="panel">
-    <Button type="button" variant="ghost" aria-expanded={open} aria-controls={`comparison-${attempt.id}`} onClick={() => setOpen(value => !value)}>Compare with previous attempt</Button>
+  return <Card className="panel attempt-comparison">
+    <Button type="button" variant="ghost" className="comparison-toggle" aria-expanded={open} aria-controls={`comparison-${attempt.id}`} onClick={() => setOpen(value => !value)}>Compare with previous attempt<Icon icon={ChevronDown} /></Button>
     {open && <div id={`comparison-${attempt.id}`}>
       {query.isPending || query.isFetching ? <Loading /> : query.isError ? <ErrorNotice error={query.error} retry={() => void query.refetch()} /> : previous ? <div className="attempt-comparison-grid">
         {[previous, attempt].map((item, index) => <section className="stack" key={item.id} aria-label={index ? 'This attempt' : 'Previous attempt'}>

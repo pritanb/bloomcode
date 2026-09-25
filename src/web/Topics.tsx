@@ -1,8 +1,8 @@
 import { enumLabel, helpLabel } from './labels';
 import { Card } from '@/components/ui/card';
 import { SelectField, SelectOption } from '@/components/select-field';
-import { ArrowLeft, BookOpen, History, ListChecks } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, BookOpen, Gauge, History, ListChecks, Timer, type LucideIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import type { Topic, TopicDetail as TopicData } from '../shared/contracts';
@@ -31,13 +31,21 @@ export function Topics() {
     <>
       <PageTitle
         title="Topic progress"
-        description="Find your highest-priority topics and track progress toward interview readiness."
+        description="Your priority topics and progress toward interview readiness."
       />
       {query.isPending ? <Loading /> : query.isError ? (
         <ErrorNotice error={query.error} retry={() => void query.refetch()} />
       ) : <TopicProgress topics={query.data} />}
     </>
   );
+}
+function TopicStat({ label, value, sub, icon, tone }: { label: string; value: ReactNode; sub: ReactNode; icon: LucideIcon; tone: string }) {
+  return <Card className="panel stat-card">
+    <span className={`stat-icon ${tone}`} aria-hidden="true"><Icon icon={icon} /></span>
+    <p className="stat-label">{label}</p>
+    <p className="stat-value">{value}</p>
+    <p className="stat-sub">{sub}</p>
+  </Card>;
 }
 export function TopicDetail() {
   const { id } = useParams();
@@ -68,28 +76,31 @@ export function TopicDetail() {
       </Link>
       <PageTitle
         title={d.topic.name}
-        description={`Last reviewed: ${dateLabel(d.topic.lastReviewed)}${d.topic.provisional ? ' · Provisional evidence' : ''}`}
-      >
-        <div className="detail-score">
-          <strong>{d.topic.score ?? 'Unrated'}</strong>
-          {d.topic.score !== null && <span> / 5</span>}
-        </div>
-      </PageTitle>
+        description={`Last reviewed: ${dateLabel(d.topic.lastReviewed)}`}
+      />
       {d.topic.notes && <p className="topic-notes preserve">{d.topic.notes}</p>}
-      <div className="topic-insight">
-        <div>
-          <strong>{d.stats.attemptCount}</strong>
-          <span>Recorded attempts</span>
-        </div>
-        <div>
-          <strong>{duration(d.stats.medianSeconds)}</strong>
-          <span>Median known active time</span>
-        </div>
-        <p className="small muted">
-          {d.stats.knownTimeCount} of {d.stats.attemptCount} attempts have known
-          times. Unknown durations are excluded. This summary includes different
-          help and evidence types; compare like for like below.
-        </p>
+      <div className="topic-stats">
+        <TopicStat
+          label="Current score"
+          icon={Gauge}
+          tone="solid"
+          value={d.topic.score === null ? 'Unrated' : <>{d.topic.score}<span> / 5</span></>}
+          sub={d.topic.provisional ? <span className="warn">Provisional evidence</span> : '1–5 readiness scale'}
+        />
+        <TopicStat
+          label="Recorded attempts"
+          icon={ListChecks}
+          tone="tone-sky"
+          value={d.stats.attemptCount}
+          sub="All help and evidence types"
+        />
+        <TopicStat
+          label="Median active time"
+          icon={Timer}
+          tone="tone-amber"
+          value={duration(d.stats.medianSeconds)}
+          sub={`Known times only · ${d.stats.knownTimeCount} of ${d.stats.attemptCount} attempts`}
+        />
       </div>
       <div className="topic-detail-layout fill-page">
       <Card className="panel">
@@ -136,9 +147,8 @@ export function TopicDetail() {
       </Card>
       <Card className="panel topic-related">
         <SectionTitle icon={BookOpen}>Related questions</SectionTitle>
-        <p className="small muted">
-          Selecting a related question is targeted practice, not an unseen
-          assessment.
+        <p className="topic-related-note">
+          Practising these counts as targeted, not an unseen assessment.
         </p>
         {d.problems.length ? (
           <ProblemTable problems={d.problems} />

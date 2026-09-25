@@ -27,9 +27,9 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
   const save = useAction(() => api.send('/tutor/settings', 'POST', settings));
   const test = useAction(() => api.send<TutorTestResult>('/tutor/test', 'POST', settings));
   const codex = draft.provider === 'codex';
-  return <Card className="panel">
+  return <Card className="panel tutor-settings">
     <SectionTitle icon={Bot}>AI tutor</SectionTitle>
-    <p className="muted">Writes tutor reports, learning insights and topic picks. Practice and saving work without it.</p>
+    <p className="settings-help">Writes tutor reports, learning insights and topic picks. Practice and saving work without it.</p>
     <form className="stack" onSubmit={e => { e.preventDefault(); save.mutate(); }}>
       <Field label="Run the tutor with">
         <SelectField value={draft.provider} onValueChange={provider => setDraft({ ...draft, provider: provider as Settings['provider'] })}>
@@ -39,7 +39,7 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
         </SelectField>
       </Field>
       {codex && <>
-        <p className="small muted">The app runs Codex on this Mac for each job, isolated with no tools. Usage counts toward your ChatGPT plan limits.</p>
+        <p className="settings-help">The app runs Codex on this Mac for each job, isolated with no tools. Usage counts toward your ChatGPT plan limits.</p>
         <Field label="Model">
           <Input required value={draft.model} onChange={e => setDraft({ ...draft, model: e.target.value })} />
         </Field>
