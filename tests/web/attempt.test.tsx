@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Attempt } from '../../src/shared/contracts';
-import { App } from '../../src/web/App';
+import { App } from '../../src/web/app/App';
 vi.hoisted(() => {
   // jsdom has no layout observer; dnd-kit initializes one during app import.
   vi.stubGlobal(

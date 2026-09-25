@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { analysisStatus } from '../../src/web/analysis-status';
+import { analysisStatus } from '../../src/web/features/insights/analysis-status';
 import type { InsightStatus } from '../../src/shared/insights';
 const base = {
   enabled: true,

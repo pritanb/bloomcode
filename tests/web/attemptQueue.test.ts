@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import type { Attempt } from '../../src/shared/contracts';
-import { AttemptQueue } from '../../src/web/attemptQueue';
+import { AttemptQueue } from '../../src/web/features/practice/attemptQueue';
 const initial = { id: 'a1', version: 1, code: '' } as Attempt;
 it('serialises timer and draft mutations using the version from the preceding commit', async () => {
   const queue = new AttemptQueue(initial);

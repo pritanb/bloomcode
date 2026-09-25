@@ -12,8 +12,8 @@ Use system sans-serif for interface text and system monospace for code. Page tit
 
 - Use the generated Button, Card, Input, Label, Textarea, Badge, Separator, Table, Checkbox, Select, Popover, Calendar and Collapsible in feature screens. Keep registry styling rather than rebuilding controls in CSS.
 - Use the shared SelectField, DateField and Disclosure compositions for dropdowns, date picking and expandable sections. Use styled shadcn Select menus rather than NativeSelect or browser datalists. The tag multi-select composes shadcn Popover, Input and Checkbox.
-- `styles.css` contains Tailwind v4 integration and shadcn semantic variables. `layout.css` contains only application typography, layout, responsive records and editor framing.
-- `ui.tsx` provides application compositions such as labelled fields and responsive record tables; these compose the generated primitives. Forward accessible labels to the actual controls, including SelectTrigger.
+- `src/web/styles/styles.css` contains Tailwind v4 integration and shadcn semantic variables. `styles/layout.css` contains only application typography, layout, responsive records and editor framing.
+- `src/web/components/ui.tsx` provides application compositions such as labelled fields and responsive record tables; these compose the generated primitives. Forward accessible labels to the actual controls, including SelectTrigger.
 - Keep the existing API, routing, CodeMirror and save queue. Preserve input and checkbox handlers, form submission and duplicate-safe finish logic.
 - Mobile tables become labelled record cards. Navigation and forms wrap, focus stays visible, and reduced motion is respected.
 

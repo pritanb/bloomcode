@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { createApi } from '../../src/web/api';
+import { createApi } from '../../src/web/app/api';
 afterEach(() => vi.unstubAllGlobals());
 it('initialises one browser session before concurrent reads and includes CSRF on writes', async () => {
   const fetcher = vi.fn(

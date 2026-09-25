@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import type { ScoreDecision } from '../../src/shared/contracts';
-import { topicHistory } from '../../src/web/topic-history';
+import { topicHistory } from '../../src/web/features/topics/topic-history';
 const decision = (
   id: string,
   date: string,

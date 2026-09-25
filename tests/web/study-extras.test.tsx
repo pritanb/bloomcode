@@ -5,10 +5,13 @@ import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { Attempt } from '../../src/shared/contracts';
-import { AttemptComparison, previousAttempt } from '../../src/web/AttemptComparison';
-import { AttemptReflection } from '../../src/web/AttemptReflection';
-import { reviewWeek } from '../../src/web/ReviewCalendar';
-import { api, ApiError } from '../../src/web/api';
+import {
+  AttemptComparison,
+  previousAttempt,
+} from '../../src/web/features/practice/AttemptComparison';
+import { AttemptReflection } from '../../src/web/features/practice/AttemptReflection';
+import { reviewWeek } from '../../src/web/features/reports/ReviewCalendar';
+import { api, ApiError } from '../../src/web/app/api';
 const attempt: Attempt = {
   id: 'current',
   problemId: 'p1',

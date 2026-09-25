@@ -5,8 +5,8 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PatternDetail } from '../../src/shared/contracts';
-import { api, ApiError } from '../../src/web/api';
-import { Patterns } from '../../src/web/Patterns';
+import { api, ApiError } from '../../src/web/app/api';
+import { Patterns } from '../../src/web/features/notebooks/Patterns';
 
 const pattern: PatternDetail = {
   id: 'pattern-1',
