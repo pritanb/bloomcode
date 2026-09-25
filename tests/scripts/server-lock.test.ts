@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
-import { acquireServerLock } from '../scripts/server-lock.mjs';
+import { acquireServerLock } from '../../scripts/server-lock.mjs';
 
 const directories: string[] = [];
 const children: ChildProcess[] = [];
@@ -13,7 +13,7 @@ function workspace() {
   directories.push(dir);
   return dir;
 }
-const moduleURL = new URL('../scripts/server-lock.mjs', import.meta.url).href;
+const moduleURL = new URL('../../scripts/server-lock.mjs', import.meta.url).href;
 const claimant = `import { acquireServerLock } from ${JSON.stringify(moduleURL)}; const release=acquireServerLock(process.argv[1]); console.log('owned'); if(process.argv[2]==='hold'){setInterval(()=>{},1000);}else{release();}`;
 afterEach(async () => {
   for (const child of children.splice(0))
