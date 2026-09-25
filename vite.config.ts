@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // Keep Fastify's strict Host/Origin checks; translate only a request that was
 // same-origin at Vite's boundary. Never launder an arbitrary browser Origin.
 const localApiProxy: ProxyOptions = {
-  target: 'http://127.0.0.1:4317',
+  target: `http://127.0.0.1:${process.env.TUTOR_DEV_API_PORT || '4317'}`,
   changeOrigin: true,
   configure(proxy) {
     proxy.on('proxyReq', (upstreamRequest, request) => {

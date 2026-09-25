@@ -23,6 +23,18 @@ The installable ZIP is under `dist/electron/make/zip/darwin/arm64/`. To create o
 
 The desktop build stages its own runtime dependencies, including Electron's SQLite binary. Your workspace, API token and `.env` file are not included in the package.
 
+### Develop with live UI updates
+
+Run `npm run electron:dev` from the project directory. This builds the backend once, starts Vite on port 5173, and opens the Electron window. React and CSS edits appear automatically through hot module replacement; keep the command running while editing. Restart the command after backend or Electron changes. Packaging is only needed to distribute an updated app.
+
+Quit the regular app first: development uses the same study workspace and backend port by default, so the existing MCP configuration continues to work. For QA, always use disposable data instead:
+
+```sh
+DESKTOP_TEST_DATA_DIR=$(mktemp -d /tmp/leetcode-dev-XXXXXX) DESKTOP_TEST_PORT=4346 npm run electron:dev
+```
+
+The test override isolates both study records and the Electron profile. Close the development window to stop its backend and Vite server. Packaged apps ignore the development renderer setting.
+
 ## Build on GitHub
 
 After the workflow is on the repository's default branch, open **Actions → Build desktop app → Run workflow**. Download the `leetcode-tutor-macos-arm64` artifact from the completed run, extract it, then unzip the app archive inside.

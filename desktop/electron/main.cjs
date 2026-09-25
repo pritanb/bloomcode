@@ -135,10 +135,14 @@ async function startWorker() {
       else if (!quitting && !starting) void showFailure(new Error('The study server stopped unexpectedly. Reopen it to continue.'));
     });
   });
-  address = url;
+  // Packaged apps always load their own backend. Development permits only the
+  // dedicated loopback Vite origin, retaining the renderer's navigation boundary.
+  const devUrl = !app.isPackaged && process.env.TUTOR_DEV_RENDERER_URL;
+  if (devUrl && devUrl !== 'http://127.0.0.1:5173') throw new Error('Invalid development renderer address.');
+  address = devUrl || url;
   const response = await fetch(`${url}/health`, { signal: AbortSignal.timeout(5000), redirect: 'error' });
   if (!response.ok || (await response.json()).ok !== true) throw new Error('The study server failed its readiness check.');
-  if (!quitting && window && !window.isDestroyed()) await window.loadURL(url);
+  if (!quitting && window && !window.isDestroyed()) await window.loadURL(address);
 }
 
 async function showFailure(error) {

@@ -55,4 +55,18 @@ if (!installed) {
   await run('npm', ['ci', '--no-audit', '--no-fund']);
   await writeFile(marker, lockHash);
 }
-await run(join(stage, 'node_modules/.bin/electron-forge'), [command, ...flags]);
+let devServer;
+try {
+  if (mode === 'dev') {
+    const { createServer } = await import('vite');
+    // Match the backend port while keeping Vite's existing Origin/CSRF proxy checks.
+    process.env.TUTOR_DEV_API_PORT = process.env.DESKTOP_TEST_PORT || process.env.PORT || '4317';
+    devServer = await createServer({ root, server: { host: '127.0.0.1', port: 5173, strictPort: true } });
+    await devServer.listen();
+    process.env.TUTOR_DEV_RENDERER_URL = 'http://127.0.0.1:5173';
+    console.log('Desktop development: UI changes update live. Restart this command for backend or Electron changes.');
+  }
+  await run(join(stage, 'node_modules/.bin/electron-forge'), [command, ...flags]);
+} finally {
+  await devServer?.close();
+}
