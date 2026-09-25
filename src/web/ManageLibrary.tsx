@@ -9,23 +9,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import type { Tag, ProblemList } from '../shared/contracts';
 import { api } from './api';
-import {
-  Icon,
-  SectionTitle,
-  Empty,
-  ErrorNotice,
-  Field,
-  Loading,
-  PageTitle,
-  useAction,
-} from './ui';
+import { Icon, SectionTitle, Empty, ErrorNotice, Field, Loading, PageTitle, useAction } from './ui';
 function TagRow({ tag }: { tag: Tag }) {
   const [name, setName] = useState(tag.name);
   const [description, setDescription] = useState(tag.description);
   const [hue, setHue] = useState(tag.hue ?? 0);
-  const edit = useAction((data: Partial<Tag>) =>
-    api.send<Tag>(`/tags/${tag.id}`, 'PATCH', data),
-  );
+  const edit = useAction((data: Partial<Tag>) => api.send<Tag>(`/tags/${tag.id}`, 'PATCH', data));
   return (
     <li className={`tag-manager-row${tag.archived ? ' archived' : ''}`}>
       <form
@@ -37,31 +26,39 @@ function TagRow({ tag }: { tag: Tag }) {
         <div className="tag-manager-fields">
           <Popover>
             <PopoverTrigger asChild>
-              <button type="button" className="tag-colour-swatch" aria-label={`Edit colour for ${tag.name}`} title="Edit tag colour" style={{ backgroundColor: `hsl(${hue} 65% 55%)` }} />
+              <button
+                type="button"
+                className="tag-colour-swatch"
+                aria-label={`Edit colour for ${tag.name}`}
+                title="Edit tag colour"
+                style={{ backgroundColor: `hsl(${hue} 65% 55%)` }}
+              />
             </PopoverTrigger>
             <PopoverContent align="start">
               <Field label={`Colour for ${tag.name}`}>
-                <input type="range" min="0" max="359" step="1" value={hue} onChange={e => setHue(Number(e.target.value))} className="tag-hue-picker" />
+                <input
+                  type="range"
+                  min="0"
+                  max="359"
+                  step="1"
+                  value={hue}
+                  onChange={(e) => setHue(Number(e.target.value))}
+                  className="tag-hue-picker"
+                />
               </Field>
               <p className="small muted">Choose a colour, then Save changes.</p>
             </PopoverContent>
           </Popover>
           <Field label={`Name for ${tag.name}`}>
-            <Input
-              value={name}
-              required
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input value={name} required onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field label={`Description for ${tag.name}`}>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
           </Field>
         </div>
         <div className="row tag-manager-actions">
-          <Button variant="outline"
+          <Button
+            variant="outline"
             disabled={
               edit.isPending ||
               (name === tag.name && description === tag.description && hue === (tag.hue ?? 0))
@@ -69,7 +66,8 @@ function TagRow({ tag }: { tag: Tag }) {
           >
             Save changes
           </Button>
-          <Button variant="outline"
+          <Button
+            variant="outline"
             type="button"
             aria-label={`${tag.archived ? 'Restore' : 'Archive'} ${tag.name}`}
             disabled={edit.isPending}
@@ -77,8 +75,14 @@ function TagRow({ tag }: { tag: Tag }) {
           >
             {tag.archived ? 'Restore' : 'Archive'}
           </Button>
-          {tag.archived && <Badge variant="secondary" className="badge">Archived</Badge>}
-          <Button asChild variant="ghost" className="tag-manager-open"><Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>Open notebook</Link></Button>
+          {tag.archived && (
+            <Badge variant="secondary" className="badge">
+              Archived
+            </Badge>
+          )}
+          <Button asChild variant="ghost" className="tag-manager-open">
+            <Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>Open notebook</Link>
+          </Button>
         </div>
         <ErrorNotice error={edit.error} />
       </form>
@@ -143,17 +147,10 @@ export function ManageLibrary() {
             }}
           >
             <Field label="New tag name">
-              <Input
-                required
-                value={tagName}
-                onChange={(e) => setTagName(e.target.value)}
-              />
+              <Input required value={tagName} onChange={(e) => setTagName(e.target.value)} />
             </Field>
             <Field label="Tag description">
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
             <Button variant="default" disabled={addTag.isPending}>
               <Icon icon={Plus} />
@@ -170,9 +167,11 @@ export function ManageLibrary() {
             <ErrorNotice error={tags.error} retry={() => void tags.refetch()} />
           ) : tags.data.length ? (
             <ul className="plain-list tag-manager-list">
-              {[...tags.data].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
-                <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}-${t.kind}`} tag={t} />
-              ))}
+              {[...tags.data]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((t) => (
+                  <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}-${t.kind}`} tag={t} />
+                ))}
             </ul>
           ) : (
             <Empty>No tags yet.</Empty>
@@ -191,24 +190,13 @@ export function ManageLibrary() {
             }}
           >
             <Field label="New list name">
-              <Input
-                required
-                value={listName}
-                onChange={(e) => setListName(e.target.value)}
-              />
+              <Input required value={listName} onChange={(e) => setListName(e.target.value)} />
             </Field>
             <Field label="Source URL (optional)">
-              <Input
-                type="url"
-                value={sourceUrl}
-                onChange={(e) => setSourceUrl(e.target.value)}
-              />
+              <Input type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
             </Field>
             <Field label="Source version (optional)">
-              <Input
-                value={sourceVersion}
-                onChange={(e) => setSourceVersion(e.target.value)}
-              />
+              <Input value={sourceVersion} onChange={(e) => setSourceVersion(e.target.value)} />
             </Field>
             <Button variant="default" disabled={addList.isPending}>
               <Icon icon={Plus} />
@@ -217,44 +205,38 @@ export function ManageLibrary() {
             <ErrorNotice error={addList.error} />
           </form>
           <p className="small muted">
-            Edit a question to change its lists. A new list starts empty: popular lists appear only after importing a verified manifest.
+            Edit a question to change its lists. A new list starts empty: popular lists appear only
+            after importing a verified manifest.
           </p>
           {lists.isPending ? (
             <Loading />
           ) : lists.isError ? (
-            <ErrorNotice
-              error={lists.error}
-              retry={() => void lists.refetch()}
-            />
+            <ErrorNotice error={lists.error} retry={() => void lists.refetch()} />
           ) : lists.data.length ? (
             <ul className="plain-list list-manager-list">
               {lists.data.map((l) => (
                 <li className="list-row" key={l.id}>
-                  <span className="list-row-icon" aria-hidden="true"><Icon icon={List} /></span>
+                  <span className="list-row-icon" aria-hidden="true">
+                    <Icon icon={List} />
+                  </span>
                   <div>
-                  <Link to={`/library?listId=${encodeURIComponent(l.id)}`}>
-                    {l.name}
-                  </Link>
-                  <small>
-                    {l.sourceVersion ?? 'Custom list'}
-                    {l.sourceUrl && (
-                      <>
-                        {' '}
-                        ·{' '}
-                        <a
-                          href={
-                            /^https?:\/\//.test(l.sourceUrl)
-                              ? l.sourceUrl
-                              : undefined
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Source
-                        </a>
-                      </>
-                    )}
-                  </small>
+                    <Link to={`/library?listId=${encodeURIComponent(l.id)}`}>{l.name}</Link>
+                    <small>
+                      {l.sourceVersion ?? 'Custom list'}
+                      {l.sourceUrl && (
+                        <>
+                          {' '}
+                          ·{' '}
+                          <a
+                            href={/^https?:\/\//.test(l.sourceUrl) ? l.sourceUrl : undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Source
+                          </a>
+                        </>
+                      )}
+                    </small>
                   </div>
                 </li>
               ))}

@@ -19,13 +19,13 @@ The reduced suites were exercised in 6.87 seconds (functions) and 5.5 seconds (b
 
 ## What to run for a change
 
-| Change | Verification |
-|---|---|
-| Copy, colours, spacing or icons | Inspect the affected screen; no full test suite or review-agent cycle |
+| Change                             | Verification                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| Copy, colours, spacing or icons    | Inspect the affected screen; no full test suite or review-agent cycle                 |
 | UI interaction or TypeScript logic | Relevant test file(s), typecheck; browser flow only if practice/save flow is affected |
-| Scoring, scheduling or persistence | Relevant critical tests; full `npm test` for changes spanning these functions |
-| Import, backup or restore | Relevant integration/regression tests on disposable data |
-| Startup/build/dependency changes | Build; optional `npm run test:smoke` |
+| Scoring, scheduling or persistence | Relevant critical tests; full `npm test` for changes spanning these functions         |
+| Import, backup or restore          | Relevant integration/regression tests on disposable data                              |
+| Startup/build/dependency changes   | Build; optional `npm run test:smoke`                                                  |
 
 Run a relevant file with `npm test -- tests/web/attemptQueue.test.ts` (or its corresponding domain file). Never use the real pilot database for QA.
 

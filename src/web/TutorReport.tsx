@@ -14,11 +14,11 @@ export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: (
     queryKey: key,
     queryFn: () => api.get<AutoReviewStatus>(`/attempts/${attempt.id}/auto-review`),
     enabled: !attempt.feedback,
-    refetchInterval: q => (working(q.state.data?.status) ? 3000 : false),
+    refetchInterval: (q) => (working(q.state.data?.status) ? 3000 : false),
   });
   const request = useMutation({
     mutationFn: () => api.send<AutoReviewStatus>(`/attempts/${attempt.id}/auto-review`, 'POST', {}),
-    onSuccess: data => cache.setQueryData(key, data),
+    onSuccess: (data) => cache.setQueryData(key, data),
   });
   const state = status.data?.status;
   useEffect(() => {

@@ -5,7 +5,8 @@ import { join } from 'node:path';
 
 // Playwright re-evaluates configuration in worker processes. Publish the one
 // temporary directory through inherited environment, not a fresh mkdtemp there.
-const dataDir = process.env.LEETCODE_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'leetcode-tutor-e2e-'));
+const dataDir =
+  process.env.LEETCODE_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'leetcode-tutor-e2e-'));
 process.env.LEETCODE_E2E_DATA_DIR = dataDir;
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,7 +14,11 @@ export default defineConfig({
   workers: 1,
   timeout: 30_000,
   retries: 0,
-  use: { baseURL: 'http://127.0.0.1:4318', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  use: {
+    baseURL: 'http://127.0.0.1:4318',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'node dist/server/index.js',

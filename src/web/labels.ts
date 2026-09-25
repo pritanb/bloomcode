@@ -6,9 +6,30 @@ export function enumLabel(value: string | null | undefined): string {
 }
 
 export function helpLabel(value: string): string {
-  return ({ none: 'No help', small: 'Small hint', major: 'Major help', solution: 'Solution viewed', unknown: 'Unknown help' } as Record<string, string>)[value] ?? enumLabel(value);
+  return (
+    (
+      {
+        none: 'No help',
+        small: 'Small hint',
+        major: 'Major help',
+        solution: 'Solution viewed',
+        unknown: 'Unknown help',
+      } as Record<string, string>
+    )[value] ?? enumLabel(value)
+  );
 }
 
 export function languageLabel(value: string): string {
-  return ({ python: 'Python', java: 'Java', javascript: 'JavaScript', typescript: 'TypeScript', cpp: 'C++', other: 'Other' } as Record<string, string>)[value] ?? enumLabel(value);
+  return (
+    (
+      {
+        python: 'Python',
+        java: 'Java',
+        javascript: 'JavaScript',
+        typescript: 'TypeScript',
+        cpp: 'C++',
+        other: 'Other',
+      } as Record<string, string>
+    )[value] ?? enumLabel(value)
+  );
 }

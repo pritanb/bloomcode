@@ -35,21 +35,21 @@ A meaningful attempt counts as practice even when it is not solved. It does not 
 
 ## 4. Required v1 features
 
-| Feature | Requirement |
-|---|---|
-| **Home dashboard** | Display today's plan and completion state, current topic scores, topics needing work and recent score movements. Keep Start/Resume prominent, with optional continuation and swap/snooze actions. |
-| **Topic scoring** | Retain the existing 1–5 topic scale, decimal scores and evidence-based rating approach. Show the current score, latest change and last review date; link changes to supporting attempts and rationale. |
-| **Question library** | Search questions and browse completed, attempted or all questions. Add a question by URL with editable metadata. |
-| **Custom tags** | Create, rename, assign and archive pattern tags. A question can have multiple tags. |
-| **Tag difficulty** | Optional 1–10 difficulty for each question–tag pairing. The same tag can have different difficulty on different questions. Keep this separate from LeetCode difficulty and learner proficiency. |
-| **Filtering and sorting** | Filter by tags, selected-tag difficulty, completion status, solve-time bucket, list membership and LeetCode difficulty. Sort by time, recency, review date or selected-tag difficulty. |
-| **Popular lists** | Support verified NeetCode 150, NeetCode 250, Blind 75 and custom list memberships without duplicating overlapping questions. |
-| **Answer entry** | Python-first code editor, language selection, notes and optional submission links. Autosave drafts and retain previous attempts/answers. |
-| **Attempt logging** | Record solved/not solved/stopped, help used and active time. Allow unknown values rather than inventing evidence. Confidence and detailed testing fields are optional for ordinary practice. |
-| **Repeat scheduling** | Recommend a next review from actual outcomes/help; allow manual dates, snooze and no scheduled review. Honour manual choices. |
-| **Daily refresh** | Generate a stable recommendation for each local study day. Preserve active work across refreshes and midnight. |
-| **Basic topic insight** | From a topic score, open its practice history, relevant questions and comparable solve times. Distinguish assisted solves and exact repeats from independent unfamiliar attempts. |
-| **Data ownership** | Import existing records, export data and answers, and provide a tested backup/restore path. |
+| Feature                   | Requirement                                                                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Home dashboard**        | Display today's plan and completion state, current topic scores, topics needing work and recent score movements. Keep Start/Resume prominent, with optional continuation and swap/snooze actions.      |
+| **Topic scoring**         | Retain the existing 1–5 topic scale, decimal scores and evidence-based rating approach. Show the current score, latest change and last review date; link changes to supporting attempts and rationale. |
+| **Question library**      | Search questions and browse completed, attempted or all questions. Add a question by URL with editable metadata.                                                                                       |
+| **Custom tags**           | Create, rename, assign and archive pattern tags. A question can have multiple tags.                                                                                                                    |
+| **Tag difficulty**        | Optional 1–10 difficulty for each question–tag pairing. The same tag can have different difficulty on different questions. Keep this separate from LeetCode difficulty and learner proficiency.        |
+| **Filtering and sorting** | Filter by tags, selected-tag difficulty, completion status, solve-time bucket, list membership and LeetCode difficulty. Sort by time, recency, review date or selected-tag difficulty.                 |
+| **Popular lists**         | Support verified NeetCode 150, NeetCode 250, Blind 75 and custom list memberships without duplicating overlapping questions.                                                                           |
+| **Answer entry**          | Python-first code editor, language selection, notes and optional submission links. Autosave drafts and retain previous attempts/answers.                                                               |
+| **Attempt logging**       | Record solved/not solved/stopped, help used and active time. Allow unknown values rather than inventing evidence. Confidence and detailed testing fields are optional for ordinary practice.           |
+| **Repeat scheduling**     | Recommend a next review from actual outcomes/help; allow manual dates, snooze and no scheduled review. Honour manual choices.                                                                          |
+| **Daily refresh**         | Generate a stable recommendation for each local study day. Preserve active work across refreshes and midnight.                                                                                         |
+| **Basic topic insight**   | From a topic score, open its practice history, relevant questions and comparable solve times. Distinguish assisted solves and exact repeats from independent unfamiliar attempts.                      |
+| **Data ownership**        | Import existing records, export data and answers, and provide a tested backup/restore path.                                                                                                            |
 
 **Time buckets:** 0–<10, 10–<20, 20–<30, 30–<45 and 45+ minutes, plus Unknown. By default, the library uses the latest accepted attempt's active time and displays whether help was used. Acceptance is user-reported unless independently verified; historical checklist completion is labelled separately.
 

@@ -13,7 +13,11 @@ export function acquireServerLock(dataDir) {
   const release = () => {
     if (released) return;
     released = true;
-    try { unlinkSync(path); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    try {
+      unlinkSync(path);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
   };
   try {
     // Publish before inspecting: simultaneous starts may both refuse, never both win.
@@ -22,11 +26,24 @@ export function acquireServerLock(dataDir) {
       const match = /^(\d+)-[a-f0-9-]+\.lock$/.exec(other);
       if (!match) continue;
       let alive = true;
-      try { process.kill(Number(match[1]), 0); }
-      catch (error) { if (error.code === 'ESRCH') alive = false; }
-      if (alive) throw new Error('This study workspace is already open in another server. Quit that server and try again.');
-      try { unlinkSync(join(directory, other)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      try {
+        process.kill(Number(match[1]), 0);
+      } catch (error) {
+        if (error.code === 'ESRCH') alive = false;
+      }
+      if (alive)
+        throw new Error(
+          'This study workspace is already open in another server. Quit that server and try again.',
+        );
+      try {
+        unlinkSync(join(directory, other));
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
     }
     return release;
-  } catch (error) { release(); throw error; }
+  } catch (error) {
+    release();
+    throw error;
+  }
 }

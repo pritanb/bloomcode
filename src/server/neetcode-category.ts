@@ -7,6 +7,10 @@ import type { Problem } from '../shared/contracts.js';
  * topics are the scored curriculum buckets. Keeping these separate means
  * relabelling a question can never move a topic score.
  */
-const categoryBySlug=new Map(manifest.problems.map(row=>[row.link.replace(/\/$/,''),row.pattern]));
-export const neetcodeCategories=[...new Set(manifest.problems.map(row=>row.pattern))];
-export function neetcodeCategory(p:Pick<Problem,'slug'>):string|null {return categoryBySlug.get(p.slug)??null;}
+const categoryBySlug = new Map(
+  manifest.problems.map((row) => [row.link.replace(/\/$/, ''), row.pattern]),
+);
+export const neetcodeCategories = [...new Set(manifest.problems.map((row) => row.pattern))];
+export function neetcodeCategory(p: Pick<Problem, 'slug'>): string | null {
+  return categoryBySlug.get(p.slug) ?? null;
+}

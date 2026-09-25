@@ -17,7 +17,14 @@ Cutover was approved on 2026-09-17: the app is authoritative and the Sheet is a 
       "sheetId": 123,
       "values": [
         ["Date", "Problem", "Link", "Result", "Time Min", "Notes"],
-        ["2026-09-01", "Example title", "https://leetcode.com/problems/example-slug/", "Clean", "12:34", "Original notes"]
+        [
+          "2026-09-01",
+          "Example title",
+          "https://leetcode.com/problems/example-slug/",
+          "Clean",
+          "12:34",
+          "Original notes"
+        ]
       ],
       "unformattedValues": [],
       "gridData": []
@@ -57,7 +64,7 @@ The corrected real-data pilot contains 293 questions after public-list ingestion
 - Tracker results follow the existing tutor vocabulary: Clean/Small Hint/Major Hint/Struggled/Looked Up are eventual solves; Failed is not solved; Stopped is stopped. Clean means no help, Small Hint small, Major Hint major, Looked Up solution. Explicit hint levels can increase recorded help: 0 none; 1–2 small; 3–4 major; 5 solution. Struggled/Failed with missing hint level retain unknown help. Unsupported results/dates stay unresolved. Code is imported only from an explicit code/answer cell, never reconstructed from notes.
 - Numeric `Time Min` (including numeric strings) is **minutes**, converted to integer seconds. Exact `mm:ss` is supported. Three-component strings such as `33:44:00`, multiple durations, approximate prose and missing/invalid values become **null/Unknown** with warnings. Unformatted values remain provenance, not a reason to reinterpret a suspicious formatted time. Notes do not override the time cell.
 - Existing 1–5 decimal scores are retained unchanged, marked provisional legacy evidence. Invalid/missing scores remain null. Historical score movements never replace the imported current rating.
-- Supported movement syntax is `Topic 3.50 -> 3.65` or `Topic 3.50 → 3.65`, with optional balanced parenthesised rationales (including nested complexity expressions). Separate movements with semicolons or an unambiguous ` and ` **outside** parentheses. Every topic must match an imported current topic, independent of tab order. Explicit equal endpoints, `Topic remains 3.25 (...)`, and `Topic 3.75 (no change — rationale)` preserve no-change decisions only when the full grammar and stated score are valid. Deltas, inferred endpoints, malformed conjunctions, unknown topics and missing dates are rejected; original strings remain available for review.
+- Supported movement syntax is `Topic 3.50 -> 3.65` or `Topic 3.50 → 3.65`, with optional balanced parenthesised rationales (including nested complexity expressions). Separate movements with semicolons or an unambiguous `and` **outside** parentheses. Every topic must match an imported current topic, independent of tab order. Explicit equal endpoints, `Topic remains 3.25 (...)`, and `Topic 3.75 (no change — rationale)` preserve no-change decisions only when the full grammar and stated score are valid. Deltas, inferred endpoints, malformed conjunctions, unknown topics and missing dates are rejected; original strings remain available for review.
 - Dates are ISO `YYYY-MM-DD`; no locale/timezone guessing or fabricated dates. Historical plans are candidates, not mandatory overdue work. Instructions remain metadata. Dated placeholders with no problem URL retain their title in plan notes without inventing a question identity.
 
 Before approval, reconcile per-tab source rows, deduplicated question inventory, all tracker attempts, unknown times, every topic score and explicit movement. Review the unresolved records, aliases, out-of-range data and legacy evidence labels. Keep the original snapshot unchanged and outside Git.

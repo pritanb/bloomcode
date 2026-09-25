@@ -17,17 +17,17 @@ npm run local
 
 Defaults:
 
-| Setting/file | Value or purpose |
-|---|---|
-| `DATA_DIR` | Platform default from the README; an existing macOS `LeetcodeTutor-dev` database is preserved |
-| `PORT` | `4317`; loopback only |
-| `NODE_BINARY` | Optional absolute Node executable for the shell launcher |
-| `NO_OPEN=1` | Check/start without opening a browser |
-| `DATA_DIR/leetcode.sqlite` | Live database; keep its WAL files with it |
-| `DATA_DIR/api-token` | Local bearer credential; never paste it in chat/config/logs |
-| `DATA_DIR/server.log` | Launcher-started backend output |
-| `DATA_DIR/server.pid` | PID recorded by the launcher |
-| `DATA_DIR/launcher.lock` | Short-lived startup lock |
+| Setting/file               | Value or purpose                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| `DATA_DIR`                 | Platform default from the README; an existing macOS `LeetcodeTutor-dev` database is preserved |
+| `PORT`                     | `4317`; loopback only                                                                         |
+| `NODE_BINARY`              | Optional absolute Node executable for the shell launcher                                      |
+| `NO_OPEN=1`                | Check/start without opening a browser                                                         |
+| `DATA_DIR/leetcode.sqlite` | Live database; keep its WAL files with it                                                     |
+| `DATA_DIR/api-token`       | Local bearer credential; never paste it in chat/config/logs                                   |
+| `DATA_DIR/server.log`      | Launcher-started backend output                                                               |
+| `DATA_DIR/server.pid`      | PID recorded by the launcher                                                                  |
+| `DATA_DIR/launcher.lock`   | Short-lived startup lock                                                                      |
 
 For foreground development use `npm run dev` (and, if needed, `npm run dev:web`). To stop a launcher-started server, inspect its PID and command using your process manager, then send **SIGTERM only to that verified Node process**. A PID file alone is not authority to kill a process: PIDs can be reused. Back up before upgrades; rebuild and restart afterwards.
 

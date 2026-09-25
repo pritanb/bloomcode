@@ -2,7 +2,17 @@
   "version": 1,
   "name": "My interview warmup",
   "questions": [
-    { "title": "Two Sum", "url": "https://leetcode.com/problems/two-sum/", "difficulty": "Easy", "tags": ["Hash table"] },
-    { "title": "Valid Parentheses", "url": "https://leetcode.com/problems/valid-parentheses/", "difficulty": "Easy", "tags": ["Stack"] }
+    {
+      "title": "Two Sum",
+      "url": "https://leetcode.com/problems/two-sum/",
+      "difficulty": "Easy",
+      "tags": ["Hash table"]
+    },
+    {
+      "title": "Valid Parentheses",
+      "url": "https://leetcode.com/problems/valid-parentheses/",
+      "difficulty": "Easy",
+      "tags": ["Stack"]
+    }
   ]
 }

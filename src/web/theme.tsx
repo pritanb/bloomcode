@@ -8,12 +8,16 @@ const storageKey = 'leetcode-tutor-theme';
 const media = window.matchMedia('(prefers-color-scheme: dark)');
 const listeners = new Set<() => void>();
 let preference: string | null = null;
-try { preference = localStorage.getItem(storageKey); } catch { /* Storage may be disabled. */ }
+try {
+  preference = localStorage.getItem(storageKey);
+} catch {
+  /* Storage may be disabled. */
+}
 let dark = preference === 'dark' || (preference !== 'light' && media.matches);
 function applyTheme() {
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-  listeners.forEach(listener => listener());
+  listeners.forEach((listener) => listener());
 }
 applyTheme();
 media.addEventListener('change', () => {
@@ -23,7 +27,9 @@ media.addEventListener('change', () => {
 });
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 };
 export function useDarkMode() {
   return useSyncExternalStore(subscribe, () => dark);
@@ -31,25 +37,46 @@ export function useDarkMode() {
 function setDarkMode(value: boolean) {
   dark = value;
   preference = dark ? 'dark' : 'light';
-  try { localStorage.setItem(storageKey, preference); } catch { /* Keep the in-memory choice. */ }
+  try {
+    localStorage.setItem(storageKey, preference);
+  } catch {
+    /* Keep the in-memory choice. */
+  }
   applyTheme();
 }
 export function ThemeSwitch() {
   const isDark = useDarkMode();
   const label = `Switch to ${isDark ? 'light' : 'dark'} mode`;
-  return <Button variant="ghost" size="icon" className="sidebar-theme" onClick={() => setDarkMode(!dark)} aria-label={label} title={label}>
-    <Icon icon={isDark ? Sun : Moon} />
-  </Button>;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="sidebar-theme"
+      onClick={() => setDarkMode(!dark)}
+      aria-label={label}
+      title={label}
+    >
+      <Icon icon={isDark ? Sun : Moon} />
+    </Button>
+  );
 }
 export function ThemeToggle() {
   const isDark = useDarkMode();
   const label = `Switch to ${isDark ? 'light' : 'dark'} mode`;
-  return <Button variant="ghost" className="theme-toggle" onClick={() => {
-    setDarkMode(!dark);
-  }} aria-label={label} title={label}>
-    <Icon icon={isDark ? Sun : Moon} />
-    {isDark ? 'Light mode' : 'Dark mode'}
-  </Button>;
+  return (
+    <Button
+      variant="ghost"
+      className="theme-toggle"
+      onClick={() => {
+        setDarkMode(!dark);
+      }}
+      aria-label={label}
+      title={label}
+    >
+      <Icon icon={isDark ? Sun : Moon} />
+      {isDark ? 'Light mode' : 'Dark mode'}
+    </Button>
+  );
 }
 
 // Accent colour, stored per device like the light/dark choice. Every accent
@@ -76,10 +103,12 @@ let accent = defaultAccent;
 try {
   const stored = localStorage.getItem(accentKey);
   if (stored && (stored === monoAccent || hexPattern.test(stored))) accent = stored.toLowerCase();
-} catch { /* Storage may be disabled. */ }
+} catch {
+  /* Storage may be disabled. */
+}
 // Text on the accent: whichever of white or near-black contrasts more.
 function readableOn(hex: string) {
-  const [r, g, b] = [1, 3, 5].map(index => {
+  const [r, g, b] = [1, 3, 5].map((index) => {
     const channel = parseInt(hex.slice(index, index + 2), 16) / 255;
     return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
   });
@@ -91,8 +120,11 @@ function readableOn(hex: string) {
 function applyAccent() {
   const mono = accent === monoAccent;
   document.documentElement.style.setProperty('--brand', mono ? 'var(--foreground)' : accent);
-  document.documentElement.style.setProperty('--brand-fg', mono ? 'var(--background)' : readableOn(accent));
-  listeners.forEach(listener => listener());
+  document.documentElement.style.setProperty(
+    '--brand-fg',
+    mono ? 'var(--background)' : readableOn(accent),
+  );
+  listeners.forEach((listener) => listener());
 }
 applyAccent();
 export function useAccent() {
@@ -103,7 +135,9 @@ function setAccent(value: string) {
   try {
     if (accent === defaultAccent) localStorage.removeItem(accentKey);
     else localStorage.setItem(accentKey, accent);
-  } catch { /* Keep the in-memory choice. */ }
+  } catch {
+    /* Keep the in-memory choice. */
+  }
   applyAccent();
 }
 export function AccentPicker() {
@@ -111,21 +145,60 @@ export function AccentPicker() {
   const shown = current === monoAccent ? '' : current;
   const [draft, setDraft] = useState(shown);
   useEffect(() => setDraft(shown), [shown]);
-  return <div className="accent-settings"><div className="accent-picker">
-    <label className="accent-well" style={{ background: 'var(--brand)' }}>
-      <input type="color" value={shown || '#0a0a0b'} onChange={event => setAccent(event.target.value)} aria-label="Accent colour" />
-    </label>
-    <Input className="accent-hex" value={draft} maxLength={7} spellCheck={false} placeholder={current === monoAccent ? 'Black' : undefined} aria-label="Accent colour hex value"
-      onChange={event => {
-        const value = event.target.value.startsWith('#') ? event.target.value : `#${event.target.value}`;
-        setDraft(value);
-        if (hexPattern.test(value)) setAccent(value);
-      }}
-      onBlur={() => setDraft(shown)} />
-    <Button variant="ghost" disabled={current === defaultAccent} onClick={() => setAccent(defaultAccent)}>Reset</Button>
-  </div>
-    <div className="accent-quick" role="radiogroup" aria-label="Quick accent colours">
-      {quickAccents.map(item => <button key={item.value} type="button" role="radio" aria-checked={current === item.value} aria-label={item.label} title={item.label} style={{ background: item.value === monoAccent ? 'linear-gradient(135deg, #0a0a0b 50%, #fafafa 50%)' : item.value }} onClick={() => setAccent(item.value)} />)}
+  return (
+    <div className="accent-settings">
+      <div className="accent-picker">
+        <label className="accent-well" style={{ background: 'var(--brand)' }}>
+          <input
+            type="color"
+            value={shown || '#0a0a0b'}
+            onChange={(event) => setAccent(event.target.value)}
+            aria-label="Accent colour"
+          />
+        </label>
+        <Input
+          className="accent-hex"
+          value={draft}
+          maxLength={7}
+          spellCheck={false}
+          placeholder={current === monoAccent ? 'Black' : undefined}
+          aria-label="Accent colour hex value"
+          onChange={(event) => {
+            const value = event.target.value.startsWith('#')
+              ? event.target.value
+              : `#${event.target.value}`;
+            setDraft(value);
+            if (hexPattern.test(value)) setAccent(value);
+          }}
+          onBlur={() => setDraft(shown)}
+        />
+        <Button
+          variant="ghost"
+          disabled={current === defaultAccent}
+          onClick={() => setAccent(defaultAccent)}
+        >
+          Reset
+        </Button>
+      </div>
+      <div className="accent-quick" role="radiogroup" aria-label="Quick accent colours">
+        {quickAccents.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="radio"
+            aria-checked={current === item.value}
+            aria-label={item.label}
+            title={item.label}
+            style={{
+              background:
+                item.value === monoAccent
+                  ? 'linear-gradient(135deg, #0a0a0b 50%, #fafafa 50%)'
+                  : item.value,
+            }}
+            onClick={() => setAccent(item.value)}
+          />
+        ))}
+      </div>
     </div>
-  </div>;
+  );
 }

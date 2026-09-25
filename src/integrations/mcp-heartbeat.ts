@@ -11,10 +11,20 @@ export function startMcpHeartbeat(server: Server, api: LocalApi): () => void {
   async function tick() {
     try {
       await server.request({ method: 'ping' }, EmptyResultSchema, { timeout: 8000 });
-      if (!stopped) await api.request('POST', '/api/mcp/heartbeat', { id, sampling: !!server.getClientCapabilities()?.sampling, automaticReviews: process.env.TUTOR_AUTO_REVIEW !== '0' });
-    } catch { /* A missing heartbeat is surfaced by the app; keep trying. */ }
+      if (!stopped)
+        await api.request('POST', '/api/mcp/heartbeat', {
+          id,
+          sampling: !!server.getClientCapabilities()?.sampling,
+          automaticReviews: process.env.TUTOR_AUTO_REVIEW !== '0',
+        });
+    } catch {
+      /* A missing heartbeat is surfaced by the app; keep trying. */
+    }
     if (!stopped) timer = setTimeout(() => void tick(), 10_000);
   }
   void tick();
-  return () => { stopped = true; clearTimeout(timer); };
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+  };
 }

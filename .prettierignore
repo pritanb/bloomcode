@@ -6,3 +6,4 @@ drizzle/
 desktop/package-lock.json
 evals/learning-insights-results.json
 src/web/components/ui/
+src/integrations/manifests/

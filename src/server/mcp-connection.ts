@@ -10,8 +10,13 @@ export class McpConnection {
   }
   status(): McpConnectionStatus {
     const clients = [...this.clients.values()];
-    const active = clients.filter(c => this.clock().getTime() - c.at < 45_000);
-    const latest = clients.length ? Math.max(...clients.map(c => c.at)) : null;
-    return { state: active.length ? 'connected' : latest === null ? 'unknown' : 'disconnected', lastSeenAt: latest === null ? null : new Date(latest).toISOString(), sampling: active.some(c => c.sampling), automaticReviews: active.some(c => c.sampling && c.automaticReviews) };
+    const active = clients.filter((c) => this.clock().getTime() - c.at < 45_000);
+    const latest = clients.length ? Math.max(...clients.map((c) => c.at)) : null;
+    return {
+      state: active.length ? 'connected' : latest === null ? 'unknown' : 'disconnected',
+      lastSeenAt: latest === null ? null : new Date(latest).toISOString(),
+      sampling: active.some((c) => c.sampling),
+      automaticReviews: active.some((c) => c.sampling && c.automaticReviews),
+    };
   }
 }

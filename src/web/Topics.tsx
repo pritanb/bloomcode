@@ -1,7 +1,15 @@
 import { enumLabel, helpLabel } from './labels';
 import { Card } from '@/components/ui/card';
 import { SelectField, SelectOption } from '@/components/select-field';
-import { ArrowLeft, BookOpen, Gauge, History, ListChecks, Timer, type LucideIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Gauge,
+  History,
+  ListChecks,
+  Timer,
+  type LucideIcon,
+} from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -33,19 +41,39 @@ export function Topics() {
         title="Topic progress"
         description="Your priority topics and progress toward interview readiness."
       />
-      {query.isPending ? <Loading /> : query.isError ? (
+      {query.isPending ? (
+        <Loading />
+      ) : query.isError ? (
         <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-      ) : <TopicProgress topics={query.data} />}
+      ) : (
+        <TopicProgress topics={query.data} />
+      )}
     </>
   );
 }
-function TopicStat({ label, value, sub, icon, tone }: { label: string; value: ReactNode; sub: ReactNode; icon: LucideIcon; tone: string }) {
-  return <Card className="panel stat-card">
-    <span className={`stat-icon ${tone}`} aria-hidden="true"><Icon icon={icon} /></span>
-    <p className="stat-label">{label}</p>
-    <p className="stat-value">{value}</p>
-    <p className="stat-sub">{sub}</p>
-  </Card>;
+function TopicStat({
+  label,
+  value,
+  sub,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  sub: ReactNode;
+  icon: LucideIcon;
+  tone: string;
+}) {
+  return (
+    <Card className="panel stat-card">
+      <span className={`stat-icon ${tone}`} aria-hidden="true">
+        <Icon icon={icon} />
+      </span>
+      <p className="stat-label">{label}</p>
+      <p className="stat-value">{value}</p>
+      <p className="stat-sub">{sub}</p>
+    </Card>
+  );
 }
 export function TopicDetail() {
   const { id } = useParams();
@@ -57,10 +85,7 @@ export function TopicDetail() {
     queryFn: () => api.get<TopicData>(`/topics/${id}`),
   });
   if (query.isPending) return <Loading />;
-  if (query.isError)
-    return (
-      <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-    );
+  if (query.isError) return <ErrorNotice error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
   const attempts = d.attempts.filter(
     (a) =>
@@ -84,8 +109,23 @@ export function TopicDetail() {
           label="Current score"
           icon={Gauge}
           tone="solid"
-          value={d.topic.score === null ? 'Unrated' : <>{d.topic.score}<span> / 5</span></>}
-          sub={d.topic.provisional ? <span className="warn">Provisional evidence</span> : '1–5 readiness scale'}
+          value={
+            d.topic.score === null ? (
+              'Unrated'
+            ) : (
+              <>
+                {d.topic.score}
+                <span> / 5</span>
+              </>
+            )
+          }
+          sub={
+            d.topic.provisional ? (
+              <span className="warn">Provisional evidence</span>
+            ) : (
+              '1–5 readiness scale'
+            )
+          }
         />
         <TopicStat
           label="Recorded attempts"
@@ -103,59 +143,55 @@ export function TopicDetail() {
         />
       </div>
       <div className="topic-detail-layout fill-page">
-      <Card className="panel">
-        <SectionTitle icon={ListChecks}>Score history & rationale</SectionTitle>
-        <MovementList items={d.decisions} />
-      </Card>
-      <Card className="panel">
-        <SectionTitle icon={History}>Practice history</SectionTitle>
-        <div className="row history-filters">
-          <Field label="Evidence type">
-            <SelectField
-              value={evidence}
-              onValueChange={(value) => setEvidence(value)}
-            >
-              <SelectOption value="">All evidence</SelectOption>
-              {['retention', 'near_transfer', 'unseen', 'mock'].map((v) => (
-                <SelectOption key={v} value={v}>
-                  {enumLabel(v)}
-                </SelectOption>
-              ))}
-            </SelectField>
-          </Field>
-          <Field label="Help filter">
-            <SelectField value={help} onValueChange={(value) => setHelp(value)}>
-              <SelectOption value="">All help levels</SelectOption>
-              {['none', 'small', 'major', 'solution', 'unknown'].map((v) => (
-                <SelectOption key={v} value={v}>{helpLabel(v)}</SelectOption>
-              ))}
-            </SelectField>
-          </Field>
-          <Field label="Question difficulty filter">
-            <SelectField
-              value={difficulty}
-              onValueChange={(value) => setDifficulty(value)}
-            >
-              <SelectOption value="">All difficulties</SelectOption>
-              {['Easy', 'Medium', 'Hard'].map((v) => (
-                <SelectOption key={v}>{v}</SelectOption>
-              ))}
-            </SelectField>
-          </Field>
-        </div>
-        <AttemptList items={attempts} />
-      </Card>
-      <Card className="panel topic-related">
-        <SectionTitle icon={BookOpen}>Related questions</SectionTitle>
-        <p className="topic-related-note">
-          Practising these counts as targeted, not an unseen assessment.
-        </p>
-        {d.problems.length ? (
-          <ProblemTable problems={d.problems} />
-        ) : (
-          <Empty>No questions are linked to this topic yet.</Empty>
-        )}
-      </Card>
+        <Card className="panel">
+          <SectionTitle icon={ListChecks}>Score history & rationale</SectionTitle>
+          <MovementList items={d.decisions} />
+        </Card>
+        <Card className="panel">
+          <SectionTitle icon={History}>Practice history</SectionTitle>
+          <div className="row history-filters">
+            <Field label="Evidence type">
+              <SelectField value={evidence} onValueChange={(value) => setEvidence(value)}>
+                <SelectOption value="">All evidence</SelectOption>
+                {['retention', 'near_transfer', 'unseen', 'mock'].map((v) => (
+                  <SelectOption key={v} value={v}>
+                    {enumLabel(v)}
+                  </SelectOption>
+                ))}
+              </SelectField>
+            </Field>
+            <Field label="Help filter">
+              <SelectField value={help} onValueChange={(value) => setHelp(value)}>
+                <SelectOption value="">All help levels</SelectOption>
+                {['none', 'small', 'major', 'solution', 'unknown'].map((v) => (
+                  <SelectOption key={v} value={v}>
+                    {helpLabel(v)}
+                  </SelectOption>
+                ))}
+              </SelectField>
+            </Field>
+            <Field label="Question difficulty filter">
+              <SelectField value={difficulty} onValueChange={(value) => setDifficulty(value)}>
+                <SelectOption value="">All difficulties</SelectOption>
+                {['Easy', 'Medium', 'Hard'].map((v) => (
+                  <SelectOption key={v}>{v}</SelectOption>
+                ))}
+              </SelectField>
+            </Field>
+          </div>
+          <AttemptList items={attempts} />
+        </Card>
+        <Card className="panel topic-related">
+          <SectionTitle icon={BookOpen}>Related questions</SectionTitle>
+          <p className="topic-related-note">
+            Practising these counts as targeted, not an unseen assessment.
+          </p>
+          {d.problems.length ? (
+            <ProblemTable problems={d.problems} />
+          ) : (
+            <Empty>No questions are linked to this topic yet.</Empty>
+          )}
+        </Card>
       </div>
     </>
   );

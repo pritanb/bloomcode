@@ -1,4 +1,3 @@
-
 import { DesktopTitleBar, isDesktopMac } from './DesktopTitleBar';
 import { McpNotifications } from './McpNotifications';
 import { SetupGate } from './Welcome';
@@ -45,14 +44,30 @@ const navigation = [
 export function App() {
   const [collapsed, setCollapsed] = useState(false);
   const focused = useLocation().pathname.startsWith('/attempts/');
-  return <div className={isDesktopMac ? 'app-shell desktop-app' : 'app-shell'}>
-    <SetupGate chrome={hasWorkspace => <DesktopTitleBar collapsed={collapsed} sidebarAvailable={hasWorkspace && !focused} toggleSidebar={() => setCollapsed(value => !value)} />}>
-      <McpNotifications />
-      <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed(value => !value)} />
-    </SetupGate>
-  </div>;
+  return (
+    <div className={isDesktopMac ? 'app-shell desktop-app' : 'app-shell'}>
+      <SetupGate
+        chrome={(hasWorkspace) => (
+          <DesktopTitleBar
+            collapsed={collapsed}
+            sidebarAvailable={hasWorkspace && !focused}
+            toggleSidebar={() => setCollapsed((value) => !value)}
+          />
+        )}
+      >
+        <McpNotifications />
+        <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed((value) => !value)} />
+      </SetupGate>
+    </div>
+  );
 }
-function Workspace({ collapsed, toggleSidebar }: { collapsed: boolean; toggleSidebar: () => void }) {
+function Workspace({
+  collapsed,
+  toggleSidebar,
+}: {
+  collapsed: boolean;
+  toggleSidebar: () => void;
+}) {
   const { pathname } = useLocation();
   const focused = pathname.startsWith('/attempts/');
   if (focused) {
@@ -78,30 +93,51 @@ function Workspace({ collapsed, toggleSidebar }: { collapsed: boolean; toggleSid
       </a>
       <aside className="sidebar">
         <div className="sidebar-header">
-        <NavLink to="/" className="brand" aria-label="LeetCode Tutor" title={collapsed ? 'LeetCode Tutor' : undefined}>
-          <span className="brand-mark" aria-hidden="true">
-            <Icon icon={CodeXml} />
-          </span>
-          <span className="sidebar-label">
-            LeetCode<strong>Tutor</strong>
-          </span>
-        </NavLink>
-
+          <NavLink
+            to="/"
+            className="brand"
+            aria-label="LeetCode Tutor"
+            title={collapsed ? 'LeetCode Tutor' : undefined}
+          >
+            <span className="brand-mark" aria-hidden="true">
+              <Icon icon={CodeXml} />
+            </span>
+            <span className="sidebar-label">
+              LeetCode<strong>Tutor</strong>
+            </span>
+          </NavLink>
         </div>
         <nav id="sidebar-navigation" aria-label="Main navigation">
           {navigation.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/'} aria-label={item.label} title={collapsed ? item.label : undefined}>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              aria-label={item.label}
+              title={collapsed ? item.label : undefined}
+            >
               <Icon icon={item.icon} />
               <span className="sidebar-label">{item.label}</span>
             </NavLink>
           ))}
         </nav>
-        {!isDesktopMac && <div className="sidebar-footer">
-          <ThemeSwitch />
-        <Button variant="ghost" size="icon" className="sidebar-toggle" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="sidebar-navigation" onClick={toggleSidebar}>
-          <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
-        </Button>
-        </div>}
+        {!isDesktopMac && (
+          <div className="sidebar-footer">
+            <ThemeSwitch />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sidebar-toggle"
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-expanded={!collapsed}
+              aria-controls="sidebar-navigation"
+              onClick={toggleSidebar}
+            >
+              <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
+            </Button>
+          </div>
+        )}
       </aside>
       <main id="main" tabIndex={-1}>
         <Routes>

@@ -6,13 +6,7 @@ import { Card } from '@/components/ui/card';
 import { SelectField, SelectOption } from '@/components/select-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import {
-  ArrowLeft,
-  Check,
-  ExternalLink,
-  Flag,
-  RefreshCw,
-} from 'lucide-react';
+import { ArrowLeft, Check, ExternalLink, Flag, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -48,10 +42,7 @@ export function AttemptPage() {
     refetchOnReconnect: false,
   });
   if (query.isPending) return <Loading />;
-  if (query.isError)
-    return (
-      <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-    );
+  if (query.isError) return <ErrorNotice error={query.error} retry={() => void query.refetch()} />;
   return <AttemptWorkspace key={query.data.id} initial={query.data} />;
 }
 function AttemptWorkspace({ initial }: { initial: Attempt }) {
@@ -109,13 +100,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
     }
   }, [run]);
   useEffect(() => {
-    if (
-      attempt.status === 'completed' ||
-      submitting ||
-      error ||
-      sameDraft(attempt, draft)
-    )
-      return;
+    if (attempt.status === 'completed' || submitting || error || sameDraft(attempt, draft)) return;
     const id = window.setTimeout(() => void saveDraft(), 650);
     return () => window.clearTimeout(id);
   }, [draft, attempt, submitting, error, saveDraft]);
@@ -132,11 +117,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
   }, [dirty, saving, submitting]);
   const extensions = [
     EditorView.lineWrapping,
-    ...(draft.language === 'python'
-      ? [python()]
-      : draft.language === 'java'
-        ? [java()]
-        : []),
+    ...(draft.language === 'python' ? [python()] : draft.language === 'java' ? [java()] : []),
   ];
   async function retry() {
     if (retryRef.current)
@@ -172,22 +153,66 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
     }
   }, [initial.id, queue]);
   const completed = attempt.status === 'completed';
-  const notesField = <>
-    <Field label="Attempt notes">
-      <Textarea rows={3} placeholder="Approach, mistakes, or a submission link (optional)" value={draft.notes} readOnly={completed || submitting || !!error} onChange={e => setDraft(old => ({...old, notes: e.target.value}))} />
+  const notesField = (
+    <>
+      <Field label="Attempt notes">
+        <Textarea
+          rows={3}
+          placeholder="Approach, mistakes, or a submission link (optional)"
+          value={draft.notes}
+          readOnly={completed || submitting || !!error}
+          onChange={(e) => setDraft((old) => ({ ...old, notes: e.target.value }))}
+        />
+      </Field>
+    </>
+  );
+  const languageField = (
+    <Field label="Language">
+      <SelectField
+        value={draft.language}
+        disabled={submitting || !!error}
+        onValueChange={(language) => setDraft((old) => ({ ...old, language }))}
+      >
+        {['python', 'java', 'javascript', 'typescript', 'cpp', 'other'].map((language) => (
+          <SelectOption key={language} value={language}>
+            {languageLabel(language)}
+          </SelectOption>
+        ))}
+      </SelectField>
     </Field>
-  </>;
-  const languageField = <Field label="Language"><SelectField value={draft.language} disabled={submitting || !!error} onValueChange={language => setDraft(old => ({...old, language}))}>
-        {['python','java','javascript','typescript','cpp','other'].map(language => <SelectOption key={language} value={language}>{languageLabel(language)}</SelectOption>)}
-      </SelectField></Field>;
-  const codeField = <section className="stack report-code" aria-label={completed ? 'Saved code' : 'Solution code'}>
+  );
+  const codeField = (
+    <section className="stack report-code" aria-label={completed ? 'Saved code' : 'Solution code'}>
       <h3 className="report-column-title">{completed ? 'Saved code' : 'Solution code'}</h3>
       <Card className="code-panel">
-        <CodeMirror theme={dark ? 'dark' : 'light'} aria-label="Solution code" value={draft.code} height="300px" extensions={extensions} editable={!completed && !submitting && !error} onChange={code => setDraft(old => ({...old, code}))} />
-        <div className="code-footer"><CopyButton text={draft.code}>Copy code</CopyButton></div>
+        <CodeMirror
+          theme={dark ? 'dark' : 'light'}
+          aria-label="Solution code"
+          value={draft.code}
+          height="300px"
+          extensions={extensions}
+          editable={!completed && !submitting && !error}
+          onChange={(code) => setDraft((old) => ({ ...old, code }))}
+        />
+        <div className="code-footer">
+          <CopyButton text={draft.code}>Copy code</CopyButton>
+        </div>
       </Card>
-    </section>;
-  const draftStatus = <span role="status" className={error ? 'negative' : 'muted small'}>{completed ? 'Final answer saved' : error ? 'Not saved' : saving ? 'Saving draft…' : dirty ? 'Unsaved changes' : 'Notes and code saved'}</span>;
+    </section>
+  );
+  const draftStatus = (
+    <span role="status" className={error ? 'negative' : 'muted small'}>
+      {completed
+        ? 'Final answer saved'
+        : error
+          ? 'Not saved'
+          : saving
+            ? 'Saving draft…'
+            : dirty
+              ? 'Unsaved changes'
+              : 'Notes and code saved'}
+    </span>
+  );
   return (
     <div className="attempt-page">
       <div className="workspace-top">
@@ -205,33 +230,25 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
         </Link>
       </div>
       <PageTitle title={attempt.problem.title} description="Record your result from LeetCode.">
-        <Button asChild variant="outline"><a
-          href={attempt.problem.url}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Icon icon={ExternalLink} />
-          Open in LeetCode
-        </a></Button>
+        <Button asChild variant="outline">
+          <a href={attempt.problem.url} target="_blank" rel="noreferrer">
+            <Icon icon={ExternalLink} />
+            Open in LeetCode
+          </a>
+        </Button>
       </PageTitle>
       <ErrorNotice
         error={error}
-        retry={
-          error instanceof ApiError && error.status === 409
-            ? undefined
-            : () => void retry()
-        }
+        retry={error instanceof ApiError && error.status === 409 ? undefined : () => void retry()}
       />
       {error instanceof ApiError && error.status === 409 && (
         <div className="warning">
           <p>
-            This attempt changed elsewhere. Copy your current answer before
-            reloading the saved version; unsaved local edits will be replaced.
+            This attempt changed elsewhere. Copy your current answer before reloading the saved
+            version; unsaved local edits will be replaced.
           </p>
           <div className="row">
-            <CopyButton text={`${draft.code}\n\n${draft.notes}`}>
-              Copy unsaved answer
-            </CopyButton>
+            <CopyButton text={`${draft.code}\n\n${draft.notes}`}>Copy unsaved answer</CopyButton>
             <Button variant="outline" onClick={() => void reloadSaved()}>
               Reload saved version
             </Button>
@@ -249,21 +266,28 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
                 <h2>Attempt saved</h2>
               </div>
               <dl className="completion-facts">
-                <div><dt>Outcome</dt><dd>{enumLabel(attempt.outcome)}</dd></div>
-                <div><dt>Active time</dt><dd>{duration(attempt.activeSeconds)}</dd></div>
-                <div><dt>Help</dt><dd>{helpLabel(attempt.help)}</dd></div>
+                <div>
+                  <dt>Outcome</dt>
+                  <dd>{enumLabel(attempt.outcome)}</dd>
+                </div>
+                <div>
+                  <dt>Active time</dt>
+                  <dd>{duration(attempt.activeSeconds)}</dd>
+                </div>
+                <div>
+                  <dt>Help</dt>
+                  <dd>{helpLabel(attempt.help)}</dd>
+                </div>
               </dl>
               <p className="completion-next">
                 Next review:{' '}
-                {attempt.nextReviewDate
-                  ? dateLabel(attempt.nextReviewDate)
-                  : 'Not scheduled'}
+                {attempt.nextReviewDate ? dateLabel(attempt.nextReviewDate) : 'Not scheduled'}
               </p>
               {attempt.scoreDecisions?.length ? (
                 <div className="stack completion-scores">
                   <h3>Topic scores updated</h3>
                   <ul className="plain-list score-movements">
-                    {attempt.scoreDecisions.map(d => (
+                    {attempt.scoreDecisions.map((d) => (
                       <li key={d.id} className="row between">
                         <Link to={`/topics/${d.topicId}`}>{d.topicName}</Link>
                         <span className="small">
@@ -273,23 +297,21 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
                     ))}
                   </ul>
                   <p className="small muted">
-                    Applied automatically from this result. Independent unseen
-                    solves can raise a score towards 5; other evidence is capped at
-                    3. Change this in Settings.
+                    Applied automatically from this result. Independent unseen solves can raise a
+                    score towards 5; other evidence is capped at 3. Change this in Settings.
                   </p>
                 </div>
               ) : (
                 <p className="small muted completion-scores">
-                  No topic score changed. A score moves only when the evidence
-                  supports it — help beyond a small hint, a miss on unseen
-                  material, or a score already at its evidence cap leaves it
-                  unchanged.
+                  No topic score changed. A score moves only when the evidence supports it — help
+                  beyond a small hint, a miss on unseen material, or a score already at its evidence
+                  cap leaves it unchanged.
                 </p>
               )}
               <div className="completion-actions">
-                <Button asChild variant="default"><Link  to="/">
-                  Done for now
-                </Link></Button>
+                <Button asChild variant="default">
+                  <Link to="/">Done for now</Link>
+                </Button>
                 <Button variant="outline" onClick={() => void reloadSaved()}>
                   <Icon icon={RefreshCw} />
                   Refresh
@@ -302,9 +324,19 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
               <h2 className="section-title">Tutor report</h2>
               <TutorReport attempt={attempt} onReady={onReportReady} />
             </Card>
-            <AttemptReflection attempt={attempt} onSaved={saved => { queue.current = saved; setAttempt(saved); }} />
+            <AttemptReflection
+              attempt={attempt}
+              onSaved={(saved) => {
+                queue.current = saved;
+                setAttempt(saved);
+              }}
+            />
             <AttemptComparison attempt={attempt} />
-            <Card className="panel attempt-record">{notesField}{codeField}{draftStatus}</Card>
+            <Card className="panel attempt-record">
+              {notesField}
+              {codeField}
+              {draftStatus}
+            </Card>
           </div>
         </div>
       ) : null}
@@ -328,12 +360,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
                 code: draftRef.current.code,
                 notes: draftRef.current.notes,
               };
-              return api.send<Attempt>(
-                `/attempts/${a.id}/finish`,
-                'POST',
-                payload,
-                key,
-              );
+              return api.send<Attempt>(`/attempts/${a.id}/finish`, 'POST', payload, key);
             };
             try {
               await saveDraft();
@@ -388,11 +415,15 @@ function FinishForm({
         onSubmit={(e) => {
           e.preventDefault();
           if (!draft.code.trim()) {
-            setValidationError('Paste your solution code before saving so it can be included in the result summary.');
+            setValidationError(
+              'Paste your solution code before saving so it can be included in the result summary.',
+            );
             return;
           }
           if (!/^[0-9]{1,4}:[0-5][0-9]$/.test(seconds)) {
-            setValidationError('Enter your LeetCode solve time as minutes:seconds, for example 9:53.');
+            setValidationError(
+              'Enter your LeetCode solve time as minutes:seconds, for example 9:53.',
+            );
             return;
           }
           setValidationError('');
@@ -411,71 +442,75 @@ function FinishForm({
       >
         <fieldset className="report-columns" disabled={busy || locked}>
           <div className="stack report-fields">
-          <h3 className="report-column-title">Result details</h3>
-          <div className="form-grid">
-            <Field label="Outcome">
-              <SelectField
-                value={outcome}
-                onValueChange={(value) => setOutcome(value as Outcome)}
-              >
-                <SelectOption value="solved">Solved</SelectOption>
-                <SelectOption value="not_solved">Not solved</SelectOption>
-                <SelectOption value="stopped">Stopped</SelectOption>
-              </SelectField>
-            </Field>
-            <Field label="Help used">
-              <SelectField
-                value={help}
-                onValueChange={(value) => setHelp(value as Help)}
-              >
-                <SelectOption value="unknown">Unknown</SelectOption>
-                <SelectOption value="none">None</SelectOption>
-                <SelectOption value="small">Small hint</SelectOption>
-                <SelectOption value="major">Major help</SelectOption>
-                <SelectOption value="solution">Solution viewed</SelectOption>
-              </SelectField>
-            </Field>
-            <Field label="LeetCode time">
-              <Input required placeholder="mm:ss" pattern="[0-9]{1,4}:[0-5][0-9]" title="Enter minutes and seconds, such as 9:53" value={seconds} onChange={e => setSeconds(e.target.value)} />
-            </Field>
-            <Field label="Confidence">
-              <SelectField value={confidence} onValueChange={setConfidence}>
-                <SelectOption value="">Not rated</SelectOption>
-                {[1,2,3,4,5].map(value => <SelectOption key={value} value={String(value)}>{value}</SelectOption>)}
-              </SelectField>
-            </Field>
-            <Field label="Next review">
-              <SelectField
-                value={review}
-                onValueChange={(value) => setReview(value)}
-              >
-                <SelectOption value="recommended">Use recommended date</SelectOption>
-                <SelectOption value="manual">Choose date</SelectOption>
-                <SelectOption value="none">No scheduled review</SelectOption>
-              </SelectField>
-            </Field>
-            {languageField}
-            {review === 'manual' && (
-              <Field label="Review date">
-                <DateField
+            <h3 className="report-column-title">Result details</h3>
+            <div className="form-grid">
+              <Field label="Outcome">
+                <SelectField
+                  value={outcome}
+                  onValueChange={(value) => setOutcome(value as Outcome)}
+                >
+                  <SelectOption value="solved">Solved</SelectOption>
+                  <SelectOption value="not_solved">Not solved</SelectOption>
+                  <SelectOption value="stopped">Stopped</SelectOption>
+                </SelectField>
+              </Field>
+              <Field label="Help used">
+                <SelectField value={help} onValueChange={(value) => setHelp(value as Help)}>
+                  <SelectOption value="unknown">Unknown</SelectOption>
+                  <SelectOption value="none">None</SelectOption>
+                  <SelectOption value="small">Small hint</SelectOption>
+                  <SelectOption value="major">Major help</SelectOption>
+                  <SelectOption value="solution">Solution viewed</SelectOption>
+                </SelectField>
+              </Field>
+              <Field label="LeetCode time">
+                <Input
                   required
-                  value={date}
-                  onValueChange={(value) => setDate(value)}
+                  placeholder="mm:ss"
+                  pattern="[0-9]{1,4}:[0-5][0-9]"
+                  title="Enter minutes and seconds, such as 9:53"
+                  value={seconds}
+                  onChange={(e) => setSeconds(e.target.value)}
                 />
               </Field>
-            )}
-          </div>
-          {notesField}
+              <Field label="Confidence">
+                <SelectField value={confidence} onValueChange={setConfidence}>
+                  <SelectOption value="">Not rated</SelectOption>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <SelectOption key={value} value={String(value)}>
+                      {value}
+                    </SelectOption>
+                  ))}
+                </SelectField>
+              </Field>
+              <Field label="Next review">
+                <SelectField value={review} onValueChange={(value) => setReview(value)}>
+                  <SelectOption value="recommended">Use recommended date</SelectOption>
+                  <SelectOption value="manual">Choose date</SelectOption>
+                  <SelectOption value="none">No scheduled review</SelectOption>
+                </SelectField>
+              </Field>
+              {languageField}
+              {review === 'manual' && (
+                <Field label="Review date">
+                  <DateField required value={date} onValueChange={(value) => setDate(value)} />
+                </Field>
+              )}
+            </div>
+            {notesField}
           </div>
           {codeField}
         </fieldset>
-        {validationError && <p role="alert" className="negative">{validationError}</p>}
+        {validationError && (
+          <p role="alert" className="negative">
+            {validationError}
+          </p>
+        )}
         <div className="report-footer">
           {draftStatus}
           <Button variant="default" disabled={busy || locked}>
             {busy ? 'Saving attempt…' : 'Save attempt'}
           </Button>
-
         </div>
       </form>
     </Card>

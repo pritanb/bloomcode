@@ -24,7 +24,11 @@ module.exports = {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { execFileSync } = require('node:child_process');
       for (const output of result.outputPaths) {
-        execFileSync('codesign', ['--force', '--deep', '--sign', '-', path.join(output, 'LeetCode Tutor.app')], { stdio: 'inherit' });
+        execFileSync(
+          'codesign',
+          ['--force', '--deep', '--sign', '-', path.join(output, 'LeetCode Tutor.app')],
+          { stdio: 'inherit' },
+        );
       }
     },
   },

@@ -9,8 +9,10 @@ import { createApp } from '../src/server/app.ts';
 
 // Always own a new temporary workspace. Never read DATA_DIR or a user's database.
 const port = Number(process.env.DEMO_PORT || 4331);
-if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('DEMO_PORT must be between 1 and 65535.');
-if (!existsSync(new URL('../dist/web/index.html', import.meta.url))) throw Error('Run npm run build before starting the demo.');
+if (!Number.isInteger(port) || port < 1 || port > 65535)
+  throw Error('DEMO_PORT must be between 1 and 65535.');
+if (!existsSync(new URL('../dist/web/index.html', import.meta.url)))
+  throw Error('Run npm run build before starting the demo.');
 const directory = mkdtempSync(join(tmpdir(), 'leetcode-tutor-demo-'));
 const token = randomBytes(32).toString('hex');
 let seedTime;
@@ -20,44 +22,100 @@ async function stop() {
   rmSync(directory, { recursive: true, force: true });
 }
 try {
-  app = await createApp({ dbPath: join(directory, 'demo.sqlite'), token, serveStatic: true, demo: true, clock: () => seedTime ?? new Date() });
+  app = await createApp({
+    dbPath: join(directory, 'demo.sqlite'),
+    token,
+    serveStatic: true,
+    demo: true,
+    clock: () => seedTime ?? new Date(),
+  });
   const call = async (method, url, payload) => {
-    const response = await app.inject({ method, url, headers: { authorization: `Bearer ${token}`, 'idempotency-key': `demo-${randomUUID()}` }, ...(payload ? { payload } : {}) });
+    const response = await app.inject({
+      method,
+      url,
+      headers: { authorization: `Bearer ${token}`, 'idempotency-key': `demo-${randomUUID()}` },
+      ...(payload ? { payload } : {}),
+    });
     if (response.statusCode >= 400) throw Error(`Demo setup failed at ${url}: ${response.body}`);
     return response.json();
   };
-  await call('POST', '/api/setup', { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', questionsPerDay: 3, list: 'NeetCode 150' });
-  const titles = ['Contains Duplicate', 'Valid Anagram', 'Best Time to Buy And Sell Stock', 'Binary Search', 'Climbing Stairs', 'Invert Binary Tree', 'Valid Parentheses', 'Two Sum'];
+  await call('POST', '/api/setup', {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    questionsPerDay: 3,
+    list: 'NeetCode 150',
+  });
+  const titles = [
+    'Contains Duplicate',
+    'Valid Anagram',
+    'Best Time to Buy And Sell Stock',
+    'Binary Search',
+    'Climbing Stairs',
+    'Invert Binary Tree',
+    'Valid Parentheses',
+    'Two Sum',
+  ];
   for (const [index, title] of titles.entries()) {
     seedTime = new Date();
     seedTime.setHours(12, 0, 0, 0);
     seedTime.setDate(seedTime.getDate() - (titles.length - index));
     const result = await call('GET', `/api/problems?search=${encodeURIComponent(title)}`);
-    const problem = result.items.find(problem => problem.title.toLowerCase() === title.toLowerCase());
+    const problem = result.items.find(
+      (problem) => problem.title.toLowerCase() === title.toLowerCase(),
+    );
     if (!problem) throw Error(`Demo question missing: ${title}`);
-    const attempt = await call('POST', '/api/attempts', { problemId: problem.id, context: 'targeted', language: 'python' });
-    const code = title === 'Two Sum' ? 'class Solution:\n    def twoSum(self, nums, target):\n        seen = {}\n        for index, value in enumerate(nums):\n            complement = target - value\n            if complement in seen:\n                return [seen[complement], index]\n            seen[value] = index\n        return []' : '';
+    const attempt = await call('POST', '/api/attempts', {
+      problemId: problem.id,
+      context: 'targeted',
+      language: 'python',
+    });
+    const code =
+      title === 'Two Sum'
+        ? 'class Solution:\n    def twoSum(self, nums, target):\n        seen = {}\n        for index, value in enumerate(nums):\n            complement = target - value\n            if complement in seen:\n                return [seen[complement], index]\n            seen[value] = index\n        return []'
+        : '';
     const saved = await call('POST', `/api/attempts/${attempt.id}/finish`, {
-      version: attempt.version, outcome: index === 4 ? 'not_solved' : 'solved', help: index === 4 ? 'small' : 'none', activeSeconds: 420 + index * 73,
-      code, notes: index < 2 ? 'Demo record. I forgot to check an empty input.' : 'Demo record. State the invariant, trace a small example, and check boundary cases.', reviewAction: 'recommended', confidence: index === 4 ? 2 : 4,
+      version: attempt.version,
+      outcome: index === 4 ? 'not_solved' : 'solved',
+      help: index === 4 ? 'small' : 'none',
+      activeSeconds: 420 + index * 73,
+      code,
+      notes:
+        index < 2
+          ? 'Demo record. I forgot to check an empty input.'
+          : 'Demo record. State the invariant, trace a small example, and check boundary cases.',
+      reviewAction: 'recommended',
+      confidence: index === 4 ? 2 : 4,
     });
-    if (title === 'Two Sum') await call('POST', `/api/attempts/${attempt.id}/reviews`, {
-      version: saved.version,
-      feedback: 'Illustrative demo feedback (not generated by a connected tutor).\n\nSummary:\nA clear one-pass solution using a hash map.\n\nWhat went well:\nChecking before inserting avoids reusing the same index.\n\nWhat to improve:\nExplain why duplicate values still work.\n\nComplexity:\nExpected O(n) time and O(n) extra space.\n\nPractise next:\nCompare with a two-pointer approach for sorted input.',
-    });
+    if (title === 'Two Sum')
+      await call('POST', `/api/attempts/${attempt.id}/reviews`, {
+        version: saved.version,
+        feedback:
+          'Illustrative demo feedback (not generated by a connected tutor).\n\nSummary:\nA clear one-pass solution using a hash map.\n\nWhat went well:\nChecking before inserting avoids reusing the same index.\n\nWhat to improve:\nExplain why duplicate values still work.\n\nComplexity:\nExpected O(n) time and O(n) extra space.\n\nPractise next:\nCompare with a two-pointer approach for sorted input.',
+      });
   }
   const demoDb = openDb(join(directory, 'demo.sqlite'));
-  try { seedInsightDemo(new Store(demoDb.sqlite)); } finally { demoDb.sqlite.close(); }
+  try {
+    seedInsightDemo(new Store(demoDb.sqlite));
+  } finally {
+    demoDb.sqlite.close();
+  }
   seedTime = undefined;
   await call('POST', '/api/daily-plan/ensure', {});
   const address = await app.listen({ host: '127.0.0.1', port });
-  console.log(`Demo ready: ${address}\n150 questions and 8 sample attempts. No AI connection required.\nThis workspace is temporary. Stop with Ctrl+C; restart for fresh sample data.`);
+  console.log(
+    `Demo ready: ${address}\n150 questions and 8 sample attempts. No AI connection required.\nThis workspace is temporary. Stop with Ctrl+C; restart for fresh sample data.`,
+  );
   let stopping = false;
-  for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
-    if (stopping) return;
-    stopping = true;
-    void stop().then(() => process.exit(0)).catch(error => { console.error(error.message); process.exit(1); });
-  });
+  for (const signal of ['SIGINT', 'SIGTERM'])
+    process.once(signal, () => {
+      if (stopping) return;
+      stopping = true;
+      void stop()
+        .then(() => process.exit(0))
+        .catch((error) => {
+          console.error(error.message);
+          process.exit(1);
+        });
+    });
 } catch (error) {
   await stop();
   console.error(error.message);

@@ -42,11 +42,11 @@ After:   app queue ⇄ tutor worker (inside the app server) → codex exec → g
 
 A new **tutor provider** setting chooses who processes jobs:
 
-| Provider | Who claims jobs | Model call |
-|---|---|---|
-| `codex` | Worker inside the app server | `codex exec` child process |
-| `mcp-sampling` (current behaviour, default for existing workspaces) | MCP adapter | `server.createMessage` via Hermes |
-| `off` | Nobody; jobs stay queued | — |
+| Provider                                                            | Who claims jobs              | Model call                        |
+| ------------------------------------------------------------------- | ---------------------------- | --------------------------------- |
+| `codex`                                                             | Worker inside the app server | `codex exec` child process        |
+| `mcp-sampling` (current behaviour, default for existing workspaces) | MCP adapter                  | `server.createMessage` via Hermes |
+| `off`                                                               | Nobody; jobs stay queued     | —                                 |
 
 Claim endpoints only hand work to the active provider. The adapter receives `null` when the provider is `codex`, and vice versa. Existing claim leases still prevent double processing during a switch.
 
@@ -59,9 +59,11 @@ The three processors currently call the model in two different ways: `reviewNext
 ```ts
 type GenerateRequest = {
   kind: 'review' | 'extraction' | 'report' | 'topics';
-  system: string; user: string;
-  schema?: object;          // JSON Schema for structured jobs
-  maxTokens: number; timeoutMs: number;
+  system: string;
+  user: string;
+  schema?: object; // JSON Schema for structured jobs
+  maxTokens: number;
+  timeoutMs: number;
 };
 type Generate = (req: GenerateRequest) => Promise<{ text: string; model: string | null }>;
 ```
@@ -112,12 +114,12 @@ codex exec
 
 The four-minute claim lease is too short for maximum-effort reports (up to 145 s through Hermes today, with no correction round). The lease becomes a per-kind value, and the runner timeout must be shorter than the lease:
 
-| Kind | Default effort | Runner timeout | Lease |
-|---|---|---|---|
-| review | high | 180 s | 240 s |
-| extraction | high | 180 s | 240 s |
-| report (2 calls max) | xhigh | 2 × 240 s | 600 s |
-| topics | high | 120 s | 240 s |
+| Kind                 | Default effort | Runner timeout | Lease |
+| -------------------- | -------------- | -------------- | ----- |
+| review               | high           | 180 s          | 240 s |
+| extraction           | high           | 180 s          | 240 s |
+| report (2 calls max) | xhigh          | 2 × 240 s      | 600 s |
+| topics               | high           | 120 s          | 240 s |
 
 `gpt-6-luna` supports `low`, `medium`, `high`, `xhigh` and `max`. Hermes currently runs every job at `max`. Each default is adjustable in Settings.
 
@@ -144,7 +146,7 @@ Codex is an agent, and saved code and notes flow into its prompt, so a note coul
 - The only output path is the final message, which goes through the existing validators: zod schemas, verbatim excerpt checks, citation and catalogue ID checks, and version checks.
 - The worker has no scoring capability beyond what the existing review endpoints already allow.
 
-Residual risk: a read-only sandbox still lets Codex *read* files on disk. The only place it can put what it reads is its final message, which is stored locally. The spike must confirm that the sandbox blocks network access, and whether shell tools can be disabled entirely (see open questions).
+Residual risk: a read-only sandbox still lets Codex _read_ files on disk. The only place it can put what it reads is its final message, which is stored locally. The spike must confirm that the sandbox blocks network access, and whether shell tools can be disabled entirely (see open questions).
 
 ## Privacy and cost
 
