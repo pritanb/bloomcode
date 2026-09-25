@@ -1,6 +1,4 @@
 import { DropdownMenu } from 'radix-ui';
-import { DragDropProvider } from '@dnd-kit/react';
-import { useSortable, isSortable } from '@dnd-kit/react/sortable';
 import { enumLabel } from './labels';
 import { DateField } from '@/components/date-field';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +7,6 @@ import { Card } from '@/components/ui/card';
 import {
   CalendarCheck,
   ChevronDown,
-  GripVertical,
   History,
   ListChecks,
   Play,
@@ -58,7 +55,7 @@ function CancelAttemptButton({ attemptId }: { attemptId: string }) {
 }
 
 type PlanChange = (plan: DailyPlan, item: PlanItem, action: string) => void;
-function PlanActions({ item, onChanged }: { item: PlanItem; onChanged: PlanChange }) {
+function PlanActions({ item, featured, onChanged }: { item: PlanItem; featured: boolean; onChanged: PlanChange }) {
   const navigate = useNavigate();
   const [snoozing, setSnoozing] = useState(false);
   const [until, setUntil] = useState('');
@@ -94,10 +91,10 @@ function PlanActions({ item, onChanged }: { item: PlanItem; onChanged: PlanChang
               <CancelAttemptButton attemptId={item.attemptId} />
             </>
           ) : (
-            available &&
+            available && featured &&
             item.problemId && (
               <Button
-                variant={item.status === 'active' ? 'default' : 'outline'}
+                variant="default"
                 disabled={action.isPending}
                 onClick={() =>
                   action.mutate(
@@ -144,22 +141,16 @@ function PlanActions({ item, onChanged }: { item: PlanItem; onChanged: PlanChang
   </>;
 }
 
-function PlanRow({ item, index, busy, featured, onChanged }: { item: PlanItem; index: number; busy: boolean; featured: boolean; onChanged: PlanChange }) {
-  const movable = !['completed', 'skipped'].includes(item.status) && !item.attemptId;
-  const { ref, handleRef, isDragSource } = useSortable({ id: item.id, index, disabled: busy || !movable });
+function PlanRow({ item, featured, onChanged }: { item: PlanItem; featured: boolean; onChanged: PlanChange }) {
   return (
-    <li ref={ref} data-plan-id={item.id} className={`plan-row ${item.status}${featured ? ' plan-featured' : ''}${isDragSource ? ' is-dragging' : ''}`}>
-      {movable ? <button ref={handleRef} type="button" className="plan-drag-handle" aria-label={`Reorder ${item.title}`} aria-disabled={busy}
-        title="Drag to reorder. With keyboard, press Space, use arrow keys, then Space to drop.">
-        <Icon icon={GripVertical} />
-      </button> : <span className="plan-handle-spacer" aria-hidden="true" />}
+    <li data-plan-id={item.id} className={`plan-row ${item.status}${featured ? ' plan-featured' : ''}`}>
       <div className="plan-content">
         <div className="row between">
           <h3>{item.title}</h3>
-          <Badge variant="secondary" className="badge">{featured ? item.attemptId ? 'In progress' : 'Up next' : enumLabel(item.status)}</Badge>
+          <Badge variant="secondary" className="badge">{featured ? item.attemptId ? 'In progress' : 'Up next' : ['active', 'queued'].includes(item.status) ? 'Queued' : enumLabel(item.status)}</Badge>
         </div>
         <p className="small muted" title={item.reason}>{item.reason.split(' · ')[0]}</p>
-        <PlanActions item={item} onChanged={onChanged} />
+        {featured && <PlanActions item={item} featured={featured} onChanged={onChanged} />}
 
       </div>
     </li>
@@ -173,27 +164,11 @@ function RecentPractice({ items }: { items: Attempt[] }) {
 }
 
 function PlanList({ plan, featuredId, onChanged }: { plan: DailyPlan; featuredId?: string; onChanged: PlanChange }) {
-  const [items, setItems] = useState(plan.items);
-  const reorder = useAction((itemIds: string[]) => api.send<DailyPlan>(`/daily-plans/${plan.id}/reorder`, 'POST', { version: plan.version, itemIds }));
+  const items = plan.items;
   return <>
-    <ErrorNotice error={reorder.error} />
-    <span className="sr-only" role="status">{reorder.isPending ? 'Saving order' : reorder.isSuccess ? 'Plan order saved' : ''}</span>
-    <DragDropProvider onDragEnd={event => {
-      if (event.canceled || reorder.isPending) return;
-      const { source } = event.operation;
-      if (!isSortable(source) || source.initialIndex === source.index) return;
-      const next = items.filter(item => item.status !== 'skipped');
-      const [moved] = next.splice(source.initialIndex, 1);
-      if (!moved) return;
-      next.splice(source.index, 0, moved);
-      const ordered = [...next, ...items.filter(item => item.status === 'skipped')];
-      setItems(ordered);
-      reorder.mutate(ordered.map(item => item.id), { onError: () => setItems(plan.items) });
-    }}>
-      <ol className="plan-list">
-        {items.filter(item => item.status !== 'skipped').map((item, index) => <PlanRow key={item.id} item={item} index={index} busy={reorder.isPending} featured={item.id === featuredId} onChanged={onChanged} />)}
-      </ol>
-    </DragDropProvider>
+    <ol className="plan-list">
+      {items.filter(item => item.status !== 'skipped').map(item => <PlanRow key={item.id} item={item} featured={item.id === featuredId} onChanged={onChanged} />)}
+    </ol>
     {items.some(item => item.status === 'skipped') && <details className="plan-history">
       <summary>Plan changes ({items.filter(item => item.status === 'skipped').length})</summary>
       <ul className="plain-list">{items.filter(item => item.status === 'skipped').map(item => <li key={item.id} className="row between">
@@ -226,8 +201,10 @@ export function Dashboard() {
       <ErrorNotice error={query.error} retry={() => void query.refetch()} />
     );
   const d = query.data;
-  const featured = d.plan?.items.find(item => item.attemptId === d.activeAttempt?.id && d.activeAttempt)
-    ?? (!d.activeAttempt ? d.plan?.items.find(item => item.problemId && !['completed', 'skipped'].includes(item.status)) : undefined);
+  const featured = d.activeAttempt
+    ? d.plan?.items.find(item => item.attemptId === d.activeAttempt?.id)
+    : d.plan?.items.find(item => item.problemId && item.status === 'active')
+      ?? d.plan?.items.find(item => item.problemId && !['completed', 'skipped'].includes(item.status));
   const completed = d.plan?.items.filter(item => item.status === 'completed').length ?? 0;
   const total = d.plan?.items.filter(item => item.status !== 'skipped').length ?? 0;
 

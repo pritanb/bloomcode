@@ -243,18 +243,12 @@
   .tag-colour-swatch { width: 1.75rem; height: 1.75rem; border: 2px solid var(--background); outline: 1px solid var(--border); border-radius: .375rem; margin-left: auto; cursor: pointer; flex-shrink: 0; }
   .tag-hue-picker { width: 100%; accent-color: var(--foreground); background: linear-gradient(to right, hsl(0 65% 55%), hsl(60 65% 55%), hsl(120 65% 55%), hsl(180 65% 55%), hsl(240 65% 55%), hsl(300 65% 55%), hsl(359 65% 55%)); border-radius: 1rem; }
 
-  .plan-drag-handle { display: flex; align-items: center; justify-content: center; width: 1.75rem; min-height: 2rem; align-self: flex-start; border-radius: .25rem; color: var(--muted-foreground); cursor: grab; touch-action: none; flex-shrink: 0; }
-  .plan-drag-handle:active { cursor: grabbing; }
-  .plan-drag-handle:hover { background: var(--muted); }
-  .plan-drag-handle[aria-disabled=true] { opacity: .5; cursor: wait; }
 
   .problem-table td:nth-child(2) .chips { width: 8rem; max-width: 100%; }
   .problem-table .library-tag { display: block; width: fit-content; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .problem-link { display: inline-flex; align-items: baseline; gap: .375rem; text-decoration: underline; text-underline-offset: .2em; }
 
-  .plan-handle-spacer { width: 1.75rem; flex-shrink: 0; }
   .plan-row { transition: box-shadow 150ms ease, background-color 150ms ease; }
-  .plan-row.is-dragging { position: relative; z-index: 2; background: var(--card); border-radius: .5rem; box-shadow: 0 .5rem 1.5rem rgb(0 0 0 / .18); outline: 2px solid var(--ring); opacity: .9; }
   @media (prefers-reduced-motion: reduce) { .plan-row { transition: none; } }
 
 /* Approved warm-and-indigo study workspace. */
