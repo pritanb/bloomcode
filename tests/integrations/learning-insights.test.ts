@@ -42,15 +42,17 @@ it('corrects invalid citations but does not retry stale claims',async()=>{
 
 it('selects exactly three topics from all 18 in one request, preserving AI order',async()=>{
   const topics=Array.from({length:18},(_,i)=>({id:`t${i}`,name:`Topic ${i}`,score:2,provisional:true,lastReviewed:null,recentAttempts:[],scoreMovements:[]}));
-  const createMessage=vi.fn(async()=>({content:{type:'text',text:'{"topicNumbers":[8,2,15]}'}}));
-  expect(await selectFocusTopics(samplingGenerate({createMessage} as unknown as Server),topics)).toEqual(['t7','t1','t14']);
+  const picks=[8,2,15].map(topicNumber=>({topicNumber,reason:`Topic ${topicNumber-1} is below the 4/5 target.`}));
+  const createMessage=vi.fn(async()=>({content:{type:'text',text:JSON.stringify({topics:picks})}}));
+  expect(await selectFocusTopics(samplingGenerate({createMessage} as unknown as Server),topics)).toEqual({topicIds:['t7','t1','t14'],reasons:picks.map(p=>p.reason)});
   expect(createMessage).toHaveBeenCalledTimes(1);
   expect(JSON.stringify(createMessage.mock.calls)).toContain('Topic 17');
 });
-it('rejects incomplete, duplicate or unknown selections without additional AI requests',async()=>{
+it('rejects incomplete, duplicate, unknown or over-long selections without additional AI requests',async()=>{
   const topics=Array.from({length:4},(_,i)=>({id:`t${i}`,name:`Topic ${i}`,score:null,provisional:true,lastReviewed:null,recentAttempts:[],scoreMovements:[]}));
-  for(const topicNumbers of [[1],[1,1,2],[1,2,5]]){
-    const createMessage=vi.fn(async()=>({content:{type:'text',text:JSON.stringify({topicNumbers})}}));
+  const long=Array(31).fill('word').join(' ');
+  for(const picks of [[1],[1,1,2],[1,2,5]].map(numbers=>numbers.map(topicNumber=>({topicNumber,reason:'Below target.'}))).concat([[1,2,3].map(topicNumber=>({topicNumber,reason:topicNumber===3?long:'Below target.'}))])){
+    const createMessage=vi.fn(async()=>({content:{type:'text',text:JSON.stringify({topics:picks})}}));
     await expect(selectFocusTopics(samplingGenerate({createMessage} as unknown as Server),topics)).rejects.toThrow();
     expect(createMessage).toHaveBeenCalledTimes(1);
   }

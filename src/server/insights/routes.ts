@@ -34,7 +34,7 @@ export function registerInsights(app:FastifyInstance,s:Store,clock:()=>Date,dbPa
   app.post('/api/topics/analysis/enable',req=>topics.enable(z.object({enabled:z.boolean()}).strict().parse(req.body).enabled));
   app.post('/api/topics/analysis/retry',req=>{z.object({}).strict().parse(req.body);return topics.retry();});
   app.post('/api/topics/analysis/claim',req=>{bearer(req);return {work:tutor.mayClaim(req)?topics.claim():null};});
-  app.post('/api/topics/analysis/complete',req=>{bearer(req);const b=z.object({claimId:z.string(),topicIds:z.unknown()}).strict().parse(req.body);return topics.complete(b.claimId,b.topicIds);});
+  app.post('/api/topics/analysis/complete',req=>{bearer(req);const b=z.object({claimId:z.string(),topicIds:z.unknown(),reasons:z.unknown().optional()}).strict().parse(req.body);return topics.complete(b.claimId,b.topicIds,b.reasons);});
   app.post('/api/topics/analysis/fail',req=>{bearer(req);const b=z.object({claimId:z.string(),error:z.string().max(1000)}).strict().parse(req.body);return topics.fail(b.claimId,b.error);});
   app.post('/api/insights/enable',req=>{
     assertMetadataVisible(s);

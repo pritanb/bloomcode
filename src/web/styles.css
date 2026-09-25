@@ -192,13 +192,28 @@
 .insight-topic { color: var(--primary); background: var(--accent); border-color: transparent; white-space: normal; height: auto; min-height: 1.25rem; text-align: left; overflow-wrap: anywhere; }
 .insight-panel-topics { margin-bottom: 1.5rem; }
 
-.topic-focus-list { list-style: decimal; padding-left: 1.5rem; margin: 0; }
-.topic-focus-list > li { padding: 1rem 0 1rem .5rem; border-bottom: 1px solid var(--border); }
-.topic-focus-list > li:last-child { border-bottom: 0; }
-.topic-focus-list h3, .topic-assess-row h3 { margin: 0; font-weight: 600; }
-.topic-focus-list p, .topic-assess-row p { margin: .5rem 0 0; }
-.topic-focus-list a, .topic-assess-row a { color: var(--primary); text-decoration: underline; text-underline-offset: .2em; }
-.topic-focus-list .row { flex-wrap: wrap; gap: .5rem; }
+.topic-assess-row h3 { margin: 0; font-weight: 600; }
+.topic-assess-row p { margin: .5rem 0 0; }
+.topic-assess-row a { color: var(--primary); text-decoration: underline; text-underline-offset: .2em; }
+
+/* Rank sits beside the name so the score chart below keeps its room. */
+.focus-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+.focus-tile { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "rank name" "score score" "reason reason" "link link"; align-items: center; column-gap: .625rem; row-gap: .75rem; height: 100%; padding: 1rem 1.25rem; color: var(--foreground); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; transition: border-color .15s, background-color .15s; }
+.focus-tile:hover { border-color: var(--primary); background: var(--accent); }
+.focus-tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.focus-rank { grid-area: rank; display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; font-size: .8125rem; font-weight: 650; color: var(--primary); background: color-mix(in oklab, var(--primary) 14%, transparent); }
+.focus-tile-top .focus-rank { color: var(--primary-foreground); background: var(--primary); }
+.focus-name { grid-area: name; margin: 0; font-size: 1.125rem; line-height: 1.35; font-weight: 600; }
+.focus-tile > div { grid-area: score; }
+.focus-score { display: flex; align-items: baseline; gap: .375rem; margin: 0 0 .625rem; font-variant-numeric: tabular-nums; }
+.focus-score strong { font-size: 1.5rem; line-height: 1; font-weight: 650; }
+.focus-meter { position: relative; height: 6px; border-radius: 3px; background: var(--muted); }
+.focus-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+/* Marks the 4/5 readiness target. */
+.focus-meter::after { content: ''; position: absolute; left: 80%; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--foreground); opacity: .45; }
+.focus-reason { grid-area: reason; margin: 0; line-height: 1.6; color: var(--muted-foreground); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.focus-link { grid-area: link; display: inline-flex; align-items: center; gap: .25rem; font-size: .875rem; font-weight: 550; color: var(--primary); }
+@media (prefers-reduced-motion: reduce) { .focus-tile { transition: none; } }
 .topic-assess-row { padding: 1rem 0; border-bottom: 1px solid var(--border); }
 
 .connection-toast { position: fixed; z-index: 200; bottom: 1.5rem; right: 1.5rem; width: min(28rem, calc(100vw - 3rem)); display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 20px rgb(0 0 0 / .15); }

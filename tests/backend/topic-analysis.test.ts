@@ -21,8 +21,9 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     expect(topics.claim()).toBeNull();
     expect(()=>topics.complete(work.job.claimId!,[])).toThrow('three distinct supplied topics');
     const priority='arrays';
-    topics.complete(work.job.claimId!,[priority]);
-    expect(topics.status()).toMatchObject({status:'done',stale:false,report:{topicIds:[priority]}});
+    expect(()=>topics.complete(work.job.claimId!,[priority],['one','two'])).toThrow();
+    topics.complete(work.job.claimId!,[priority],['Arrays is 2/5, below the 4/5 target.']);
+    expect(topics.status()).toMatchObject({status:'done',stale:false,report:{topicIds:[priority],reasons:['Arrays is 2/5, below the 4/5 target.']}});
     expect(s.get('topics','arrays')).toEqual(topic);
     expect(learning.latestReport()).toBeNull();
     learning.put({id:'state',kind:'state',enabled:true});

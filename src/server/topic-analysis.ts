@@ -4,7 +4,7 @@ import type { Topic, ScoreDecision } from '../shared/contracts.js';
 import type { AttemptRecord } from './attempts.js';
 import { assertMetadataVisible } from './catalogue.js';
 import { conflict, ApiError } from './errors.js';
-import { TOPIC_REFRESH_MS, type TopicAnalysisContext, type TopicAnalysisRecord, type TopicAnalysisStatus } from '../shared/topic-analysis.js';
+import { TOPIC_REFRESH_MS, topicReason, type TopicAnalysisContext, type TopicAnalysisRecord, type TopicAnalysisStatus } from '../shared/topic-analysis.js';
 import { z } from 'zod';
 
 export class TopicAnalysis {
@@ -46,11 +46,13 @@ export class TopicAnalysis {
     if(!r.enabled||r.claimId!==claimId||!['running','done'].includes(r.status))throw conflict('Topic analysis changed; request fresh work');
     return r;
   }
-  complete(claimId:string,input:unknown){return this.s.transaction(()=>{
+  complete(claimId:string,input:unknown,reasonsInput?:unknown){return this.s.transaction(()=>{
     const r=this.current(claimId);if(r.status==='done')return {ok:true};
     const topicIds=z.array(z.string()).max(3).parse(input),ids=new Set(this.topics().map(t=>t.id));
     if(topicIds.length!==Math.min(3,ids.size)||new Set(topicIds).size!==topicIds.length||topicIds.some(id=>!ids.has(id)))throw new ApiError(400,'EVIDENCE','Select three distinct supplied topics (or all topics if fewer than three exist)');
-    this.put({...r,status:'done',report:{fingerprint:r.fingerprint,createdAt:this.clock().toISOString(),topicIds,topicPriorities:[],model:null}});return {ok:true};
+    // Older adapters send selections without reasons; the card then shows links only.
+    const reasons=reasonsInput===undefined?undefined:z.array(topicReason).length(topicIds.length).parse(reasonsInput);
+    this.put({...r,status:'done',report:{fingerprint:r.fingerprint,createdAt:this.clock().toISOString(),topicIds,...(reasons?{reasons}:{}),topicPriorities:[],model:null}});return {ok:true};
   });}
   fail(claimId:string,error:string){const r=this.current(claimId);if(r.status!=='done')this.put({...r,status:'failed',error});return {ok:true};}
   status():TopicAnalysisStatus{

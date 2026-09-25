@@ -89,7 +89,7 @@ test('sampling adapter builds a learning report after prioritizing the immediate
     let text:string;
     if(prompt.includes('Select the three topics')){
       phases.push('topics');
-      text=JSON.stringify({topicNumbers:[1]});
+      text=JSON.stringify({topics:[{topicNumber:1,reason:'Arrays is below the 4/5 target.'}]});
     }else if(prompt.includes('ONE completed')){
       phases.push('extract');
       text=JSON.stringify({observations:[{summary:'The learner reports forgetting an empty input.',polarity:'difficulty',evidenceType:'learner_reported',sourceField:'notes',excerpt:'Forgot empty input.'}],limitation:'Self-reported; no test execution.'});
@@ -118,7 +118,7 @@ test('sampling adapter builds a learning report after prioritizing the immediate
     expect(report).toMatchObject({model:'test-sampling-model',analyzed:1,findings:[{kind:'single_problem'}]});
     expect(await api.request('GET','/api/mcp/status')).toMatchObject({state:'connected',sampling:true,automaticReviews:true});
     expect(phases.filter(p=>p!=='topics')[0]).toBe('review');expect(phases).toContain('extract');expect(phases).toContain('report');expect(phases).toContain('topics');
-    expect(await api.request('GET','/api/topics/analysis')).toMatchObject({report:{topicIds:['arrays']}});
+    expect(await api.request('GET','/api/topics/analysis')).toMatchObject({report:{topicIds:['arrays'],reasons:['Arrays is below the 4/5 target.']}});
     expect(report).not.toHaveProperty('topicPriorities');
   }finally{await client.close();await app.close();await rm(dir,{recursive:true,force:true});}
 },15000);

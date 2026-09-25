@@ -11,6 +11,8 @@ export const topicPriorityInput = z.object({
 }).strict();
 export type TopicPriority = z.infer<typeof topicPriorityInput>;
 export const TOPIC_READINESS_TARGET = 4;
+export const TOPIC_REASON_MAX_WORDS = 30;
+export const topicReason = z.string().trim().min(1).max(300).refine(r => r.split(/\s+/).length <= TOPIC_REASON_MAX_WORDS, `Reason must contain at most ${TOPIC_REASON_MAX_WORDS} words`);
 export const TOPIC_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 export const TOPIC_PRIORITY_RULES = `Include topicPriorities: one entry per supplied topic (topicId, importance high|medium|low, reason, action). Estimate importance for general coding interviews, not a particular employer; label it as a judgment, never invent frequency statistics. Explain interview relevance and the gap from the planning target of 4/5. Scores are saved evidence, not a probability of passing. Null scores mean unassessed, never zero ability. Provisional scores require confirmation. A score of 4 or more needs maintenance, not remediation. Give one concrete next practice action per topic, without revealing problem solutions. Use only supplied topic IDs. Do not change scores or schedules.`;
 
@@ -18,7 +20,7 @@ export const topicAnalysisRecordSchema=z.object({
   kind:z.literal('topic_analysis'),id:z.literal('topic-analysis'),enabled:z.boolean(),
   fingerprint:z.string(),status:z.enum(['idle','pending','running','done','failed']),
   claimId:z.string().nullable(),claimedAt:z.number(),error:z.string().nullable(),
-  report:z.object({fingerprint:z.string(),createdAt:z.iso.datetime(),topicIds:z.array(id).max(3).optional(),topicPriorities:z.array(topicPriorityInput).max(200).default([]),model:z.string().nullable()}).strict().nullable(),
+  report:z.object({fingerprint:z.string(),createdAt:z.iso.datetime(),topicIds:z.array(id).max(3).optional(),reasons:z.array(z.string().max(300)).max(3).optional(),topicPriorities:z.array(topicPriorityInput).max(200).default([]),model:z.string().nullable()}).strict().nullable(),
 }).strict();
 export type TopicAnalysisRecord=z.infer<typeof topicAnalysisRecordSchema>;
 export type AnalysisTopic=Pick<Topic,'id'|'name'|'score'|'provisional'|'lastReviewed'>;
