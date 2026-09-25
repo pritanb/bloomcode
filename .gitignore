@@ -12,3 +12,5 @@ private/
 *.log
 api-token
 output/playwright/
+.playwright-cli/
+.claude/
