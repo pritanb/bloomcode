@@ -71,3 +71,54 @@ test('the stdio adapter asks a sampling client to write the report and saves it'
   expect(asked[0]).toContain('Two Sum');
   expect(((await api.request('GET', `/api/attempts/${attemptId}`)) as Attempt).feedback).toBe('Summary:\nSolid solve.');
 }, 30000);
+
+test('sampling adapter builds a learning report after prioritizing the immediate review', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'lc-learning-mcp-'));
+  const app = await createApp({ dbPath: join(dir, 'leetcode.sqlite'), embed:async texts=>texts.map(()=>Array.from({length:384},(_,i)=>i===0?1:0)) });
+  const url = await app.listen({port:0,host:'127.0.0.1'});
+  const api = new LocalApi({dataDir:dir,baseUrl:url});
+  const {openDb}=await import('../../src/server/db.js');
+  const {Store}=await import('../../src/server/store.js');
+  const topicDb=openDb(join(dir,'leetcode.sqlite'));
+  new Store(topicDb.sqlite).put('topics',{id:'arrays',name:'Arrays',score:2,version:1,notes:'',lastReviewed:null,provisional:true,lastMovement:null});
+  topicDb.sqlite.close();
+  const client = new Client({name:'learning-test',version:'1.0.0'},{capabilities:{sampling:{}}});
+  const phases:string[]=[];
+  client.setRequestHandler(CreateMessageRequestSchema,async request=>{
+    const prompt=request.params.systemPrompt??'';
+    let text:string;
+    if(prompt.includes('Select the three topics')){
+      phases.push('topics');
+      text=JSON.stringify({topicNumbers:[1]});
+    }else if(prompt.includes('ONE completed')){
+      phases.push('extract');
+      text=JSON.stringify({observations:[{summary:'The learner reports forgetting an empty input.',polarity:'difficulty',evidenceType:'learner_reported',sourceField:'notes',excerpt:'Forgot empty input.'}],limitation:'Self-reported; no test execution.'});
+    }else if(prompt.includes('learning report')){
+      phases.push('report');
+      const block=request.params.messages[0].content;
+      const content=Array.isArray(block)?block[0]:block;
+      const {context}=JSON.parse(content.type==='text'?content.text:'{}');
+      text=JSON.stringify({findings:[{title:'Check boundary cases',kind:'single_problem',explanation:'This attempt reports forgetting an empty input.',action:'Check whether empty input is permitted before submitting.',evidenceIds:[context.evidence[0].id],caveat:'One self-report is not a recurring pattern.',suggestions:[]}],limitation:'One attempt analyzed.'});
+    }else{phases.push('review');text='Summary:\nReview saved before learning analysis.';}
+    return {role:'assistant' as const,content:{type:'text' as const,text},model:'test-sampling-model',stopReason:'endTurn'};
+  });
+  try {
+    const p=await api.request('POST','/api/problems',{title:'Boundary',url:'https://leetcode.com/problems/boundary/'}) as {id:string};
+    const a=await api.request('POST','/api/attempts',{problemId:p.id,context:'targeted'}) as Attempt;
+    await api.request('POST',`/api/attempts/${a.id}/finish`,{version:a.version,outcome:'solved',help:'none',activeSeconds:60,code:'return []',notes:'Forgot empty input.',requestReview:true},`finish-${a.id}`);
+    await api.request('POST','/api/insights/enable',{enabled:true});
+    await api.request('POST','/api/topics/analysis/enable',{enabled:true});
+    await client.connect(new StdioClientTransport({command:process.execPath,args:['--import','tsx',resolve('src/integrations/mcp.ts')],env:{...process.env,DATA_DIR:dir,PORT:new URL(url).port,TUTOR_AUTO_REVIEW:'1'} as Record<string,string>,stderr:'pipe'}));
+    let report:unknown;
+    for(let i=0;i<160;i++){
+      const status=await api.request('GET','/api/insights') as {report:unknown};
+      if(status.report){report=status.report;break;}
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+    expect(report).toMatchObject({model:'test-sampling-model',analyzed:1,findings:[{kind:'single_problem'}]});
+    expect(await api.request('GET','/api/mcp/status')).toMatchObject({state:'connected',sampling:true,automaticReviews:true});
+    expect(phases.filter(p=>p!=='topics')[0]).toBe('review');expect(phases).toContain('extract');expect(phases).toContain('report');expect(phases).toContain('topics');
+    expect(await api.request('GET','/api/topics/analysis')).toMatchObject({report:{topicIds:['arrays']}});
+    expect(report).not.toHaveProperty('topicPriorities');
+  }finally{await client.close();await app.close();await rm(dir,{recursive:true,force:true});}
+},15000);

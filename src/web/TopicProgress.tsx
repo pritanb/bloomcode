@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { Topic, TopicScoreHistory } from '../shared/contracts';
 import { api } from './api';
 import { dateLabel, Empty, ErrorNotice, Field, Loading } from './ui';
+import { TopicAnalysis } from './TopicAnalysis';
 import { topicHistory } from './topic-history';
 
 const axisDate = (time: number) => new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(time);
@@ -30,6 +31,7 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
   const current = query.data?.topic ?? topic;
   const rows = [...ordered].reverse();
   return <>
+    <TopicAnalysis />
     <Card className="panel topic-timeline">
       <div className="section-heading">
         <div><h2>Score over time</h2><p className="small muted">Track your progress in each topic.</p></div>

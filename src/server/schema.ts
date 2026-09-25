@@ -20,3 +20,5 @@ export const planItems=sqliteTable('plan_items',{id:text('id').primaryKey(),data
 export const settings = sqliteTable('settings', { id:text('id').primaryKey(), data:text('data',{mode:'json'}).$type<Settings>().notNull() });
 
 export const patterns=sqliteTable('patterns',{id:text('id').primaryKey(),data:text('data',{mode:'json'}).notNull()});
+
+export const learningInsights=sqliteTable('learning_insights',{id:text('id').primaryKey(),data:text('data',{mode:'json'}).notNull()});

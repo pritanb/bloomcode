@@ -1,3 +1,5 @@
+import { registerInsights } from './insights/routes.js';
+import type { Embed } from './insights/embeddings.js';
 import Fastify from 'fastify';
 import { recommendationSchema } from '../shared/recommendations.js';
 import { recommendationContext } from './recommendations.js';
@@ -9,7 +11,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import { openDb } from './db.js';
 import { settings } from './schema.js';
-export interface AppOptions { dbPath:string; demo?:boolean; token?:string; serveStatic?:boolean|string; clock?:()=>Date }
+export interface AppOptions { dbPath:string; embed?:Embed; demo?:boolean; token?:string; serveStatic?:boolean|string; clock?:()=>Date }
 import { ApiError } from './errors.js';
 import { Store } from './store.js';
 import { dirname } from 'node:path';
@@ -90,5 +92,6 @@ export async function createApp(options:AppOptions) {
  registerPlans(app,store,clock);
  registerStudyTools(app,store,clock);
  registerTransfer(app,store,clock,options.dbPath);
+ registerInsights(app,store,clock,options.dbPath,header=>!!header?.startsWith('Bearer ')&&equal(header.slice(7),token),options.embed);
  return app;
 }

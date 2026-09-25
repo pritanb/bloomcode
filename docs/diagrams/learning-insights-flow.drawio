@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="drawio">
+  <diagram id="learning-insights" name="Numbered analysis flow">
+    <mxGraphModel page="1" pageWidth="1200" pageHeight="1640" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;Learning Insights: what runs, and when&lt;/b&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=30;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;text;fillColor=none;strokeColor=none;align=left;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="20" width="1100" height="50" />
+        </mxCell>
+        <mxCell id="subtitle" value="Follow steps 1–10. Hermes is the MCP client; your project supplies the MCP server." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;text;fillColor=none;strokeColor=none;align=left;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="75" width="1100" height="40" />
+        </mxCell>
+        <mxCell id="step-1" value="&lt;b&gt;1. Save your attempt&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;TUTOR APP · LOCAL&lt;/font&gt;&lt;br/&gt;Code, notes and outcome are saved immediately." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="145" width="620" height="100" />
+        </mxCell>
+        <mxCell id="step-2" value="&lt;b&gt;2. Queue analysis&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;TUTOR APP · LOCAL&lt;/font&gt;&lt;br/&gt;Work waits until a sampling-capable tutor connects." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="280" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-1-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-1" target="step-2">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-3" value="&lt;b&gt;3. Prepare the evidence&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;MCP SERVER · LOCAL&lt;/font&gt;&lt;br/&gt;Collect saved code, reflections and recorded results." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="415" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-2-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-2" target="step-3">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-4" value="&lt;b&gt;4. Ask Hermes to analyze&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;MCP SERVER → HERMES · LOCAL&lt;/font&gt;&lt;br/&gt;Send an MCP sampling request with the evidence." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#fff2cc;strokeColor=#d6b656;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="550" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-3-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-3" target="step-4">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-5" value="&lt;b&gt;5. Run the analysis&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;LUNA · PROVIDER&lt;/font&gt;&lt;br/&gt;Hermes requests Luna with Max reasoning." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#e1d5e7;strokeColor=#9673a6;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="685" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-4-5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-4" target="step-5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-6" value="&lt;b&gt;6. Return the observations&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;LUNA → HERMES → MCP SERVER&lt;/font&gt;&lt;br/&gt;The structured response travels back to the app." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#fff2cc;strokeColor=#d6b656;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="820" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-5-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-5" target="step-6">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-7" value="&lt;b&gt;7. Validate, save and embed&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;TUTOR APP + MINILM · LOCAL&lt;/font&gt;&lt;br/&gt;Save supported observations; create local search vectors." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="955" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-6-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-6" target="step-7">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-8" value="&lt;b&gt;8. Retrieve related evidence&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;TUTOR APP · LOCAL&lt;/font&gt;&lt;br/&gt;Find related observations and contrary evidence." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1090" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-7-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-7" target="step-8">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-9" value="&lt;b&gt;9. Generate a report&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;HERMES → LUNA · PROVIDER&lt;/font&gt;&lt;br/&gt;A second sampling call synthesizes the retrieved evidence." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#e1d5e7;strokeColor=#9673a6;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1225" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-8-9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-8" target="step-9">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-10" value="&lt;b&gt;10. Validate and display&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:12px&quot;&gt;TUTOR APP · LOCAL&lt;/font&gt;&lt;br/&gt;Save the report and show it in Learning Insights." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=18;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1360" width="620" height="100" />
+        </mxCell>
+        <mxCell id="flow-9-10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#52647A;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="step-9" target="step-10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="attempts" value="PER ATTEMPT · STEPS 2–7&lt;br/&gt;&lt;br/&gt;Repeat for saved history and new or changed attempts. Saving practice does not wait for AI." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=17;fontColor=#172B4D;fillColor=#f5f5f5;strokeColor=#c5cbd3;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="750" y="190" width="380" height="180" />
+        </mxCell>
+        <mxCell id="timeout" value="MODEL WAIT · STEPS 5 &amp; 9&lt;br/&gt;&lt;br/&gt;Hermes timeout: 150 seconds per call.&lt;br/&gt;App timeout: 180 seconds.&lt;br/&gt;&lt;br/&gt;Hermes must be restarted after a configuration change." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=17;fontColor=#172B4D;fillColor=#f5f5f5;strokeColor=#c5cbd3;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="750" y="620" width="380" height="200" />
+        </mxCell>
+        <mxCell id="progress" value="PROGRESS BAR&lt;br/&gt;&lt;br/&gt;Counts analyzed attempts once validated observations are saved. It does not show model token progress or embedding progress." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=17;fontColor=#172B4D;fillColor=#f5f5f5;strokeColor=#c5cbd3;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="750" y="900" width="380" height="170" />
+        </mxCell>
+        <mxCell id="report" value="REPORT REFRESH · STEPS 8–10&lt;br/&gt;&lt;br/&gt;During backfill: after about 10 newly analyzed attempts, or when the pending queue is empty, once embeddings are ready.&lt;br/&gt;&lt;br/&gt;The last completed report stays readable." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=17;fontColor=#172B4D;fillColor=#f5f5f5;strokeColor=#c5cbd3;spacing=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="750" y="1150" width="380" height="220" />
+        </mxCell>
+        <mxCell id="legend" value="Blue: local app / MCP work     Yellow: Hermes handoff     Purple: provider model call" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=16;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;text;fillColor=none;strokeColor=none;align=left;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1510" width="1050" height="40" />
+        </mxCell>
+        <mxCell id="footer" value="Example workflow, not live status. MiniLM runs locally; analysis evidence is sent to the connected model provider." style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=15;fontColor=#172B4D;fillColor=#dae8fc;strokeColor=#6c8ebf;spacing=14;text;fillColor=none;strokeColor=none;align=left;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1560" width="1080" height="40" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

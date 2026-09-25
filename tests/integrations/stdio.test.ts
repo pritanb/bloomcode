@@ -14,13 +14,14 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
   const client=new Client({name:'integration-test',version:'1'},{capabilities:{}});
   try {
     await client.connect(transport);
-    const tools=await client.listTools(); expect(tools.tools.map(t=>t.name).sort()).toEqual(['finish_attempt','get_attempt_context','get_today','save_review','search_questions','set_review_date']);
+    const tools=await client.listTools(); expect(tools.tools.map(t=>t.name).sort()).toEqual(['claim_learning_analysis','complete_learning_analysis','finish_attempt','get_attempt_context','get_learning_insights','get_today','retrieve_learning_evidence','save_review','search_questions','set_review_date']);
     expect((await client.callTool({name:'search_questions',arguments:{search:'tree',tags:['t1','t2'],tagMode:'all',pageSize:10}})).isError).not.toBe(true);
     expect((await client.callTool({name:'get_attempt_context',arguments:{attemptId:'a1'}})).isError).not.toBe(true);
     expect((await client.callTool({name:'save_review',arguments:{attemptId:'a1',version:4,idempotencyKey:'review-1',feedback:'Retained.',decisions:[{topicId:'t1',expectedVersion:2,oldScore:3.2,newScore:3.2,rationale:'Repeat only.',evidence:'retention'}]}})).isError).not.toBe(true);
     expect((await client.callTool({name:'set_review_date',arguments:{targetId:'r1',version:2,action:'manual',date:'2026-09-20'}})).isError).not.toBe(true);
-    expect(requests.map(r=>r.path)).toEqual(['/api/problems?search=tree&tags=t1%2Ct2&tagMode=all&pageSize=10','/api/attempts/a1/context','/api/attempts/a1/reviews','/api/attempts/a1/context','/api/reviews/r1','/api/reviews']);
-    expect(requests[2]?.key).toBe('review-1');
-    const count=requests.length;expect((await client.callTool({name:'search_questions',arguments:{pageSize:10001}})).isError).toBe(true);expect(requests).toHaveLength(count);
+    const toolRequests=()=>requests.filter(r=>r.path!=='/api/mcp/heartbeat');
+    expect(toolRequests().map(r=>r.path)).toEqual(['/api/problems?search=tree&tags=t1%2Ct2&tagMode=all&pageSize=10','/api/attempts/a1/context','/api/attempts/a1/reviews','/api/attempts/a1/context','/api/reviews/r1','/api/reviews']);
+    expect(toolRequests()[2]?.key).toBe('review-1');
+    const count=toolRequests().length;expect((await client.callTool({name:'search_questions',arguments:{pageSize:10001}})).isError).toBe(true);expect(toolRequests()).toHaveLength(count);
   } finally {await client.close();await new Promise<void>(r=>server.close(()=>r()));await rm(dir,{recursive:true,force:true});}
 },15000);

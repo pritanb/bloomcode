@@ -1,3 +1,5 @@
+import { restoreLearningReferences } from './insights/restore.js';
+import { learningRecordSchema } from '../shared/insights.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
@@ -16,6 +18,7 @@ import { outcome, help, seconds } from './closeout.js';
 const id=z.string().min(1).max(1000),text=z.string(),nullable=text.nullable(),v=z.number().int().min(1);
 const identity=z.object({id,title:name,url:problemUrl,difficulty:nullable}).strict();
 const schemas:Record<Table,z.ZodType>={
+ learning_insights:learningRecordSchema,
  patterns:z.object({id,...legacyPatternFields,version:v,createdAt:z.iso.datetime(),updatedAt:z.iso.datetime()}).strict(),
  settings:z.object({onboardingComplete:z.boolean().optional(),autoScore:z.boolean().optional(),recommendations:recommendationSchema.optional(),id:z.literal('singleton'),timezone:text.refine(t=>{try{new Intl.DateTimeFormat('en',{timeZone:t});return true;}catch{return false;}}),questionsPerDay:z.number().int().min(1).max(20).optional(),budgetMinutes:z.number().int().min(5).max(240),primaryCount:z.number().int().min(1).max(10),optionalCount:z.number().int().min(0).max(10),dataMode:text,lastBackupAt:nullable}).strict(),
  problems:z.object({leetcodeTopics:z.array(name).max(50).optional(),id,title:name,url:problemUrl,slug:text.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),difficulty:nullable,notes:text,tags:z.array(z.unknown()),lists:z.array(z.unknown()),legacyCompleted:z.boolean(),exposed:z.boolean(),lastAttemptAt:nullable,lastSolveSeconds:seconds,lastSolveHelp:help.nullable(),lastOutcome:outcome.nullable(),nextReviewDate:date.nullable(),attemptCount:z.number().int().min(0)}).strict(),
@@ -34,14 +37,15 @@ const schemas:Record<Table,z.ZodType>={
  daily_plans:z.object({id,date,timezone:text,version:v}).strict(),
  plan_items:z.object({recommendationKind:z.enum(['topic','refresher','balanced']).optional(),id,planId:id,position:z.number().int().min(0),problemId:id.nullable(),title:name,url:nullable,status:z.enum(['active','queued','optional','completed','skipped']),reason:text,suggestedMinutes:z.number().int().min(1),attemptId:id.nullable()}).strict(),
 };
-export function exportSnapshot(s:Store,clock:()=>Date):Snapshot {return s.transaction(()=>({schemaVersion:3,exportedAt:clock().toISOString(),tables:Object.fromEntries(durableTables.map(t=>[t,(s.sql.prepare(`SELECT id,data FROM "${t}" ORDER BY rowid`).all() as {id:string;data:string}[]).map(r=>({...JSON.parse(r.data),id:r.id}))]))}));}
+export function exportSnapshot(s:Store,clock:()=>Date):Snapshot {return s.transaction(()=>({schemaVersion:4,exportedAt:clock().toISOString(),tables:Object.fromEntries(durableTables.map(t=>[t,(s.sql.prepare(`SELECT id,data FROM "${t}" ORDER BY rowid`).all() as {id:string;data:string}[]).map(r=>({...JSON.parse(r.data),id:r.id}))]))}));}
 export function registerTransfer(app:FastifyInstance,s:Store,clock:()=>Date,dbPath:string){
  app.get('/api/export',()=>exportSnapshot(s,clock));
  app.post('/api/restore',{bodyLimit:50*1024*1024},req=>{
-  const b=z.object({confirmEmpty:z.literal(true),snapshot:z.object({schemaVersion:z.union([z.literal(1),z.literal(2),z.literal(3)]),exportedAt:z.iso.datetime(),tables:z.record(z.string(),z.array(z.record(z.string(),z.unknown())))}).strict()}).strict().parse(req.body);
-  const expected:readonly string[]=b.snapshot.schemaVersion===1?durableTables.filter(t=>t!=='patterns'):durableTables;
+  const b=z.object({confirmEmpty:z.literal(true),snapshot:z.object({schemaVersion:z.union([z.literal(1),z.literal(2),z.literal(3),z.literal(4)]),exportedAt:z.iso.datetime(),tables:z.record(z.string(),z.array(z.record(z.string(),z.unknown())))}).strict()}).strict().parse(req.body);
+  const expected:readonly string[]=durableTables.filter(t=>(b.snapshot.schemaVersion!==1||t!=='patterns')&&(b.snapshot.schemaVersion===4||t!=='learning_insights'));
   const keys=Object.keys(b.snapshot.tables);if(keys.length!==expected.length||keys.some(k=>!expected.includes(k)))throw new ApiError(400,'SNAPSHOT_SCHEMA','Snapshot table allowlist does not match schema version');
   if(b.snapshot.schemaVersion===1)b.snapshot.tables.patterns=[];
+  if(b.snapshot.schemaVersion<4)b.snapshot.tables.learning_insights=[];
   for(const table of durableTables){const rows=b.snapshot.tables[table]!,ids=new Set();for(const row of rows){schemas[table].parse(row);if(ids.has(row.id))throw new ApiError(400,'SNAPSHOT_SCHEMA','Duplicate record ID');ids.add(row.id);}if(table==='settings'&&(rows.length!==1||rows[0]!.id!=='singleton'))throw new ApiError(400,'SNAPSHOT_SCHEMA','Exactly one settings record is required');}
   try{return s.transaction(()=>{
    if(durableTables.some(t=>t!=='settings'&&(s.sql.prepare(`SELECT count(*) AS n FROM "${t}"`).get() as {n:number}).n>0))throw conflict('Restore requires an empty database');
@@ -52,6 +56,7 @@ export function registerTransfer(app:FastifyInstance,s:Store,clock:()=>Date,dbPa
    for(const row of b.snapshot.tables.attempts!){if(row.planItemId)s.get('plan_items',String(row.planItemId));const p=s.get<{id:string;slug:string}>('problems',String(row.problemId));if((row.problem as {id:string}).id!==p.id)throw new ApiError(400,'SNAPSHOT_REFERENCE','Attempt identity mismatch');}
    for(const row of b.snapshot.tables.patterns!)for(const id of row.exampleProblemIds as string[])s.get('problems',id);
    for(const row of b.snapshot.tables.problems!)if(new URL(String(row.url)).pathname.split('/')[2]!==row.slug)throw new ApiError(400,'SNAPSHOT_SCHEMA','Problem slug does not match original URL');
+   restoreLearningReferences(s);
    migratePatternNotebooks(s);
    for(const table of durableTables)counts[table]=s.all(table).length;
    return {restored:true,counts};

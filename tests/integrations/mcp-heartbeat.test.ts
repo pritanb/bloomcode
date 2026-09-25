@@ -1,0 +1,20 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { LocalApi } from '../../src/integrations/local-api';
+import { startMcpHeartbeat } from '../../src/integrations/mcp-heartbeat';
+afterEach(()=>vi.useRealTimers());
+it('keeps heartbeats independent of generation and stops when the transport closes',async()=>{
+  vi.useFakeTimers();
+  const request=vi.fn().mockResolvedValue({});
+  const ping=vi.fn().mockResolvedValue({});
+  const stop=startMcpHeartbeat({request:ping,getClientCapabilities:()=>({sampling:{}})} as unknown as Server,{request} as unknown as LocalApi);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(request).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(request).toHaveBeenCalledTimes(4);
+  ping.mockRejectedValue(new Error('Transport closed'));
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(request).toHaveBeenCalledTimes(4);
+  stop();await vi.advanceTimersByTimeAsync(30_000);
+  expect(ping).toHaveBeenCalledTimes(5);
+});

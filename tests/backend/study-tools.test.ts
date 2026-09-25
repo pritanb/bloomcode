@@ -59,7 +59,7 @@ it('keeps notebook notes on pattern tags, derives assigned questions, and keeps 
   await request('PATCH', `/api/tags/${tag.id}`, { name: 'Answer-space search', archived: true });
   expect((await request('GET', `/api/patterns/${tag.id}`)).json()).toMatchObject({ title: 'Answer-space search', archived: true, ...notes });
   const full = (await request('GET', '/api/export')).json<Snapshot>();
-  expect(full.schemaVersion).toBe(3);
+  expect(full.schemaVersion).toBe(4);
   for (const table of ['topics', 'score_decisions', 'review_targets', 'attempts']) expect(full.tables[table]).toEqual(before.tables[table]);
   await app.close(); app = await createApp({ dbPath: ':memory:', token: 'test', clock });
   expect((await request('POST', '/api/restore', { confirmEmpty: true, snapshot: full })).statusCode).toBe(200);
@@ -78,7 +78,7 @@ it('consolidates v2 notebook records losslessly and restores v1 snapshots', asyn
   const tag = (await request('POST', '/api/tags', { name: 'Two pointers', description: 'Existing description' })).json();
   await request('PATCH', `/api/problems/${p.id}`, { tags: [{ tagId: tag.id, difficulty: 7 }] });
   const completed = await finish(await start(p.id));
-  const old = (await request('GET', '/api/export')).json<Snapshot>(); old.schemaVersion = 2;
+  const old = (await request('GET', '/api/export')).json<Snapshot>(); old.schemaVersion = 2; delete old.tables.learning_insights;
   old.tables.patterns = [
     { id: 'old', ...pattern([p.id, other.id]), version: 1, createdAt: clock().toISOString(), updatedAt: clock().toISOString() },
     { id: 'duplicate', ...pattern([p.id]), notes: 'Second lesson', version: 1, createdAt: clock().toISOString(), updatedAt: clock().toISOString() },
@@ -132,8 +132,8 @@ it('upgrades an on-disk v1 database without changing saved work', async () => {
     const original = (await request('GET', '/api/export')).json<Snapshot>();
     await app.close();
     const sql = new Database(dbPath);
-    sql.exec('DROP TABLE patterns');
-    sql.prepare('DELETE FROM __drizzle_migrations WHERE created_at = ?').run(1789516800001);
+    sql.exec('DROP TABLE patterns; DROP TABLE learning_insights; DROP TABLE insight_embeddings');
+    sql.prepare('DELETE FROM __drizzle_migrations WHERE created_at >= ?').run(1789516800001);
     sql.close();
     app = await createApp({ dbPath, token: 'test', clock });
     expect((await request('GET', `/api/attempts/${a.id}`)).json()).toEqual(a);

@@ -78,6 +78,7 @@ Export your records from Settings, or run `npm run backup` while the app is runn
 ## Documentation
 
 - [Question packs and extensions](docs/extensions.md) — add your own lists or integrations.
+- [Learning Insights](docs/learning-insights.md) — local semantic retrieval, evidence-backed learning patterns, and optional practice suggestions.
 - [Optional AI tutor](docs/tutor-integration.md) — connect an MCP client using the separate Node.js adapter; automatic reports require sampling support.
 - [Import existing progress](docs/migration.md) — bring in spreadsheet history.
 - [Contributing](CONTRIBUTING.md) · [Testing](docs/testing.md) · [UI design](docs/design-system.md).

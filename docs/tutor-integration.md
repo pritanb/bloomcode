@@ -26,8 +26,12 @@ The example disables automatic reports. Ask your tutor to review a finished atte
 
 ## Automatic reports
 
-For a client that advertises MCP sampling, omit `TUTOR_AUTO_REVIEW` or set it to `1` to enable polling for requested reports. Existing sampling-capable integrations retain their behavior. `TUTOR_AUTO_REVIEW=0` disables background sampling without disabling the six tools. Clients without sampling never start the background reviewer.
+For a client that advertises MCP sampling, omit `TUTOR_AUTO_REVIEW` or set it to `1` to enable polling for requested reports. Existing sampling-capable integrations retain their behavior. `TUTOR_AUTO_REVIEW=0` disables background sampling without disabling the tools. Clients without sampling never start the background reviewer.
 
 A report sends the submitted code, notes, problem metadata and recent attempt summaries to the connected client's model. Review that client's provider and data settings before enabling it; the app does not select a provider or supply a key. The generated report is saved through the normal authenticated review endpoint. It does not execute or test submitted code.
 
 If no client is connected, an attempt still saves normally. You can keep practising and request feedback later. The report queue is transient; after restarting the app, request a report again if necessary. Hermes is one possible client, not a required dependency, and this app never changes a client's configuration automatically.
+
+## Learning Insights
+
+The same sampling connection can analyze learning evidence across completed attempts. Enable **Learning insights** in the app to download local embeddings and queue history. Immediate attempt reports take priority. See [Learning Insights](learning-insights.md) for privacy, evaluation, the four additional MCP tools, and restart/retry behavior.

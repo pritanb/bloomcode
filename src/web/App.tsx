@@ -1,10 +1,12 @@
 
 import { DesktopTitleBar, isDesktopMac } from './DesktopTitleBar';
+import { McpNotifications } from './McpNotifications';
 import { SetupGate } from './Welcome';
 import { lazy, Suspense, useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   BookOpen,
+  Brain,
   NotebookPen,
   Bookmark,
   ChartNoAxesCombined,
@@ -14,6 +16,7 @@ import {
   PanelLeftOpen,
   Settings2,
 } from 'lucide-react';
+import { LearningInsights } from './LearningInsights';
 import { StudyReport } from './StudyReports';
 import { Dashboard } from './Dashboard';
 import { Library, ProblemDetail } from './Library';
@@ -33,6 +36,7 @@ const navigation = [
   { to: '/', label: 'Study desk', icon: LayoutDashboard },
   { to: '/library', label: 'Question library', icon: BookOpen },
   { to: '/topics', label: 'Topic progress', icon: ChartNoAxesCombined },
+  { to: '/insights', label: 'Learning insights', icon: Brain },
   { to: '/mistakes', label: 'Mistake notebook', icon: NotebookPen },
   { to: '/patterns', label: 'Pattern notebook', icon: Bookmark },
   { to: '/settings', label: 'Settings & data', icon: Settings2 },
@@ -43,6 +47,7 @@ export function App() {
   const focused = useLocation().pathname.startsWith('/attempts/');
   return <div className={isDesktopMac ? 'desktop-app' : undefined}>
     <SetupGate chrome={hasWorkspace => <DesktopTitleBar collapsed={collapsed} sidebarAvailable={hasWorkspace && !focused} toggleSidebar={() => setCollapsed(value => !value)} />}>
+      <McpNotifications />
       <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed(value => !value)} />
     </SetupGate>
   </div>;
@@ -107,6 +112,7 @@ function Workspace({ collapsed, toggleSidebar }: { collapsed: boolean; toggleSid
           <Route path="/library/:id" element={<ProblemDetail />} />
           <Route path="/topics" element={<Topics />} />
           <Route path="/topics/:id" element={<TopicDetail />} />
+          <Route path="/insights" element={<LearningInsights />} />
           <Route path="/mistakes" element={<Mistakes />} />
           <Route path="/patterns" element={<Patterns />} />
           <Route path="/settings" element={<Settings />} />

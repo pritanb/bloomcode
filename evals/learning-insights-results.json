@@ -1,0 +1,252 @@
+{
+  "generatedAt": "2026-09-24T10:49:52.640Z",
+  "model": "Xenova/all-MiniLM-L6-v2",
+  "revision": "751bff37182d3f1213fa05d7196b954e230abad9",
+  "platform": "darwin",
+  "arch": "arm64",
+  "labelProvenance": "Synthetic examples and explicit relevance judgments authored during implementation. These are not independent human-validated labels; review relevance IDs before using results as a portfolio benchmark.",
+  "documents": 17,
+  "queries": 6,
+  "warmQueryBatchMs": 9.595124999999825,
+  "warmMsPerQuery": 1.599187499999971,
+  "processRssMiB": 304.140625,
+  "metrics": {
+    "keyword": {
+      "recallAt5": 0.75,
+      "ndcgAt5": 0.7413825591981714,
+      "queries": [
+        {
+          "query": "Do I forget to guard against collections containing no items?",
+          "top": [
+            "dfs-success",
+            "empty-array",
+            "empty-string",
+            "sparse",
+            "unrelated-window"
+          ],
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.5307212739772434
+        },
+        {
+          "query": "Am I discarding a valid sliding-window result before saving it?",
+          "top": [
+            "window-early",
+            "window-success",
+            "dfs-cycle",
+            "binary-progress",
+            "dfs-success"
+          ],
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
+        },
+        {
+          "query": "Does my binary search always make progress?",
+          "top": [
+            "binary-loop",
+            "binary-success",
+            "binary-progress",
+            "unrelated-window",
+            "complexity"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do graph cycles cause me to visit the same node repeatedly?",
+          "top": [
+            "dfs-success",
+            "dfs-visited",
+            "empty-array",
+            "unrelated-window",
+            "binary-loop"
+          ],
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
+        },
+        {
+          "query": "Can I correctly explain the cost of nested iteration?",
+          "top": [
+            "binary-success",
+            "complexity",
+            "empty-string",
+            "window-success",
+            "binary-loop"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Which attempt has insufficient evidence for a learning diagnosis?",
+          "top": [
+            "sparse",
+            "binary-progress",
+            "complexity",
+            "dfs-cycle",
+            "empty-string"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        }
+      ]
+    },
+    "semantic": {
+      "recallAt5": 1,
+      "ndcgAt5": 0.9607858864249831,
+      "queries": [
+        {
+          "query": "Do I forget to guard against collections containing no items?",
+          "top": [
+            "empty-success",
+            "empty-array",
+            "binary-success",
+            "empty-string",
+            "binary-loop"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9674679834891693
+        },
+        {
+          "query": "Am I discarding a valid sliding-window result before saving it?",
+          "top": [
+            "window-success",
+            "window-early",
+            "unrelated-window",
+            "binary-progress",
+            "window-order"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9469024295259745
+        },
+        {
+          "query": "Does my binary search always make progress?",
+          "top": [
+            "binary-success",
+            "binary-loop",
+            "binary-progress",
+            "dfs-cycle",
+            "empty-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do graph cycles cause me to visit the same node repeatedly?",
+          "top": [
+            "dfs-cycle",
+            "dfs-visited",
+            "dfs-success",
+            "complexity",
+            "binary-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Can I correctly explain the cost of nested iteration?",
+          "top": [
+            "complexity",
+            "dfs-cycle",
+            "binary-loop",
+            "binary-success",
+            "complexity-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8503449055347546
+        },
+        {
+          "query": "Which attempt has insufficient evidence for a learning diagnosis?",
+          "top": [
+            "sparse",
+            "window-early",
+            "empty-array",
+            "complexity-success",
+            "binary-progress"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        }
+      ]
+    },
+    "hybrid": {
+      "recallAt5": 0.8888888888888888,
+      "ndcgAt5": 0.9013227648858821,
+      "queries": [
+        {
+          "query": "Do I forget to guard against collections containing no items?",
+          "top": [
+            "empty-array",
+            "empty-string",
+            "sparse",
+            "binary-success",
+            "binary-loop"
+          ],
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
+        },
+        {
+          "query": "Am I discarding a valid sliding-window result before saving it?",
+          "top": [
+            "window-early",
+            "window-success",
+            "binary-progress",
+            "unrelated-window",
+            "dfs-cycle"
+          ],
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
+        },
+        {
+          "query": "Does my binary search always make progress?",
+          "top": [
+            "binary-loop",
+            "binary-success",
+            "binary-progress",
+            "dfs-cycle",
+            "complexity"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do graph cycles cause me to visit the same node repeatedly?",
+          "top": [
+            "dfs-success",
+            "dfs-visited",
+            "dfs-cycle",
+            "binary-loop",
+            "complexity"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Can I correctly explain the cost of nested iteration?",
+          "top": [
+            "complexity",
+            "binary-success",
+            "binary-loop",
+            "complexity-success",
+            "dfs-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Which attempt has insufficient evidence for a learning diagnosis?",
+          "top": [
+            "sparse",
+            "binary-progress",
+            "window-early",
+            "complexity",
+            "complexity-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        }
+      ]
+    }
+  },
+  "firstEmbeddingBatchMs": 3426.5388329999996,
+  "cacheNote": "Model files were cached from the previous run; first batch includes runtime initialization.",
+  "runtimeVersion": "4.3.0"
+}

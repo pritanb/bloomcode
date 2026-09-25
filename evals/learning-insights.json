@@ -1,0 +1,32 @@
+{
+  "labelProvenance": "Synthetic examples and explicit relevance judgments authored during implementation. These are not independent human-validated labels; review relevance IDs before using results as a portfolio benchmark.",
+  "observations": [
+    {"id":"empty-array","summary":"The learner forgot to handle an empty array before reading its first element."},
+    {"id":"empty-string","summary":"An empty string caused an out-of-bounds access because the first character was read without a guard."},
+    {"id":"empty-success","summary":"The learner now checks for zero elements before accessing the collection."},
+    {"id":"window-early","summary":"The learner shrank the sliding window before recording a valid candidate."},
+    {"id":"window-order","summary":"Moving the left pointer too soon discarded the best substring before its length was saved."},
+    {"id":"window-success","summary":"The learner correctly saved the current window result before removing its leftmost element."},
+    {"id":"binary-loop","summary":"Binary search did not advance the lower bound when the middle element was rejected, causing an infinite loop."},
+    {"id":"binary-progress","summary":"The learner left the search interval unchanged after a failed midpoint check."},
+    {"id":"binary-success","summary":"Every binary search iteration strictly reduces the remaining interval."},
+    {"id":"dfs-visited","summary":"Graph traversal revisited nodes because the learner marked them visited only after exploring neighbours."},
+    {"id":"dfs-cycle","summary":"A cycle caused repeated recursive calls because a node was not recorded before descending."},
+    {"id":"dfs-success","summary":"The learner marks each graph node before traversing outgoing edges to prevent revisits."},
+    {"id":"complexity","summary":"The learner described two nested loops as linear time without accounting for repeated scans."},
+    {"id":"complexity-success","summary":"The learner justified quadratic running time by counting all pairs inspected."},
+    {"id":"sparse","summary":"The imported record reports a solved outcome with no code or reflection; no diagnosis is supported."},
+    {"id":"unrelated-window","summary":"The learner resized the application window to make the code easier to read."},
+    {"id":"unrelated-empty","summary":"The learner left the notes field empty after solving the problem."},
+    {"id":"corrected","summary":"Dismissed observation: a note about checking an empty input was a hypothetical reminder, not a reported mistake."}
+  ],
+  "excludedIds":["corrected"],
+  "queries":[
+    {"text":"Do I forget to guard against collections containing no items?","relevant":["empty-array","empty-string","empty-success"]},
+    {"text":"Am I discarding a valid sliding-window result before saving it?","relevant":["window-early","window-order","window-success"]},
+    {"text":"Does my binary search always make progress?","relevant":["binary-loop","binary-progress","binary-success"]},
+    {"text":"Do graph cycles cause me to visit the same node repeatedly?","relevant":["dfs-visited","dfs-cycle","dfs-success"]},
+    {"text":"Can I correctly explain the cost of nested iteration?","relevant":["complexity","complexity-success"]},
+    {"text":"Which attempt has insufficient evidence for a learning diagnosis?","relevant":["sparse"]}
+  ]
+}

@@ -10,7 +10,8 @@ module.exports = {
     appBundleId: 'io.github.pritanb.leetcode-tutor',
     appCategoryType: 'public.app-category.education',
     icon: path.join(__dirname, 'assets/icon.icns'),
-    asar: true,
+    // Native embedding dependencies load sibling shared libraries outside ASAR.
+    asar: { unpack: '**/node_modules/{@img,onnxruntime-node}/**' },
     // The staging directory is an explicit allowlist. Never package the checkout.
     ignore: [/^\/forge\.config\.cjs$/, /^\/package-lock\.json$/, /^\/\.installed-lock$/],
   },

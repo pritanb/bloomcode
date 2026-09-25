@@ -1,3 +1,5 @@
+import { analyzeTopicsNext } from './topic-analysis.js';
+import { analyzeNext } from './learning-insights.js';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Attempt, Topic } from '../shared/contracts.js';
 import { ApiError, type LocalApi } from './local-api.js';
@@ -74,9 +76,14 @@ export function startAutoReviews(server: Server, api: LocalApi): () => void {
   const sample = samplerFor(server);
   const tick = async () => {
     let found = false;
-    try { found = await reviewNext(api, sample); } catch { /* app not running yet; keep polling */ }
+    try { found = await reviewNext(api, sample); if(!found)found=await analyzeNext(api,server); } catch { /* app not running yet; keep polling */ }
     if (!stopped) timer = setTimeout(() => void tick(), found ? 0 : POLL_MS);
   };
-  void tick();
-  return () => { stopped = true; clearTimeout(timer); };
+  let topicTimer:NodeJS.Timeout|undefined;
+  const topicTick=async()=>{
+    try{await analyzeTopicsNext(api,server);}catch{/* Independent topic requests retry on the next poll. */}
+    if(!stopped)topicTimer=setTimeout(()=>void topicTick(),POLL_MS);
+  };
+  void tick();void topicTick();
+  return () => { stopped = true; clearTimeout(timer);clearTimeout(topicTimer); };
 }
