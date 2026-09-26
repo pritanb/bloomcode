@@ -129,10 +129,11 @@ The four-minute claim lease is too short for maximum-effort reports (up to 145 s
 - **Test** runs a trivial structured prompt and reports latency, the model name, or the error class.
 - **Auto-detection** matters because packaged Electron apps get a minimal `PATH`. Check in this order:
   1. the configured path
-  2. `~/.local/bin/codex`
-  3. `/opt/homebrew/bin/codex`
-  4. `/usr/local/bin/codex`
-  5. `/Applications/ChatGPT.app/Contents/Resources/codex`
+  2. `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex` (current ChatGPT.app layout)
+  3. `/Applications/ChatGPT.app/Contents/Resources/codex` (older layout)
+  4. `~/.local/bin/codex`
+  5. `/opt/homebrew/bin/codex`
+  6. `/usr/local/bin/codex`
 - `analysis-status.ts` gains provider-aware states, such as “Codex not signed in”, “Usage limit reached, resumes 14:30” or “Codex not found”. The MCP heartbeat messages apply only to `mcp-sampling`.
 - **Default provider**: new workspaces start with `codex` if it is detected. Existing workspaces keep `mcp-sampling` until the user switches.
 
