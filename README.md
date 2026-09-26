@@ -85,4 +85,6 @@ Export your records from Settings, or run `npm run backup` while the app is runn
 
 ## License
 
-A project license has not yet been selected. Third-party notices are in [docs/licenses](docs/licenses/) and the [bundled manifests](src/integrations/manifests/README.md).
+BloomCode's original source code is available under the [MIT License](LICENSE).
+
+Third-party components and bundled data retain their own licenses and terms. See [third-party notices](docs/licenses/) and [bundled data provenance](src/integrations/manifests/README.md).
