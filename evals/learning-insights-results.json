@@ -1,40 +1,43 @@
 {
-  "generatedAt": "2026-09-24T10:49:52.640Z",
+  "generatedAt": "2026-09-26T17:01:00.761Z",
   "model": "Xenova/all-MiniLM-L6-v2",
   "revision": "751bff37182d3f1213fa05d7196b954e230abad9",
   "platform": "darwin",
   "arch": "arm64",
-  "labelProvenance": "Synthetic examples and explicit relevance judgments authored during implementation. These are not independent human-validated labels; review relevance IDs before using results as a portfolio benchmark.",
-  "documents": 17,
-  "queries": 6,
-  "warmQueryBatchMs": 9.595124999999825,
-  "warmMsPerQuery": 1.599187499999971,
-  "processRssMiB": 304.140625,
+  "labelProvenance": "Synthetic attempt observations. Queries and relevance labels were written by the author, who could see the documents; they are not independently labelled.",
+  "documents": 83,
+  "queries": 34,
+  "firstEmbeddingBatchMs": 7699.452291,
+  "cacheNote": "First batch includes initialization and any missing downloads; existing cached files may be reused.",
+  "runtimeVersion": "4.3.0",
+  "warmQueryBatchMs": 85.02945799999998,
+  "warmMsPerQuery": 2.5008664117647053,
+  "processRssMiB": 259.140625,
   "metrics": {
     "keyword": {
-      "recallAt5": 0.75,
-      "ndcgAt5": 0.7413825591981714,
+      "recallAt5": 0.6911764705882353,
+      "ndcgAt5": 0.618529477012513,
       "queries": [
         {
           "query": "Do I forget to guard against collections containing no items?",
           "top": [
-            "dfs-success",
-            "empty-array",
-            "empty-string",
-            "sparse",
-            "unrelated-window"
+            "sparse-timestamp",
+            "uf-slow",
+            "baseline-skip",
+            "bit-success",
+            "bst-success"
           ],
-          "recallAt5": 0.6666666666666666,
-          "ndcgAt5": 0.5307212739772434
+          "recallAt5": 0,
+          "ndcgAt5": 0
         },
         {
           "query": "Am I discarding a valid sliding-window result before saving it?",
           "top": [
             "window-early",
             "window-success",
+            "baseline-success",
             "dfs-cycle",
-            "binary-progress",
-            "dfs-success"
+            "dp-base"
           ],
           "recallAt5": 0.6666666666666666,
           "ndcgAt5": 0.7653606369886217
@@ -45,8 +48,8 @@
             "binary-loop",
             "binary-success",
             "binary-progress",
-            "unrelated-window",
-            "complexity"
+            "trie-prefix",
+            "trie-success"
           ],
           "recallAt5": 1,
           "ndcgAt5": 1
@@ -55,79 +58,415 @@
           "query": "Do graph cycles cause me to visit the same node repeatedly?",
           "top": [
             "dfs-success",
-            "dfs-visited",
-            "empty-array",
-            "unrelated-window",
-            "binary-loop"
+            "baseline-skip",
+            "bit-success",
+            "bst-bounds",
+            "bst-success"
           ],
-          "recallAt5": 0.6666666666666666,
-          "ndcgAt5": 0.7653606369886217
+          "recallAt5": 0.3333333333333333,
+          "ndcgAt5": 0.46927872602275644
         },
         {
           "query": "Can I correctly explain the cost of nested iteration?",
           "top": [
             "binary-success",
+            "bst-bounds",
+            "bt-copy-success",
             "complexity",
+            "dp-base"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.2640681225725909
+        },
+        {
+          "query": "Which attempt has insufficient evidence for a learning diagnosis?",
+          "top": [
+            "sparse-timestamp",
+            "baseline-success",
+            "hash-duplicate",
+            "sparse",
+            "tree-null"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Do my loop bounds skip the last element or read past the end?",
+          "top": [
+            "offbyone-overrun",
+            "offbyone-success",
+            "binary-loop",
             "empty-string",
-            "window-success",
+            "offbyone-last"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9469024295259745
+        },
+        {
+          "query": "Am I producing repeated triplets by not skipping equal values?",
+          "top": [
+            "threesum-dupes",
+            "dfs-cycle",
+            "interval-sort",
+            "threesum-success",
             "binary-loop"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Do I accidentally match a number with itself when looking up its complement?",
+          "top": [
+            "twosum-self",
+            "baseline-success",
+            "bst-bounds",
+            "dijkstra-success",
+            "paren-pop"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I resolve the items still left on the monotonic stack when the scan ends?",
+          "top": [
+            "mono-leftover",
+            "mono-success",
+            "paren-success",
+            "binary-loop",
+            "binary-progress"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I check that the stack has something before popping it?",
+          "top": [
+            "dp-base",
+            "ll-lost-next",
+            "paren-success",
+            "twosum-self",
+            "unrelated-stack"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.3065735963827292
+        },
+        {
+          "query": "Do I lose the rest of the list when reversing pointers?",
+          "top": [
+            "bt-copy-success",
+            "ll-lost-next",
+            "trie-success",
+            "binary-loop",
+            "bst-bounds"
           ],
           "recallAt5": 0.5,
           "ndcgAt5": 0.38685280723454163
         },
         {
-          "query": "Which attempt has insufficient evidence for a learning diagnosis?",
+          "query": "Do I struggle when the first node of a linked list has to be deleted?",
           "top": [
-            "sparse",
+            "trie-success",
+            "baseline-skip",
+            "bt-copy-success",
+            "empty-string",
+            "ll-head-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.23719771276929622
+        },
+        {
+          "query": "Do I guard against null before moving the fast pointer twice?",
+          "top": [
+            "window-order",
+            "dp-base",
+            "ll-cycle-null",
+            "ll-reverse-success",
+            "offbyone-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.3065735963827292
+        },
+        {
+          "query": "Do my tree recursions handle missing children?",
+          "top": [
+            "bst-bounds",
+            "empty-array",
+            "tree-null",
+            "unrelated-tree",
+            "baseline-skip"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.3065735963827292
+        },
+        {
+          "query": "Am I validating a binary search tree only against immediate children?",
+          "top": [
+            "trie-success",
+            "binary-loop",
             "binary-progress",
-            "complexity",
-            "dfs-cycle",
-            "empty-string"
+            "binary-success",
+            "bst-bounds"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.23719771276929622
+        },
+        {
+          "query": "Do I keep breadth-first levels of a tree separate?",
+          "top": [
+            "empty-string",
+            "baseline-skip",
+            "bt-copy-success",
+            "dp-base",
+            "ll-head"
+          ],
+          "recallAt5": 0,
+          "ndcgAt5": 0
+        },
+        {
+          "query": "Do I keep the heap limited to k items?",
+          "top": [
+            "heap-unbounded",
+            "heap-success",
+            "baseline-skip",
+            "bit-success",
+            "bst-success"
           ],
           "recallAt5": 1,
           "ndcgAt5": 1
+        },
+        {
+          "query": "Do I undo my choice after exploring a backtracking branch?",
+          "top": [
+            "bt-undo",
+            "binary-progress",
+            "bt-undo-success",
+            "dfs-visited",
+            "ll-head"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I store a reference to the working path instead of a snapshot?",
+          "top": [
+            "heap-unbounded",
+            "baseline-skip",
+            "bst-bounds",
+            "bt-copy",
+            "bt-copy-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.5012658353418871
+        },
+        {
+          "query": "Do I update in-degrees correctly in topological sort?",
+          "top": [
+            "topo-indegree",
+            "dp-base",
+            "overflow-mid",
+            "topo-success",
+            "twosum-self"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Do I check grid boundaries before reading a neighbouring cell?",
+          "top": [
+            "grid-success",
+            "baseline-success",
+            "binary-progress",
+            "dfs-cycle",
+            "dp-base"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I ignore outdated entries popped in Dijkstra's shortest path?",
+          "top": [
+            "dijkstra-stale",
+            "dijkstra-success",
+            "heap-success",
+            "bt-copy",
+            "bt-undo-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do my disjoint-set lookups stay fast?",
+          "top": [
+            "bit-negative",
+            "bit-success",
+            "dp-base-success",
+            "hash-duplicate",
+            "ll-cycle-null"
+          ],
+          "recallAt5": 0,
+          "ndcgAt5": 0
+        },
+        {
+          "query": "Do I initialise dynamic programming base cases before the recurrence?",
+          "top": [
+            "dp-base",
+            "dp-base-success",
+            "baseline-success",
+            "bit-success",
+            "clarify-skip"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I cache overlapping subproblems?",
+          "top": [
+            "dp-base",
+            "dp-memo",
+            "interval-touch",
+            "baseline-skip",
+            "baseline-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Do I leave room for the empty prefix in a 2-D DP table?",
+          "top": [
+            "dp-base",
+            "lcs-success",
+            "trie-prefix",
+            "baseline-success",
+            "empty-string"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Do I order intervals before merging them?",
+          "top": [
+            "interval-success",
+            "dp-base",
+            "interval-touch",
+            "baseline-success",
+            "bit-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do my bit counting loops terminate for negative numbers?",
+          "top": [
+            "bit-negative",
+            "clarify-skip",
+            "complexity",
+            "baseline-success",
+            "bit-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8503449055347546
+        },
+        {
+          "query": "Does my trie tell a complete word apart from a prefix?",
+          "top": [
+            "trie-prefix",
+            "paren-pop",
+            "trie-success",
+            "baseline-skip",
+            "baseline-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Could my midpoint calculation overflow?",
+          "top": [
+            "overflow-mid",
+            "binary-progress",
+            "clarify-skip",
+            "overflow-success",
+            "baseline-skip"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Do I clarify input constraints before I start coding?",
+          "top": [
+            "clarify-skip",
+            "dp-base",
+            "interval-success",
+            "baseline-success",
+            "bit-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I state a simple solution before optimising?",
+          "top": [
+            "baseline-success",
+            "baseline-skip",
+            "dfs-cycle",
+            "dp-base",
+            "dryrun-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I trace an example by hand before submitting?",
+          "top": [
+            "dryrun-success",
+            "clarify-success",
+            "dp-base",
+            "dryrun-skip",
+            "empty-array"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
         }
       ]
     },
     "semantic": {
-      "recallAt5": 1,
-      "ndcgAt5": 0.9607858864249831,
+      "recallAt5": 0.8235294117647058,
+      "ndcgAt5": 0.8058796234786134,
       "queries": [
         {
           "query": "Do I forget to guard against collections containing no items?",
           "top": [
             "empty-success",
             "empty-array",
-            "binary-success",
-            "empty-string",
-            "binary-loop"
+            "topo-success",
+            "topo-indegree",
+            "bt-undo"
           ],
-          "recallAt5": 1,
-          "ndcgAt5": 0.9674679834891693
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
         },
         {
           "query": "Am I discarding a valid sliding-window result before saving it?",
           "top": [
             "window-success",
             "window-early",
-            "unrelated-window",
-            "binary-progress",
-            "window-order"
+            "dijkstra-success",
+            "ll-lost-next",
+            "ll-reverse-success"
           ],
-          "recallAt5": 1,
-          "ndcgAt5": 0.9469024295259745
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
         },
         {
           "query": "Does my binary search always make progress?",
           "top": [
             "binary-success",
             "binary-loop",
-            "binary-progress",
-            "dfs-cycle",
-            "empty-success"
+            "trie-success",
+            "uf-success",
+            "ll-cycle-success"
           ],
-          "recallAt5": 1,
-          "ndcgAt5": 1
+          "recallAt5": 0.6666666666666666,
+          "ndcgAt5": 0.7653606369886217
         },
         {
           "query": "Do graph cycles cause me to visit the same node repeatedly?",
@@ -135,8 +474,8 @@
             "dfs-cycle",
             "dfs-visited",
             "dfs-success",
-            "complexity",
-            "binary-success"
+            "ll-lost-next",
+            "level-mix"
           ],
           "recallAt5": 1,
           "ndcgAt5": 1
@@ -146,21 +485,357 @@
           "top": [
             "complexity",
             "dfs-cycle",
-            "binary-loop",
-            "binary-success",
-            "complexity-success"
+            "offbyone-last",
+            "mono-direction",
+            "dp-base-success"
           ],
-          "recallAt5": 1,
-          "ndcgAt5": 0.8503449055347546
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
         },
         {
           "query": "Which attempt has insufficient evidence for a learning diagnosis?",
           "top": [
+            "dryrun-success",
+            "baseline-skip",
+            "clarify-skip",
             "sparse",
-            "window-early",
-            "empty-array",
-            "complexity-success",
+            "window-early"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.2640681225725909
+        },
+        {
+          "query": "Do my loop bounds skip the last element or read past the end?",
+          "top": [
+            "offbyone-overrun",
+            "offbyone-success",
+            "offbyone-last",
+            "binary-loop",
+            "bit-negative"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Am I producing repeated triplets by not skipping equal values?",
+          "top": [
+            "threesum-dupes",
+            "threesum-success",
+            "hash-duplicate",
+            "offbyone-last",
+            "interval-sort"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I accidentally match a number with itself when looking up its complement?",
+          "top": [
+            "twosum-success",
+            "twosum-self",
+            "hash-duplicate",
+            "bit-success",
+            "overflow-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I resolve the items still left on the monotonic stack when the scan ends?",
+          "top": [
+            "mono-leftover",
+            "mono-direction",
+            "mono-success",
+            "dp-memo-success",
             "binary-progress"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I check that the stack has something before popping it?",
+          "top": [
+            "paren-pop",
+            "mono-success",
+            "mono-leftover",
+            "paren-success",
+            "heap-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Do I lose the rest of the list when reversing pointers?",
+          "top": [
+            "ll-lost-next",
+            "ll-reverse-success",
+            "ll-cycle-null",
+            "threesum-success",
+            "bt-undo"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I struggle when the first node of a linked list has to be deleted?",
+          "top": [
+            "ll-lost-next",
+            "ll-head-success",
+            "bt-undo",
+            "bst-bounds",
+            "ll-reverse-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Do I guard against null before moving the fast pointer twice?",
+          "top": [
+            "ll-cycle-null",
+            "window-order",
+            "threesum-success",
+            "threesum-dupes",
+            "empty-string"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do my tree recursions handle missing children?",
+          "top": [
+            "tree-null-success",
+            "tree-null",
+            "bst-success",
+            "bt-undo",
+            "dfs-cycle"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Am I validating a binary search tree only against immediate children?",
+          "top": [
+            "bst-bounds",
+            "bst-success",
+            "binary-success",
+            "binary-loop",
+            "tree-null-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I keep breadth-first levels of a tree separate?",
+          "top": [
+            "bst-bounds",
+            "bst-success",
+            "level-mix",
+            "dfs-success",
+            "ll-head"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.3065735963827292
+        },
+        {
+          "query": "Do I keep the heap limited to k items?",
+          "top": [
+            "heap-unbounded",
+            "heap-success",
+            "empty-success",
+            "mono-direction",
+            "unrelated-tree"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I undo my choice after exploring a backtracking branch?",
+          "top": [
+            "bt-undo",
+            "ll-head",
+            "bt-undo-success",
+            "ll-reverse-success",
+            "ll-lost-next"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I store a reference to the working path instead of a snapshot?",
+          "top": [
+            "bt-copy",
+            "unrelated-tree",
+            "uf-success",
+            "ll-lost-next",
+            "ll-reverse-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I update in-degrees correctly in topological sort?",
+          "top": [
+            "interval-success",
+            "interval-sort",
+            "ll-lost-next",
+            "uf-slow",
+            "topo-indegree"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.23719771276929622
+        },
+        {
+          "query": "Do I check grid boundaries before reading a neighbouring cell?",
+          "top": [
+            "grid-success",
+            "grid-bounds",
+            "dfs-success",
+            "bst-bounds",
+            "offbyone-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I ignore outdated entries popped in Dijkstra's shortest path?",
+          "top": [
+            "dijkstra-stale",
+            "dfs-visited",
+            "dijkstra-success",
+            "uf-success",
+            "ll-lost-next"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do my disjoint-set lookups stay fast?",
+          "top": [
+            "uf-success",
+            "dp-memo-success",
+            "twosum-success",
+            "binary-success",
+            "baseline-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I initialise dynamic programming base cases before the recurrence?",
+          "top": [
+            "dp-base-success",
+            "tree-null-success",
+            "bt-undo-success",
+            "tree-null",
+            "dfs-cycle"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I cache overlapping subproblems?",
+          "top": [
+            "dp-memo-success",
+            "interval-touch",
+            "complexity",
+            "dp-memo",
+            "interval-sort"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Do I leave room for the empty prefix in a 2-D DP table?",
+          "top": [
+            "lcs-success",
+            "dp-base",
+            "lcs-padding",
+            "dp-base-success",
+            "grid-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I order intervals before merging them?",
+          "top": [
+            "interval-sort",
+            "interval-success",
+            "interval-touch",
+            "clarify-success",
+            "mono-leftover"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do my bit counting loops terminate for negative numbers?",
+          "top": [
+            "bit-negative",
+            "clarify-skip",
+            "offbyone-last",
+            "bit-success",
+            "binary-loop"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8772153153380493
+        },
+        {
+          "query": "Does my trie tell a complete word apart from a prefix?",
+          "top": [
+            "trie-prefix",
+            "trie-success",
+            "threesum-success",
+            "lcs-success",
+            "overflow-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Could my midpoint calculation overflow?",
+          "top": [
+            "overflow-mid",
+            "binary-progress",
+            "overflow-success",
+            "binary-loop",
+            "interval-touch"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I clarify input constraints before I start coding?",
+          "top": [
+            "clarify-skip",
+            "baseline-success",
+            "baseline-skip",
+            "offbyone-success",
+            "window-early"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I state a simple solution before optimising?",
+          "top": [
+            "baseline-success",
+            "baseline-skip",
+            "complexity-success",
+            "complexity",
+            "ll-cycle-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I trace an example by hand before submitting?",
+          "top": [
+            "dryrun-success",
+            "dryrun-skip",
+            "unrelated-stack",
+            "window-early",
+            "sparse"
           ],
           "recallAt5": 1,
           "ndcgAt5": 1
@@ -168,29 +843,29 @@
       ]
     },
     "hybrid": {
-      "recallAt5": 0.8888888888888888,
-      "ndcgAt5": 0.9013227648858821,
+      "recallAt5": 0.8039215686274509,
+      "ndcgAt5": 0.7773935265076128,
       "queries": [
         {
           "query": "Do I forget to guard against collections containing no items?",
           "top": [
+            "sparse-timestamp",
             "empty-array",
-            "empty-string",
-            "sparse",
-            "binary-success",
-            "binary-loop"
+            "bt-copy",
+            "topo-indegree",
+            "empty-string"
           ],
           "recallAt5": 0.6666666666666666,
-          "ndcgAt5": 0.7653606369886217
+          "ndcgAt5": 0.4776237035032179
         },
         {
           "query": "Am I discarding a valid sliding-window result before saving it?",
           "top": [
             "window-early",
             "window-success",
-            "binary-progress",
-            "unrelated-window",
-            "dfs-cycle"
+            "baseline-success",
+            "ll-lost-next",
+            "dijkstra-success"
           ],
           "recallAt5": 0.6666666666666666,
           "ndcgAt5": 0.7653606369886217
@@ -200,53 +875,386 @@
           "top": [
             "binary-loop",
             "binary-success",
+            "trie-success",
             "binary-progress",
-            "dfs-cycle",
-            "complexity"
+            "trie-prefix"
           ],
           "recallAt5": 1,
-          "ndcgAt5": 1
+          "ndcgAt5": 0.9674679834891693
         },
         {
           "query": "Do graph cycles cause me to visit the same node repeatedly?",
           "top": [
             "dfs-success",
             "dfs-visited",
-            "dfs-cycle",
-            "binary-loop",
-            "complexity"
+            "bst-bounds",
+            "ll-head-success",
+            "dfs-cycle"
           ],
           "recallAt5": 1,
-          "ndcgAt5": 1
+          "ndcgAt5": 0.9469024295259745
         },
         {
           "query": "Can I correctly explain the cost of nested iteration?",
           "top": [
             "complexity",
             "binary-success",
-            "binary-loop",
-            "complexity-success",
-            "dfs-success"
+            "heap-unbounded",
+            "bst-bounds",
+            "offbyone-overrun"
           ],
-          "recallAt5": 1,
-          "ndcgAt5": 0.8772153153380493
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
         },
         {
           "query": "Which attempt has insufficient evidence for a learning diagnosis?",
           "top": [
             "sparse",
-            "binary-progress",
-            "window-early",
-            "complexity",
+            "baseline-skip",
+            "sparse-timestamp",
+            "dryrun-success",
+            "binary-progress"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do my loop bounds skip the last element or read past the end?",
+          "top": [
+            "offbyone-overrun",
+            "offbyone-success",
+            "binary-loop",
+            "offbyone-last",
+            "empty-string"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9674679834891693
+        },
+        {
+          "query": "Am I producing repeated triplets by not skipping equal values?",
+          "top": [
+            "threesum-dupes",
+            "threesum-success",
+            "interval-sort",
+            "dfs-cycle",
             "complexity-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I accidentally match a number with itself when looking up its complement?",
+          "top": [
+            "twosum-self",
+            "twosum-success",
+            "trie-success",
+            "baseline-success",
+            "hash-duplicate"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I resolve the items still left on the monotonic stack when the scan ends?",
+          "top": [
+            "mono-leftover",
+            "mono-success",
+            "binary-progress",
+            "mono-direction",
+            "paren-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I check that the stack has something before popping it?",
+          "top": [
+            "paren-success",
+            "unrelated-stack",
+            "heap-success",
+            "empty-success",
+            "mono-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I lose the rest of the list when reversing pointers?",
+          "top": [
+            "ll-lost-next",
+            "bt-copy-success",
+            "threesum-success",
+            "threesum-dupes",
+            "bt-undo"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I struggle when the first node of a linked list has to be deleted?",
+          "top": [
+            "ll-head-success",
+            "bst-bounds",
+            "ll-lost-next",
+            "bt-copy-success",
+            "ll-head"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8503449055347546
+        },
+        {
+          "query": "Do I guard against null before moving the fast pointer twice?",
+          "top": [
+            "window-order",
+            "ll-cycle-null",
+            "ll-reverse-success",
+            "offbyone-success",
+            "empty-string"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Do my tree recursions handle missing children?",
+          "top": [
+            "tree-null",
+            "bst-bounds",
+            "bst-success",
+            "bt-undo",
+            "unrelated-tree"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Am I validating a binary search tree only against immediate children?",
+          "top": [
+            "bst-bounds",
+            "binary-loop",
+            "trie-success",
+            "binary-success",
+            "binary-progress"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I keep breadth-first levels of a tree separate?",
+          "top": [
+            "ll-head",
+            "bst-bounds",
+            "ll-head-success",
+            "baseline-skip",
+            "level-mix"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.23719771276929622
+        },
+        {
+          "query": "Do I keep the heap limited to k items?",
+          "top": [
+            "heap-unbounded",
+            "heap-success",
+            "bit-success",
+            "unrelated-heap",
+            "bt-copy-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I undo my choice after exploring a backtracking branch?",
+          "top": [
+            "bt-undo",
+            "bt-undo-success",
+            "ll-head",
+            "binary-progress",
+            "dfs-visited"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I store a reference to the working path instead of a snapshot?",
+          "top": [
+            "bt-copy",
+            "bt-copy-success",
+            "bt-undo-success",
+            "uf-success",
+            "ll-head"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I update in-degrees correctly in topological sort?",
+          "top": [
+            "topo-indegree",
+            "twosum-self",
+            "topo-success",
+            "bt-undo",
+            "bst-bounds"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I check grid boundaries before reading a neighbouring cell?",
+          "top": [
+            "grid-success",
+            "baseline-success",
+            "bst-bounds",
+            "dfs-success",
+            "grid-bounds"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8503449055347546
+        },
+        {
+          "query": "Do I ignore outdated entries popped in Dijkstra's shortest path?",
+          "top": [
+            "dijkstra-stale",
+            "dijkstra-success",
+            "bt-copy",
+            "uf-success",
+            "heap-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do my disjoint-set lookups stay fast?",
+          "top": [
+            "hash-duplicate",
+            "baseline-success",
+            "binary-success",
+            "ll-cycle-null",
+            "dp-base-success"
+          ],
+          "recallAt5": 0,
+          "ndcgAt5": 0
+        },
+        {
+          "query": "Do I initialise dynamic programming base cases before the recurrence?",
+          "top": [
+            "dp-base-success",
+            "dp-base",
+            "tree-null-success",
+            "tree-null",
+            "baseline-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I cache overlapping subproblems?",
+          "top": [
+            "interval-touch",
+            "dp-memo",
+            "baseline-success",
+            "complexity",
+            "bt-copy-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Do I leave room for the empty prefix in a 2-D DP table?",
+          "top": [
+            "dp-base",
+            "lcs-success",
+            "trie-prefix",
+            "tree-null",
+            "overflow-mid"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.38685280723454163
+        },
+        {
+          "query": "Do I order intervals before merging them?",
+          "top": [
+            "interval-success",
+            "interval-touch",
+            "clarify-success",
+            "baseline-success",
+            "interval-sort"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.8503449055347546
+        },
+        {
+          "query": "Do my bit counting loops terminate for negative numbers?",
+          "top": [
+            "bit-negative",
+            "clarify-skip",
+            "bit-success",
+            "complexity",
+            "lcs-padding"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Does my trie tell a complete word apart from a prefix?",
+          "top": [
+            "trie-prefix",
+            "trie-success",
+            "paren-pop",
+            "lcs-success",
+            "empty-string"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Could my midpoint calculation overflow?",
+          "top": [
+            "overflow-mid",
+            "binary-progress",
+            "overflow-success",
+            "binary-loop",
+            "binary-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 0.9197207891481876
+        },
+        {
+          "query": "Do I clarify input constraints before I start coding?",
+          "top": [
+            "clarify-skip",
+            "baseline-success",
+            "bit-success",
+            "grid-success",
+            "dryrun-success"
+          ],
+          "recallAt5": 0.5,
+          "ndcgAt5": 0.6131471927654584
+        },
+        {
+          "query": "Do I state a simple solution before optimising?",
+          "top": [
+            "baseline-success",
+            "baseline-skip",
+            "window-early",
+            "clarify-success",
+            "grid-success"
+          ],
+          "recallAt5": 1,
+          "ndcgAt5": 1
+        },
+        {
+          "query": "Do I trace an example by hand before submitting?",
+          "top": [
+            "dryrun-success",
+            "dryrun-skip",
+            "baseline-skip",
+            "clarify-skip",
+            "baseline-success"
           ],
           "recallAt5": 1,
           "ndcgAt5": 1
         }
       ]
     }
-  },
-  "firstEmbeddingBatchMs": 3426.5388329999996,
-  "cacheNote": "Model files were cached from the previous run; first batch includes runtime initialization.",
-  "runtimeVersion": "4.3.0"
+  }
 }

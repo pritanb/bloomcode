@@ -82,28 +82,31 @@ service in-process. Analysis has no score or schedule mutation capability.
 
 ## Evaluation
 
-Run `npm run eval:insights -- evals/learning-insights-results.json` to compare retrieval
-on the synthetic fixture. Downloads are cached in the temporary directory by default;
-set `INSIGHTS_EVAL_CACHE` to use another evaluation-only cache directory. This script
-does not read your personal study database.
+`npm run eval:insights -- evals/learning-insights-results.json` checks retrieval against
+`evals/learning-insights.json`. It does not read your study database. Model files are
+cached in the temporary directory, or in `INSIGHTS_EVAL_CACHE` if set.
 
-The initial M1 Pro / 16 GB run used 17 indexed observations and six queries:
+The fixture has 83 synthetic attempt observations and 34 queries across arrays, two
+pointers, sliding window, stacks, binary search, linked lists, trees, heaps,
+backtracking, graphs, dynamic programming, intervals, bits, tries and interview habits. Each query has two or three relevant observations. Hard negatives include the
+same pattern with a different mistake, and off-topic notes that share a keyword ("stack
+of flashcards", "binary installer"). The author wrote the observations, queries and
+labels while able to see all of them, so this is a regression check, not an independent
+benchmark.
 
-- Keyword: recall@5 0.750; nDCG@5 0.741.
-- MiniLM semantic: recall@5 1.000; nDCG@5 0.961.
-- Hybrid: recall@5 0.889; nDCG@5 0.901.
-- First embedding batch in a fresh process with cached model files: 3.43 seconds.
-- Warm query batch: 9.60 ms total; 1.60 ms per query averaged over six queries.
-- Process resident memory at measurement: 304.14 MiB, including the worker; this is
-  a point-in-time process measurement, not model-only memory or a peak measurement.
+Run on an M1 Pro with 16 GB, 2026-09-26:
 
-These are measurements on a tiny implementation-authored synthetic set, **not an
-independently human-labeled benchmark**. Semantic retrieval outperformed hybrid on
-this set; the hybrid result is reported rather than selectively omitted. The initial
-hybrid configuration remains fixed to avoid tuning on six evaluation examples.
-Before making portfolio accuracy claims, review the relevance judgments in
-`evals/learning-insights.json`, add held-out examples and rerun. No learning-gain,
-production accuracy or real-provider report-quality claim is established here.
+| Mode              | Recall@5 | nDCG@5 | Queries with every relevant item in top 5 |
+| ----------------- | -------- | ------ | ----------------------------------------- |
+| Keyword           | 0.691    | 0.619  | 16 of 34                                  |
+| MiniLM semantic   | 0.824    | 0.806  | 21 of 34                                  |
+| Hybrid (RRF k=60) | 0.804    | 0.777  | 21 of 34                                  |
+
+The first embedding batch took 7.7 s including model start-up with cached files. The warm
+query batch took 2.5 ms per query. The process used 259 MiB resident memory at the end
+of the run. Semantic retrieval scored slightly above hybrid here. The hybrid settings
+were not tuned on this fixture. These numbers say nothing about learning gains or report
+quality.
 
 For human report review, record each finding alongside its cited attempts and judge:
 

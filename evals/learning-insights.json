@@ -1,5 +1,5 @@
 {
-  "labelProvenance": "Synthetic examples and explicit relevance judgments authored during implementation. These are not independent human-validated labels; review relevance IDs before using results as a portfolio benchmark.",
+  "labelProvenance": "Synthetic attempt observations. Queries and relevance labels were written by the author, who could see the documents; they are not independently labelled.",
   "observations": [
     {
       "id": "empty-array",
@@ -70,6 +70,270 @@
       "summary": "The learner left the notes field empty after solving the problem."
     },
     {
+      "id": "offbyone-overrun",
+      "summary": "The loop ran to n inclusive and read one element past the end of the array."
+    },
+    {
+      "id": "offbyone-last",
+      "summary": "The loop stopped at n minus two, so the final element was never compared."
+    },
+    {
+      "id": "offbyone-success",
+      "summary": "The learner checked loop bounds against the first and last index before running the code."
+    },
+    {
+      "id": "threesum-dupes",
+      "summary": "3Sum returned repeated triplets because equal values were not skipped after moving the pointers."
+    },
+    {
+      "id": "threesum-success",
+      "summary": "After recording a triplet, the learner advanced both pointers past equal values."
+    },
+    {
+      "id": "hash-duplicate",
+      "summary": "A hash set detected whether any value appeared twice, which solved Contains Duplicate."
+    },
+    {
+      "id": "twosum-self",
+      "summary": "Two Sum paired an element with itself because it was stored in the map before its complement was looked up."
+    },
+    {
+      "id": "twosum-success",
+      "summary": "The learner looked up the complement first and only then stored the current index."
+    },
+    {
+      "id": "mono-leftover",
+      "summary": "Indices still on the monotonic stack after the scan were never given an answer."
+    },
+    {
+      "id": "mono-success",
+      "summary": "After the final element, the learner assigned the default answer to every index left on the stack."
+    },
+    {
+      "id": "mono-direction",
+      "summary": "The learner kept an increasing stack where next greater element needed a decreasing one."
+    },
+    {
+      "id": "paren-pop",
+      "summary": "Valid Parentheses popped from an empty stack when a closing bracket came first."
+    },
+    {
+      "id": "paren-success",
+      "summary": "Before matching a closing bracket, the learner confirmed an opening bracket was available on the stack."
+    },
+    {
+      "id": "ll-lost-next",
+      "summary": "Reversing the linked list lost the remaining nodes because next was overwritten before it was saved."
+    },
+    {
+      "id": "ll-reverse-success",
+      "summary": "The learner saved the next pointer before redirecting each link during reversal."
+    },
+    {
+      "id": "ll-head",
+      "summary": "Removing the head node needed a separate branch that the learner got wrong."
+    },
+    {
+      "id": "ll-head-success",
+      "summary": "A sentinel node before the head meant deleting the first node needed no special case."
+    },
+    {
+      "id": "ll-cycle-null",
+      "summary": "The fast pointer advanced two steps without checking fast.next, crashing on even-length lists."
+    },
+    {
+      "id": "ll-cycle-success",
+      "summary": "Floyd's algorithm checked both fast and fast.next before each double step."
+    },
+    {
+      "id": "tree-null",
+      "summary": "The recursive depth function dereferenced a missing child because there was no base case for None."
+    },
+    {
+      "id": "tree-null-success",
+      "summary": "The recursion returned zero for an absent child before doing any other work."
+    },
+    {
+      "id": "bst-bounds",
+      "summary": "The BST check compared each node only with its direct children instead of carrying min and max bounds."
+    },
+    {
+      "id": "bst-success",
+      "summary": "The learner passed lower and upper limits down the recursion to validate every subtree."
+    },
+    {
+      "id": "level-mix",
+      "summary": "Level order traversal mixed nodes from different depths because the queue length was not captured first."
+    },
+    {
+      "id": "level-success",
+      "summary": "The learner recorded the queue size at the start of each level and processed exactly that many nodes."
+    },
+    {
+      "id": "heap-unbounded",
+      "summary": "The heap grew to all n elements instead of being capped at k, costing n log n."
+    },
+    {
+      "id": "heap-success",
+      "summary": "The learner popped the heap whenever it exceeded k entries."
+    },
+    {
+      "id": "bt-undo",
+      "summary": "Backtracking never removed the last choice after recursion, so later branches kept stale elements."
+    },
+    {
+      "id": "bt-undo-success",
+      "summary": "The learner popped the choice after each recursive call to restore the state."
+    },
+    {
+      "id": "bt-copy",
+      "summary": "The mutable path list was appended to the results without copying, so every stored result ended up empty."
+    },
+    {
+      "id": "bt-copy-success",
+      "summary": "The learner saved a copy of the current combination rather than the shared list."
+    },
+    {
+      "id": "topo-indegree",
+      "summary": "Course Schedule never decremented neighbour in-degrees, so no further courses were queued."
+    },
+    {
+      "id": "topo-success",
+      "summary": "Each processed course reduced its neighbours' in-degree, and courses reaching zero were queued."
+    },
+    {
+      "id": "grid-bounds",
+      "summary": "Flood fill read cells outside the grid because row and column limits were checked after the access."
+    },
+    {
+      "id": "grid-success",
+      "summary": "The learner validated row and column ranges before visiting a neighbouring cell."
+    },
+    {
+      "id": "dijkstra-stale",
+      "summary": "Dijkstra processed outdated priority queue entries for nodes whose distance had already improved."
+    },
+    {
+      "id": "dijkstra-success",
+      "summary": "Popped entries with a distance larger than the recorded best were skipped."
+    },
+    {
+      "id": "uf-slow",
+      "summary": "Union-find had no path compression or union by rank, so finds degraded to linear chains."
+    },
+    {
+      "id": "uf-success",
+      "summary": "The learner added path compression so repeated find calls stayed nearly constant."
+    },
+    {
+      "id": "dp-base",
+      "summary": "House Robber used dp[i-2] before the first two states were initialised."
+    },
+    {
+      "id": "dp-base-success",
+      "summary": "The learner set the first two DP entries explicitly before applying the recurrence."
+    },
+    {
+      "id": "dp-memo",
+      "summary": "Recursive Climbing Stairs recomputed the same subproblems exponentially without memoization."
+    },
+    {
+      "id": "dp-memo-success",
+      "summary": "The learner cached results by index so each subproblem was solved once."
+    },
+    {
+      "id": "lcs-padding",
+      "summary": "The longest common subsequence table had no extra row and column, so index minus one went negative."
+    },
+    {
+      "id": "lcs-success",
+      "summary": "The learner allocated an (m+1) by (n+1) table so the empty prefix had its own row."
+    },
+    {
+      "id": "interval-sort",
+      "summary": "Merge Intervals missed overlaps because the intervals were not sorted by start first."
+    },
+    {
+      "id": "interval-success",
+      "summary": "The learner sorted intervals by start time before merging adjacent ones."
+    },
+    {
+      "id": "interval-touch",
+      "summary": "Intervals that shared an endpoint were treated as separate although the problem counted them as overlapping."
+    },
+    {
+      "id": "bit-negative",
+      "summary": "Counting set bits right-shifted a negative Python integer, and the loop never ended."
+    },
+    {
+      "id": "bit-success",
+      "summary": "The learner masked the value to 32 bits before counting set bits."
+    },
+    {
+      "id": "trie-prefix",
+      "summary": "Trie search returned true for a prefix because the end-of-word flag was not checked."
+    },
+    {
+      "id": "trie-success",
+      "summary": "Search returned true only when the final node was marked as the end of a word."
+    },
+    {
+      "id": "overflow-mid",
+      "summary": "The midpoint was computed as (lo + hi) / 2 in Java, which can overflow."
+    },
+    {
+      "id": "overflow-success",
+      "summary": "The learner used lo + (hi - lo) / 2 to avoid integer overflow."
+    },
+    {
+      "id": "clarify-skip",
+      "summary": "The learner started coding before asking whether the input could contain negative numbers."
+    },
+    {
+      "id": "clarify-success",
+      "summary": "The learner asked about value ranges and duplicates before proposing an approach."
+    },
+    {
+      "id": "baseline-skip",
+      "summary": "The learner jumped to an optimised approach without first stating a simple baseline."
+    },
+    {
+      "id": "baseline-success",
+      "summary": "The learner stated a simple baseline solution out loud before looking for a faster one."
+    },
+    {
+      "id": "dryrun-skip",
+      "summary": "The solution was declared finished without tracing an example; the failing case appeared only on submission."
+    },
+    {
+      "id": "dryrun-success",
+      "summary": "The learner walked through a two-element example by hand before submitting."
+    },
+    {
+      "id": "sparse-timestamp",
+      "summary": "An imported attempt has only a date and an outcome, with no code or notes to diagnose."
+    },
+    {
+      "id": "unrelated-stack",
+      "summary": "The learner reviewed a stack of flashcards before the session started."
+    },
+    {
+      "id": "unrelated-heap",
+      "summary": "The editor ran low on heap memory while many browser tabs were open."
+    },
+    {
+      "id": "unrelated-graph",
+      "summary": "The learner drew a graph of weekly practice hours in their notes."
+    },
+    {
+      "id": "unrelated-binary",
+      "summary": "The learner downloaded the binary installer for a new code editor."
+    },
+    {
+      "id": "unrelated-tree",
+      "summary": "The learner reorganised the folder tree that holds their practice files."
+    },
+    {
       "id": "corrected",
       "summary": "Dismissed observation: a note about checking an empty input was a hypothetical reminder, not a reported mistake."
     }
@@ -98,7 +362,119 @@
     },
     {
       "text": "Which attempt has insufficient evidence for a learning diagnosis?",
-      "relevant": ["sparse"]
+      "relevant": ["sparse", "sparse-timestamp"]
+    },
+    {
+      "text": "Do my loop bounds skip the last element or read past the end?",
+      "relevant": ["offbyone-overrun", "offbyone-last", "offbyone-success"]
+    },
+    {
+      "text": "Am I producing repeated triplets by not skipping equal values?",
+      "relevant": ["threesum-dupes", "threesum-success"]
+    },
+    {
+      "text": "Do I accidentally match a number with itself when looking up its complement?",
+      "relevant": ["twosum-self", "twosum-success"]
+    },
+    {
+      "text": "Do I resolve the items still left on the monotonic stack when the scan ends?",
+      "relevant": ["mono-leftover", "mono-success"]
+    },
+    {
+      "text": "Do I check that the stack has something before popping it?",
+      "relevant": ["paren-pop", "paren-success"]
+    },
+    {
+      "text": "Do I lose the rest of the list when reversing pointers?",
+      "relevant": ["ll-lost-next", "ll-reverse-success"]
+    },
+    {
+      "text": "Do I struggle when the first node of a linked list has to be deleted?",
+      "relevant": ["ll-head", "ll-head-success"]
+    },
+    {
+      "text": "Do I guard against null before moving the fast pointer twice?",
+      "relevant": ["ll-cycle-null", "ll-cycle-success"]
+    },
+    {
+      "text": "Do my tree recursions handle missing children?",
+      "relevant": ["tree-null", "tree-null-success"]
+    },
+    {
+      "text": "Am I validating a binary search tree only against immediate children?",
+      "relevant": ["bst-bounds", "bst-success"]
+    },
+    {
+      "text": "Do I keep breadth-first levels of a tree separate?",
+      "relevant": ["level-mix", "level-success"]
+    },
+    {
+      "text": "Do I keep the heap limited to k items?",
+      "relevant": ["heap-unbounded", "heap-success"]
+    },
+    {
+      "text": "Do I undo my choice after exploring a backtracking branch?",
+      "relevant": ["bt-undo", "bt-undo-success"]
+    },
+    {
+      "text": "Do I store a reference to the working path instead of a snapshot?",
+      "relevant": ["bt-copy", "bt-copy-success"]
+    },
+    {
+      "text": "Do I update in-degrees correctly in topological sort?",
+      "relevant": ["topo-indegree", "topo-success"]
+    },
+    {
+      "text": "Do I check grid boundaries before reading a neighbouring cell?",
+      "relevant": ["grid-bounds", "grid-success"]
+    },
+    {
+      "text": "Do I ignore outdated entries popped in Dijkstra's shortest path?",
+      "relevant": ["dijkstra-stale", "dijkstra-success"]
+    },
+    {
+      "text": "Do my disjoint-set lookups stay fast?",
+      "relevant": ["uf-slow", "uf-success"]
+    },
+    {
+      "text": "Do I initialise dynamic programming base cases before the recurrence?",
+      "relevant": ["dp-base", "dp-base-success"]
+    },
+    {
+      "text": "Do I cache overlapping subproblems?",
+      "relevant": ["dp-memo", "dp-memo-success"]
+    },
+    {
+      "text": "Do I leave room for the empty prefix in a 2-D DP table?",
+      "relevant": ["lcs-padding", "lcs-success"]
+    },
+    {
+      "text": "Do I order intervals before merging them?",
+      "relevant": ["interval-sort", "interval-success"]
+    },
+    {
+      "text": "Do my bit counting loops terminate for negative numbers?",
+      "relevant": ["bit-negative", "bit-success"]
+    },
+    {
+      "text": "Does my trie tell a complete word apart from a prefix?",
+      "relevant": ["trie-prefix", "trie-success"]
+    },
+    {
+      "text": "Could my midpoint calculation overflow?",
+      "relevant": ["overflow-mid", "overflow-success"]
+    },
+    {
+      "text": "Do I clarify input constraints before I start coding?",
+      "relevant": ["clarify-skip", "clarify-success"]
+    },
+    {
+      "text": "Do I state a simple solution before optimising?",
+      "relevant": ["baseline-skip", "baseline-success"]
+    },
+    {
+      "text": "Do I trace an example by hand before submitting?",
+      "relevant": ["dryrun-skip", "dryrun-success"]
     }
   ]
 }
