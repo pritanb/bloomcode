@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
@@ -30,11 +29,6 @@ try {
   assert.ok(address, `Built server must start with a real SQLite database: ${output}`);
   const health = await fetch(`${address}/health`);
   assert.equal(health.status, 200);
-  assert.equal((await health.json()).buildId, readFileSync('dist/server/build-id', 'utf8').trim());
-  const launch = await promisify(execFile)(process.execPath, ['scripts/launch-local.mjs'], {
-    env: { ...process.env, DATA_DIR: dir, PORT: new URL(address).port, NO_OPEN: '1' },
-  });
-  assert.match(launch.stdout, /already running/);
   const page = await fetch(`${address}/library`);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /<div id="root"><\/div>/);
@@ -45,7 +39,7 @@ try {
   assert.equal(typeof (await settings.json()).timezone, 'string');
   assert.equal((await fetch(`${address}/api/settings`)).status, 401);
   console.log(
-    'Production smoke passed: flat entrypoints, SQLite schema, build identity, launcher reuse, SPA deep link, authenticated settings and anonymous rejection.',
+    'Production smoke passed: flat entrypoints, SQLite schema, SPA deep link, authenticated settings and anonymous rejection.',
   );
 } finally {
   if (child.exitCode === null) {

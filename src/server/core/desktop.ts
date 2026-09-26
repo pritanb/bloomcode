@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { resolveDataDir } from '../../../scripts/runtime.mjs';
 import { acquireServerLock } from '../../../scripts/server-lock.mjs';
@@ -50,25 +49,6 @@ if (Number.isSafeInteger(parentPid) && parentPid > 0) {
 try {
   if (!Number.isInteger(port) || port < 0 || port > 65535)
     throw new Error('The app port must be between 0 and 65535.');
-  // Legacy launchers predate the workspace lock. Never open their database concurrently.
-  let previousPid = 0;
-  try {
-    previousPid = Number(readFileSync(join(dataDir, 'server.pid'), 'utf8').trim());
-  } catch {
-    /* No legacy launch. */
-  }
-  if (Number.isSafeInteger(previousPid) && previousPid > 0 && previousPid !== process.pid) {
-    let alive = true;
-    try {
-      process.kill(previousPid, 0);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ESRCH') alive = false;
-    }
-    if (alive)
-      throw new Error(
-        'A previous local server is still running. Quit it before opening the desktop app; your study data has not been changed.',
-      );
-  }
   release = acquireServerLock(dataDir);
   // Check the fixed port before any database write.
   await new Promise<void>((resolve, reject) => {

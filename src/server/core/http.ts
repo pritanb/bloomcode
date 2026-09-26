@@ -6,10 +6,6 @@ import { ZodError } from 'zod';
 import { repoRoot } from '../paths.js';
 import { registerLocalAuth } from './auth.js';
 
-declare const __TUTOR_BUILD_ID__: string;
-// Captured in the bundle, never read from mutable files on each health check.
-const buildId = typeof __TUTOR_BUILD_ID__ === 'string' ? __TUTOR_BUILD_ID__ : 'development';
-
 /**
  * The HTTP shell around the study routes: error format, security headers,
  * local-only access control, the built web app and /health.
@@ -22,7 +18,7 @@ export async function registerHttp(
   registerSecurityHeaders(app);
   await registerLocalAuth(app, options);
   await registerWebApp(app, options.serveStatic);
-  app.get('/health', () => ({ ok: true, buildId }));
+  app.get('/health', () => ({ ok: true }));
 }
 
 /** Maps thrown errors to the `{ error: { code, message } }` envelope; 500s never leak details. */

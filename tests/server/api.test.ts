@@ -653,7 +653,7 @@ it('rolls back every earlier score write when a later decision is stale', async 
 
 describe('loopback authentication', () => {
   it('serves public health but protects private API with bearer or CSRF session', async () => {
-    expect((await app.inject('/health')).json()).toEqual({ ok: true, buildId: 'development' });
+    expect((await app.inject('/health')).json()).toEqual({ ok: true });
     expect((await app.inject('/api/settings')).statusCode).toBe(401);
     expect((await request('GET', '/api/settings')).statusCode).toBe(200);
     expect(

@@ -4,34 +4,17 @@ See [README](../README.md#your-workspace) for platform defaults and legacy-direc
 
 ## Start and stop
 
-Requires Node.js 22.23 or later, npm and the installed project dependencies. Each workspace has its own data directory.
-
-```sh
-cd /path/to/leetcode-tutor
-npm ci
-npm run build
-npm run local
-```
-
-`npm run local` starts `dist/server/index.js`, waits for `/health` **and an authenticated settings read**, then opens `http://127.0.0.1:4317`. An already healthy app is reused. No LaunchAgent, login item, background agent service or Hermes configuration is installed. The server stays running after the command exits.
-
-Defaults:
+The app is the desktop app: open BloomCode, or run `npm run electron:dev` from source (see [Desktop](desktop.md)). It starts its own backend on `127.0.0.1:4317` and stops it on quit. Only one server may use a data directory at a time; a second one refuses to start.
 
 | Setting/file               | Value or purpose                                                                              |
 | -------------------------- | --------------------------------------------------------------------------------------------- |
 | `DATA_DIR`                 | Platform default from the README; an existing macOS `LeetcodeTutor-dev` database is preserved |
 | `PORT`                     | `4317`; loopback only                                                                         |
-| `NODE_BINARY`              | Optional absolute Node executable for the shell launcher                                      |
-| `NO_OPEN=1`                | Check/start without opening a browser                                                         |
 | `DATA_DIR/leetcode.sqlite` | Live database; keep its WAL files with it                                                     |
 | `DATA_DIR/api-token`       | Local bearer credential; never paste it in chat/config/logs                                   |
-| `DATA_DIR/server.log`      | Launcher-started backend output                                                               |
-| `DATA_DIR/server.pid`      | PID recorded by the launcher                                                                  |
-| `DATA_DIR/launcher.lock`   | Short-lived startup lock                                                                      |
+| `DATA_DIR/server-locks/`   | Marks the server that has the workspace open                                                  |
 
-For foreground development use `npm run dev` (and, if needed, `npm run dev:web`). To stop a launcher-started server, inspect its PID and command using your process manager, then send **SIGTERM only to that verified Node process**. A PID file alone is not authority to kill a process: PIDs can be reused. Back up before upgrades; rebuild and restart afterwards.
-
-If startup fails: check the log, missing build/dependencies, Node version, port occupancy and matching `DATA_DIR`. A healthy unrelated service on the same port is not accepted without the local credential. Do not disable auth or bind publicly. If a launch was forcibly interrupted, remove `launcher.lock` only after verifying that its launcher PID is no longer running. Export/output directories must already exist; the CLIs never silently overwrite an existing file.
+For development without Electron, `npm run dev` runs the backend from source and `npm run dev:web` runs Vite. Set `DATA_DIR` to a scratch directory so they never open your real workspace. Do not disable auth or bind publicly.
 
 ## MCP adapter
 
@@ -72,7 +55,7 @@ npx eslint src/integrations scripts tests/integrations
 npm run typecheck
 ```
 
-Integration tests use temporary directories and loopback fake HTTP services, an actual SDK stdio client/child process, and SQLite integrity checks. The launcher test starts/reuses a temporary bundled service with browser opening disabled. These tests do not touch the real Sheet, pilot database or Hermes configuration.
+Integration tests use temporary directories and loopback fake HTTP services, an actual SDK stdio client/child process, and SQLite integrity checks. These tests do not touch the real Sheet, pilot database or Hermes configuration.
 
 ## Pattern notebooks
 

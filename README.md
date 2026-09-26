@@ -33,11 +33,10 @@ Install **Node.js 22.23 or later**, clone this repository, then run:
 
 ```sh
 npm ci
-npm run build
-npm run local
+npm run electron:dev
 ```
 
-Open [localhost:4317](http://127.0.0.1:4317). `npm run local` starts a background server; use `npm start` for a foreground server. For desktop development, see [building the Electron app](docs/desktop.md#build-from-source).
+This builds the app and opens it in its desktop window. See [building the Electron app](docs/desktop.md#build-from-source) to package your own copy.
 
 ## Try the demo
 

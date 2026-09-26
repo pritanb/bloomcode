@@ -2,7 +2,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
-/** Shared by the launcher, server and integrations. Never move existing data. */
+/** Shared by the desktop app, server and integrations. Never move existing data. */
 export function resolveDataDir({
   env = process.env,
   platform = process.platform,
