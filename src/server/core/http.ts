@@ -4,9 +4,29 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ZodError } from 'zod';
 import { repoRoot } from '../paths.js';
+import { registerLocalAuth } from './auth.js';
+
+declare const __TUTOR_BUILD_ID__: string;
+// Captured in the bundle, never read from mutable files on each health check.
+const buildId = typeof __TUTOR_BUILD_ID__ === 'string' ? __TUTOR_BUILD_ID__ : 'development';
+
+/**
+ * The HTTP shell around the study routes: error format, security headers,
+ * local-only access control, the built web app and /health.
+ */
+export async function registerHttp(
+  app: FastifyInstance,
+  options: { token: string; clock: () => Date; serveStatic?: boolean | string },
+) {
+  registerErrorHandler(app);
+  registerSecurityHeaders(app);
+  await registerLocalAuth(app, options);
+  await registerWebApp(app, options.serveStatic);
+  app.get('/health', () => ({ ok: true, buildId }));
+}
 
 /** Maps thrown errors to the `{ error: { code, message } }` envelope; 500s never leak details. */
-export function registerErrorHandler(app: FastifyInstance) {
+function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((error, _req, reply) => {
     const err = error as Error & { statusCode?: number; code?: string; status?: number };
     const status =
@@ -27,7 +47,7 @@ export function registerErrorHandler(app: FastifyInstance) {
   });
 }
 
-export function registerSecurityHeaders(app: FastifyInstance) {
+function registerSecurityHeaders(app: FastifyInstance) {
   app.addHook('onSend', async (_req, reply, payload) => {
     reply
       .header('X-Content-Type-Options', 'nosniff')
@@ -46,7 +66,7 @@ export function registerSecurityHeaders(app: FastifyInstance) {
  * Serves the built web app when enabled. Unknown non-API GETs without a file
  * extension fall back to index.html so client-side routes survive a reload.
  */
-export async function registerWebApp(app: FastifyInstance, serveStatic?: boolean | string) {
+async function registerWebApp(app: FastifyInstance, serveStatic?: boolean | string) {
   const root =
     typeof serveStatic === 'string' ? serveStatic : fileURLToPath(new URL('dist/web/', repoRoot));
   const enabled = !!serveStatic && existsSync(root);
