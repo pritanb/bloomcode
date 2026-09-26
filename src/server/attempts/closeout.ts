@@ -2,73 +2,16 @@ import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Problem, ReviewTarget } from '../../shared/contracts.js';
-import { completeAssignment } from '../plans/plans.js';
+import { completeAssignment } from '../plans/plan-model.js';
 import { Store } from '../db/store.js';
-import { date } from '../catalogue/catalogue.js';
-import { type AttemptRecord, attemptView, checkVersion, version } from './attempts.js';
+import { date } from '../catalogue/problem-model.js';
+import { type AttemptRecord, attemptView, checkVersion, version } from './attempt-model.js';
 import { ApiError, conflict } from '../db/errors.js';
 import { applyAutoScore } from '../scoring/auto-score.js';
 import { idempotent } from '../db/idempotency.js';
 import type { AutoReviewQueue } from './auto-review.js';
-export const outcome = z.enum(['solved', 'not_solved', 'stopped']);
-export const help = z.enum(['none', 'small', 'major', 'solution', 'unknown']);
-export const seconds = z.number().int().min(0).max(604800).nullable();
-export function addDays(day: string, days: number): string {
-  const d = new Date(`${day}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-/** Interval rules v1: repair -> reconstruction -> transfer -> mixed. */
-export function recommendation(
-  a: Pick<AttemptRecord, 'outcome' | 'help' | 'evidence' | 'studyDate'>,
-) {
-  const repair = a.outcome !== 'solved' || ['major', 'solution', 'unknown'].includes(a.help);
-  const days = repair ? 1 : a.help === 'small' ? 3 : a.evidence === 'retention' ? 7 : 14;
-  return {
-    date: addDays(a.studyDate, days),
-    stage: repair
-      ? 'repair'
-      : a.help === 'small'
-        ? 'reconstruction'
-        : a.evidence === 'retention'
-          ? 'transfer'
-          : 'mixed',
-  };
-}
-export function updateTarget(
-  s: Store,
-  problemId: string,
-  recommendedDate: string | null,
-  stage: string,
-  choice?: { action: ReviewTarget['action']; date?: string | null },
-): ReviewTarget {
-  const p = s.get<Problem>('problems', problemId),
-    prior = s
-      .all<ReviewTarget>('review_targets')
-      .find((t) => t.problemId === problemId && t.constraint === null);
-  const t: ReviewTarget = prior
-    ? { ...prior, version: prior.version + 1, recommendedDate, stage }
-    : {
-        id: randomUUID(),
-        problemId,
-        problemTitle: p.title,
-        constraint: null,
-        recommendedDate,
-        effectiveDate: recommendedDate,
-        action: 'recommended',
-        version: 1,
-        stage,
-      };
-  if (choice && choice.action !== 'recommended') {
-    if ((choice.action === 'manual' || choice.action === 'snooze') && !choice.date)
-      throw new ApiError(400, 'VALIDATION', 'A date is required for this review action');
-    t.action = choice.action;
-    t.effectiveDate = choice.action === 'none' ? null : choice.date!;
-  } else if (t.action === 'recommended') t.effectiveDate = recommendedDate;
-  s.put('review_targets', t);
-  s.put('problems', { ...p, nextReviewDate: t.effectiveDate });
-  return t;
-}
+import { outcome, help, seconds } from './attempt-model.js';
+import { recommendation, updateTarget } from './review-schedule.js';
 export function registerCloseout(
   app: FastifyInstance,
   s: Store,

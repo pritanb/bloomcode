@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Store } from '../db/store.js';
 import type { Topic, ScoreDecision } from '../../shared/contracts.js';
-import type { AttemptRecord } from '../attempts/attempts.js';
-import { assertMetadataVisible } from '../catalogue/catalogue.js';
+import type { AttemptRecord } from '../attempts/attempt-model.js';
+import { assertMetadataVisible } from '../catalogue/problem-model.js';
 import { conflict, ApiError } from '../db/errors.js';
 import {
   TOPIC_REFRESH_MS,

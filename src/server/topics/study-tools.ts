@@ -11,7 +11,7 @@ import {
   type WeeklyRecap,
 } from '../../shared/contracts.js';
 import { Store } from '../db/store.js';
-import { assertMetadataVisible, discloseProblem, date } from '../catalogue/catalogue.js';
+import { assertMetadataVisible, discloseProblem, date } from '../catalogue/problem-model.js';
 import {
   attemptView,
   checkVersion,
@@ -19,14 +19,14 @@ import {
   studyDate,
   version,
   type AttemptRecord,
-} from '../attempts/attempts.js';
-import { addDays } from '../attempts/closeout.js';
+} from '../attempts/attempt-model.js';
+import { addDays } from '../attempts/review-schedule.js';
 import { conflict } from '../db/errors.js';
 import { patternNotebook } from '../../shared/pattern-migration.js';
-import type { TagLink } from '../catalogue/catalogue.js';
+import type { TagLink } from '../catalogue/problem-model.js';
 import type { Tag } from '../../shared/contracts.js';
-import { decisionView } from './topics.js';
-import type { ItemRecord } from '../plans/plans.js';
+import { decisionView } from './topic-model.js';
+import type { ItemRecord } from '../plans/plan-model.js';
 
 export const reflectionFields = {
   mistakeLabels: z

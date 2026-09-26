@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Problem, ScoreDecision, Topic } from '../../shared/contracts.js';
-import type { AttemptRecord } from '../attempts/attempts.js';
-import { problemView } from '../catalogue/catalogue.js';
+import type { AttemptRecord } from '../attempts/attempt-model.js';
+import { problemView } from '../catalogue/problem-model.js';
 import { neetcodeCategory } from '../topics/neetcode-category.js';
 import type { Store } from '../db/store.js';
 

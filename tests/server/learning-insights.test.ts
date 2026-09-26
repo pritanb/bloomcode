@@ -4,8 +4,8 @@ import type { Attempt } from '../../src/shared/contracts.js';
 import { Insights } from '../../src/server/insights/service.js';
 import { Store } from '../../src/server/db/store.js';
 import { openDb } from '../../src/server/db/db.js';
-import { addProblem } from '../../src/server/catalogue/catalogue.js';
-import type { AttemptRecord } from '../../src/server/attempts/attempts.js';
+import { addProblem } from '../../src/server/catalogue/problem-model.js';
+import type { AttemptRecord } from '../../src/server/attempts/attempt-model.js';
 import type { ObservationInput } from '../../src/shared/insights.js';
 const embed = async (texts: string[]) =>
   texts.map(() => Array.from({ length: 384 }, (_, i) => (i === 0 ? 1 : 0)));

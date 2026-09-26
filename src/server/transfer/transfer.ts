@@ -10,11 +10,11 @@ import type { Snapshot, Settings } from '../../shared/contracts.js';
 import { durableTables, type Table } from '../db/db.js';
 import { Store } from '../db/store.js';
 import { ApiError, conflict } from '../db/errors.js';
-import { date, name, problemUrl } from '../catalogue/catalogue.js';
+import { date, name, problemUrl } from '../catalogue/problem-model.js';
 import { score, importSchema } from '../catalogue/import.js';
 import { reflectionFields, legacyPatternFields } from '../topics/study-tools.js';
 import { migratePatternNotebooks } from '../topics/pattern-migration.js';
-import { outcome, help, seconds } from '../attempts/closeout.js';
+import { outcome, help, seconds } from '../attempts/attempt-model.js';
 const id = z.string().min(1).max(1000),
   text = z.string(),
   nullable = text.nullable(),

@@ -2,8 +2,12 @@ import publicLists from '../../integrations/manifests/neetcode-problems.json';
 import public250 from '../../integrations/manifests/neetcode250.json';
 import { leetcodeSlug } from '../../shared/leetcode.js';
 import type { Problem, ProblemList } from '../../shared/contracts.js';
-import type { ListLink } from './catalogue.js';
 import type { Store } from '../db/store.js';
+export interface ListLink {
+  id: string;
+  problemId: string;
+  listId: string;
+}
 
 // These bundled, pinned manifests are also verified by the public-list importer.
 // Only their explicit flags/identities establish membership, never Sheet names.

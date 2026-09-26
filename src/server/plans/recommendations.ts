@@ -6,8 +6,8 @@ import {
 } from '../../shared/recommendations.js';
 import manifest from '../../integrations/manifests/neetcode250.json';
 import { listProjection } from '../catalogue/list-projection.js';
-import { problemView } from '../catalogue/catalogue.js';
-import type { AttemptRecord } from '../attempts/attempts.js';
+import { problemView } from '../catalogue/problem-model.js';
+import type { AttemptRecord } from '../attempts/attempt-model.js';
 import type { Store } from '../db/store.js';
 
 // Source row order, not an invented popularity or difficulty ranking.

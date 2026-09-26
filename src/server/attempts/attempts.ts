@@ -1,58 +1,23 @@
-import { assertMetadataVisible } from '../catalogue/catalogue.js';
+import { assertMetadataVisible } from '../catalogue/problem-model.js';
 import { idempotent } from '../db/idempotency.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { Attempt, Problem, Settings } from '../../shared/contracts.js';
-import { bumpPlan, type ItemRecord, linkAttempt } from '../plans/plans.js';
-import { topicView } from '../topics/topics.js';
-import { decisionView } from '../topics/topics.js';
+import type { Problem, Settings } from '../../shared/contracts.js';
+import { bumpPlan, type ItemRecord, linkAttempt } from '../plans/plan-model.js';
+import { topicView } from '../topics/topic-model.js';
+import { decisionView } from '../topics/topic-model.js';
 import type { Topic, ScoreDecision } from '../../shared/contracts.js';
 import { Store } from '../db/store.js';
 import { ApiError, conflict } from '../db/errors.js';
-export interface AttemptRecord extends Attempt {
-  context: 'mixed' | 'targeted' | 'review';
-  gapSeconds: number;
-  sourceKey?: string;
-  importId?: string;
-}
-export const version = z.number().int().min(1);
-export function studyDate(now: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
-  return ['year', 'month', 'day'].map((k) => parts.find((p) => p.type === k)!.value).join('-');
-}
-export function attemptView(a: AttemptRecord): Attempt {
-  const {
-    context: _context,
-    gapSeconds: _gap,
-    sourceKey: _source,
-    importId: _import,
-    ...publicAttempt
-  } = a;
-  return publicAttempt;
-}
-export function reflectionSafeView(a: AttemptRecord, hideReflection: boolean): Attempt {
-  const view = attemptView(a);
-  if (hideReflection) {
-    delete view.mistakeLabels;
-    delete view.takeaway;
-  }
-  return view;
-}
-export function newestAttempt(a: Attempt, b: Attempt): number {
-  return (
-    (b.finishedAt ?? b.startedAt).localeCompare(a.finishedAt ?? a.startedAt) ||
-    b.id.localeCompare(a.id)
-  );
-}
-export function checkVersion(a: { version: number }, v: number) {
-  if (a.version !== v) throw conflict();
-}
+import {
+  type AttemptRecord,
+  version,
+  studyDate,
+  attemptView,
+  reflectionSafeView,
+  checkVersion,
+} from './attempt-model.js';
 export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Date) {
   app.post('/api/attempts', (req) => {
     const b = z

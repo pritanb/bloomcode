@@ -12,11 +12,12 @@ import type {
   ScoreDecision,
 } from '../../shared/contracts.js';
 import { Store } from '../db/store.js';
-import { date, name, addProblem, assignLinks, problemUrl } from './catalogue.js';
-import { outcome, help, seconds, updateTarget } from '../attempts/closeout.js';
+import { date, name, addProblem, assignLinks, problemUrl } from './problem-model.js';
+import { outcome, help, seconds } from '../attempts/attempt-model.js';
+import { updateTarget } from '../attempts/review-schedule.js';
 import { canonical } from '../db/idempotency.js';
 import { conflict } from '../db/errors.js';
-import type { AttemptRecord } from '../attempts/attempts.js';
+import type { AttemptRecord } from '../attempts/attempt-model.js';
 export const score = z
   .number()
   .min(1)

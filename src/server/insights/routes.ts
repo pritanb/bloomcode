@@ -3,7 +3,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { z } from 'zod';
 import type { Store } from '../db/store.js';
-import { assertMetadataVisible } from '../catalogue/catalogue.js';
+import { assertMetadataVisible } from '../catalogue/problem-model.js';
 import { ApiError } from '../db/errors.js';
 import { LocalEmbeddings, type Embed } from './embeddings.js';
 import { extractionResult, conciseReportResult } from '../../shared/insights.js';

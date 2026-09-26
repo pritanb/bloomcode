@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { canonical } from '../server/db/idempotency.js';
-import { problemUrl } from '../server/catalogue/catalogue.js';
+import { problemUrl } from '../server/catalogue/problem-model.js';
 import type { ImportPayload } from '../shared/contracts.js';
 
 const title = z.string().trim().min(1).max(300);

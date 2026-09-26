@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { AutoReviewStatus } from '../../shared/contracts.js';
-import type { AttemptRecord } from './attempts.js';
+import type { AttemptRecord } from './attempt-model.js';
 import { ApiError, conflict } from '../db/errors.js';
 import type { Store } from '../db/store.js';
 
