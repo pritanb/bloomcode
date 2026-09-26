@@ -1,22 +1,31 @@
-# LeetCode Tutor
+# BloomCode
 
-A local-first app for planning LeetCode practice, saving solutions and notes, and scheduling reviews. Your progress stays on your computer; an AI tutor is optional.
+A local-first app for learning data structures and algorithms through LeetCode practice. BloomCode combines spaced repetition with optional AI feedback on your solutions and recurring difficulties across attempts.
 
 **Electron · TypeScript · React · Fastify · SQLite / Drizzle · MCP**
 
-[Get started](#get-started) · [Screenshots](#screenshots) · [Engineering](#engineering) · [Documentation](#documentation)
+[Get started](#get-started) · [Try the demo](#try-the-demo) · [Engineering](#engineering) · [Why BloomCode?](#why-bloomcode)
 
 ![Study desk with a daily plan, review calendar and recent practice](docs/screenshots/desktop-study-desk.png)
+
+## What it does
+
+- Plan daily practice and schedule reviews with spaced repetition.
+- Save your solutions, results and reflections in one place.
+- Get AI feedback on solution correctness, complexity and areas for improvement.
+- Review learning reports that connect evidence across saved attempts and suggest targeted practice.
+
+Solve on LeetCode, then save your result in BloomCode. The app stores code; it does not execute it or submit answers to LeetCode.
+
+Your practice history is stored on your computer. Practice tracking and review scheduling work without AI. Enabling the tutor sends selected code and notes to your model provider; embeddings run locally. See [tutor setup](docs/tutor-integration.md) and [Learning Insights](docs/learning-insights.md) for details.
 
 ## Get started
 
 **[Download experimental preview — Apple silicon Mac](https://github.com/pritanb/leetcode-tutor/releases/tag/v0.1.0)**
 
-Unzip the download, move **LeetCode Tutor.app** to Applications, and open it. Choose your timezone, daily target and a starter list. Node.js is not needed for the desktop app.
+The preview is still distributed as **LeetCode Tutor.app**. Unzip the download, move it to Applications, and open it. Choose your timezone, daily target and a starter list. Node.js is not needed for the desktop app.
 
 This early desktop release is not Developer ID signed or notarized, so macOS may block the download. See [installation instructions](docs/desktop.md) for details. Intel Macs, Windows and Linux desktop builds are not yet supported.
-
-Solve on LeetCode, then save your result here. The app stores code; it does not execute it or submit answers to LeetCode.
 
 ### Run from source
 
@@ -54,12 +63,11 @@ Screenshots use sample records. Tutor feedback is illustrative; connecting an AI
 
 ## Engineering
 
-- **Reliable saves:** autosaved drafts, version checks and repeat-safe submissions protect saved work.
-- **Consistent study records:** daily plans persist across reloads; manual review dates and recorded score decisions stay explicit.
-- **Desktop lifecycle:** a bundled local server starts with Electron, shuts down on quit, and prevents concurrent access to the same workspace.
-- **Shared backend:** the React UI and MCP tutor adapter use the same authenticated local API.
-- **Extensible data:** versioned question packs, validated imports and SQLite backups.
-- **Focused tests:** critical function tests, a browser save/reload flow and [automated GitHub checks](.github/workflows/checks.yml).
+- React and MCP clients share an authenticated Fastify API backed by SQLite. Electron bundles the local server and manages its lifecycle.
+- Autosaved drafts, version checks and repeat-safe submissions protect saved work. Daily plans persist across reloads.
+- Learning reports use retrieval-augmented generation (RAG) over saved attempts, with local embeddings and hybrid semantic/keyword search. The backend checks citations and recommended question IDs before saving reports.
+- Versioned question packs, validated imports and SQLite backups support moving and extending your study records.
+- Tests cover critical functions and a browser save/reload flow, with [automated GitHub checks](.github/workflows/checks.yml).
 
 See the [technical design](docs/technical-design.md) for architecture details.
 
@@ -82,6 +90,12 @@ Export your records from Settings, or run `npm run backup` while the app is runn
 - [Optional AI tutor](docs/tutor-integration.md) — automatic reports through the Codex CLI, plus MCP tools for chatting with a tutor about your study data.
 - [Sheet migration record](docs/migration.md) — how the original spreadsheet history was imported.
 - [Contributing](CONTRIBUTING.md) · [Testing](docs/testing.md) · [UI design](docs/design-system.md).
+
+## Why BloomCode?
+
+I built BloomCode because completing more LeetCode questions wasn't helping me understand data structures and algorithms as well as I'd hoped. I wanted a way to revisit earlier work, see where I kept getting stuck and use that feedback to guide my practice.
+
+The name is a nod to Benjamin Bloom's work on [mastery learning](https://en.wikipedia.org/wiki/Mastery_learning). His emphasis on feedback and further practice fits what I wanted the app to support.
 
 ## License
 
