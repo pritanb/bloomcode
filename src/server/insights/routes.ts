@@ -34,14 +34,16 @@ export function registerInsights(
   const insights = new Insights(s, clock, embed ?? local.embed);
   insights.tutorActive = tutor.active;
   insights.onEmbeddingsReady = tutor.wake;
-  const timer = setInterval(() => void insights.tick(), 3000);
-  timer.unref();
   // Recover interrupted leases without touching saved study records.
   for (const job of insights.jobs())
     if (job.status === 'running')
       insights.put({ ...job, status: 'pending', claimId: null, claimedAt: 0 });
+  void insights.refresh();
+  // Writes (including the tutor's saved analysis) can add attempts or observations to process.
+  app.addHook('onResponse', async (req, reply) => {
+    if (!['GET', 'HEAD'].includes(req.method) && reply.statusCode < 400) void insights.refresh();
+  });
   app.addHook('onClose', async () => {
-    clearInterval(timer);
     insights.stop();
     await local.close();
   });
@@ -87,7 +89,6 @@ export function registerInsights(
     const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(req.body);
     insights.put({ id: 'state', kind: 'state', enabled });
     insights.reconcile();
-    if (enabled) void insights.tick();
     return insights.status();
   });
   app.post('/api/insights/retry', (req) => {
@@ -98,7 +99,6 @@ export function registerInsights(
         insights.put({ ...job, status: 'pending', claimId: null, error: null });
     insights.embeddingStatus = 'idle';
     insights.error = null;
-    void insights.tick();
     return { ok: true };
   });
   app.post<{ Params: { id: string } }>('/api/insights/observations/:id/dismiss', (req) => {

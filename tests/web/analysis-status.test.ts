@@ -26,7 +26,6 @@ it('explains request expiry', () => {
       ...base,
       reportStatus: 'waiting',
       worker: {
-        lastContactAt: null,
         activeKind: 'report',
         startedAt: null,
         expiresAt: null,

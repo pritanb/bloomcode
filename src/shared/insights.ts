@@ -121,7 +121,6 @@ export interface InsightStatus {
   pending: number;
   failed: number;
   worker?: {
-    lastContactAt: string | null;
     activeKind: 'attempt' | 'report' | null;
     startedAt: string | null;
     expiresAt: string | null;

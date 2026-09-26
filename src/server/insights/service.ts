@@ -70,12 +70,13 @@ const freshJob = (id: string, attemptId: string | null, fingerprint: string): In
 export class Insights {
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
   error: string | null = null;
-  tutorSeenAt = -Infinity;
   tutorActive = () => false;
   /** A learning report can only be claimed once local search is ready. */
   onEmbeddingsReady = () => {};
   private busy = false;
   private stopped = false;
+  private refreshing: Promise<void> | undefined;
+  private again = false;
   constructor(
     readonly s: Store,
     readonly clock: () => Date,
@@ -189,10 +190,26 @@ export class Insights {
       null
     );
   }
-  async tick() {
-    if (this.stopped || this.busy || !this.enabled()) return;
+  /** Queue new attempts and embed new observations until none is left. Runs at
+   * startup and after each write; a call during a run triggers one more pass. */
+  refresh(): Promise<void> {
+    if (this.refreshing) {
+      this.again = true;
+      return this.refreshing;
+    }
+    this.refreshing = (async () => {
+      do {
+        this.again = false;
+        while (await this.tick());
+      } while (this.again && !this.stopped);
+    })().finally(() => (this.refreshing = undefined));
+    return this.refreshing;
+  }
+  /** One step of refresh(): embeds up to 16 observations. Returns whether more may remain. */
+  async tick(): Promise<boolean> {
+    if (this.stopped || this.busy || !this.enabled()) return false;
     this.reconcile();
-    if (this.embeddingStatus === 'failed') return;
+    if (this.embeddingStatus === 'failed') return false;
     this.busy = true;
     try {
       this.reconcile();
@@ -206,11 +223,11 @@ export class Insights {
               .get(r.id, r.fingerprint, modelKey),
         )
         .slice(0, 16);
-      if (wasReady && !missing.length) return;
+      if (wasReady && !missing.length) return false;
       this.embeddingStatus = 'loading';
       // An empty warm-up downloads/loads the model even before tutor observations exist.
       const vectors = await this.embed(missing.map((r) => r.summary));
-      if (this.stopped) return;
+      if (this.stopped) return false;
       if (
         vectors.length !== missing.length ||
         vectors.some((v) => v.length !== 384 || v.some((n) => !Number.isFinite(n)))
@@ -228,11 +245,13 @@ export class Insights {
       this.embeddingStatus = 'ready';
       this.error = null;
       this.onEmbeddingsReady();
+      return missing.length > 0;
     } catch (error) {
       if (!this.stopped) {
         this.embeddingStatus = 'failed';
         this.error = (error instanceof Error ? error.message : 'Embedding failed').slice(0, 1000);
       }
+      return false;
     } finally {
       this.busy = false;
     }
@@ -338,7 +357,6 @@ export class Insights {
   }
   claim() {
     assertMetadataVisible(this.s);
-    this.tutorSeenAt = this.clock().getTime();
     if (!this.enabled()) return null;
     this.reconcile();
     const reportJob = this.jobs().find((j) => j.id === 'report-job');
@@ -417,7 +435,6 @@ export class Insights {
       : this.corpusFingerprint();
     if (job.fingerprint !== fp) throw conflict('Evidence changed; request a new analysis');
     if (!['running', 'done'].includes(job.status)) throw conflict('Analysis is not running');
-    this.tutorSeenAt = this.clock().getTime();
     return job;
   }
   complete(id: string, claimId: string, result: unknown, model: string | null) {
@@ -579,9 +596,6 @@ export class Insights {
       .sort((a, b) => b.claimedAt - a.claimedAt)[0];
     const now = this.clock().getTime();
     const worker = {
-      lastContactAt: Number.isFinite(this.tutorSeenAt)
-        ? new Date(this.tutorSeenAt).toISOString()
-        : null,
       activeKind: running ? (running.attemptId ? ('attempt' as const) : ('report' as const)) : null,
       startedAt: running ? new Date(running.claimedAt).toISOString() : null,
       expiresAt: running ? new Date(running.claimedAt + leaseMs(running)).toISOString() : null,
