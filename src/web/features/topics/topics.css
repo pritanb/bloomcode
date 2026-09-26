@@ -2,22 +2,22 @@
    Topic progress (/topics) and topic detail (/topics/:id). */
 
 /* ---- Topic progress ---- */
-.theme-v2 .topic-analysis {
+.topic-analysis {
   margin-bottom: 1rem;
 }
-.theme-v2 .topic-analysis > [role='status'],
-.theme-v2 .topic-analysis > p {
+.topic-analysis > [role='status'],
+.topic-analysis > p {
   margin: 0;
   font-size: 0.875rem;
   color: var(--muted-foreground);
 }
 
 /* Where to focus: roomy tiles, the first pick tinted like the desk's "Up next". */
-.theme-v2 .focus-grid {
+.focus-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
   gap: 1rem;
 }
-.theme-v2 .focus-tile {
+.focus-tile {
   position: relative;
   overflow: hidden;
   row-gap: 0.875rem;
@@ -30,19 +30,19 @@
     background-color 0.15s,
     box-shadow 0.15s;
 }
-.theme-v2 .focus-tile:hover {
+.focus-tile:hover {
   border-color: transparent;
   background: var(--accent);
   box-shadow: 0 0 0 1px var(--card-ring);
 }
-.theme-v2 .focus-tile-top {
+.focus-tile-top {
   background: var(--brand-soft);
 }
-.theme-v2 .focus-tile-top:hover {
+.focus-tile-top:hover {
   background: var(--brand-soft);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
 }
-.theme-v2 .focus-rank {
+.focus-rank {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 0.625rem;
@@ -53,102 +53,102 @@
   background: var(--card);
   box-shadow: 0 0 0 1px var(--card-ring);
 }
-.theme-v2 .focus-tile-top .focus-rank {
+.focus-tile-top .focus-rank {
   color: var(--primary-foreground);
   background: var(--primary);
   box-shadow: none;
 }
-.theme-v2 .focus-name {
+.focus-name {
   font-family: var(--font-display);
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.theme-v2 .focus-score {
+.focus-score {
   gap: 0.3rem;
   margin: 0 0 0.75rem;
 }
-.theme-v2 .focus-score strong {
+.focus-score strong {
   font-size: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.035em;
 }
-.theme-v2 .focus-score > span {
+.focus-score > span {
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--muted-foreground);
 }
-.theme-v2 .focus-meter {
+.focus-meter {
   height: 0.375rem;
   border-radius: 1rem;
   background: color-mix(in srgb, var(--foreground) 9%, transparent);
 }
-.theme-v2 .focus-meter::after {
+.focus-meter::after {
   top: -2px;
   bottom: -2px;
   opacity: 0.3;
 }
-.theme-v2 .focus-reason {
+.focus-reason {
   font-size: 0.875rem;
   line-height: 1.55;
 }
-.theme-v2 .focus-link {
+.focus-link {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--muted-foreground);
 }
-.theme-v2 .focus-tile:hover .focus-link,
-.theme-v2 .focus-tile-top .focus-link {
+.focus-tile:hover .focus-link,
+.focus-tile-top .focus-link {
   color: var(--brand-text);
 }
 
 /* Score over time */
-.theme-v2 .topic-progress-layout {
+.topic-progress-layout {
   gap: 1rem;
   margin-bottom: 0;
 }
-.theme-v2 .topic-timeline {
+.topic-timeline {
   gap: 1rem;
 }
-.theme-v2 .topic-timeline .section-heading {
+.topic-timeline .section-heading {
   align-items: center;
 }
-.theme-v2 .topic-timeline .section-heading .field {
+.topic-timeline .section-heading .field {
   flex-direction: row;
   align-items: center;
   gap: 0.625rem;
   min-width: 0;
 }
-.theme-v2 .topic-timeline .section-heading [data-slot='select-trigger'] {
+.topic-timeline .section-heading [data-slot='select-trigger'] {
   min-width: 13rem;
 }
-.theme-v2 .topic-chart-summary {
+.topic-chart-summary {
   gap: 2.5rem;
   padding: 0;
 }
-.theme-v2 .topic-chart-summary > div {
+.topic-chart-summary > div {
   gap: 0.5rem;
 }
-.theme-v2 .topic-chart-summary .stat-label {
+.topic-chart-summary .stat-label {
   font-size: 0.875rem;
 }
-.theme-v2 .topic-chart-summary strong {
+.topic-chart-summary strong {
   font-size: 1.75rem;
   line-height: 1;
   font-weight: 600;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
 }
-.theme-v2 .topic-chart-summary strong span {
+.topic-chart-summary strong span {
   font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0;
 }
-.theme-v2 .topic-chart-summary strong.up,
-.theme-v2 .topic-chart-summary strong.warn {
+.topic-chart-summary strong.up,
+.topic-chart-summary strong.warn {
   font-weight: 600;
 }
-.theme-v2 .topic-score-chart {
+.topic-score-chart {
   margin-inline: -0.25rem;
   font-variant-numeric: tabular-nums;
 }
@@ -158,30 +158,30 @@
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
 }
-.theme-v2 .topic-timeline > .empty {
+.topic-timeline > .empty {
   flex: 1 1 auto;
 }
 
 /* Score updates */
-.theme-v2 .topic-score-updates {
+.topic-score-updates {
   gap: 0.75rem;
 }
-.theme-v2 .topic-score-updates td {
+.topic-score-updates td {
   font-variant-numeric: tabular-nums;
 }
-.theme-v2 .topic-score-updates td.muted {
+.topic-score-updates td.muted {
   color: var(--muted-foreground);
 }
-.theme-v2 .topic-score-updates > [data-slot='button'] {
+.topic-score-updates > [data-slot='button'] {
   align-self: flex-start;
   color: var(--muted-foreground);
 }
-.theme-v2 .topic-score-updates > [data-slot='button']:hover {
+.topic-score-updates > [data-slot='button']:hover {
   color: var(--foreground);
 }
 
 /* ---- Topic detail ---- */
-.theme-v2 .topic-notes {
+.topic-notes {
   margin: -0.5rem 0 1rem;
   font-size: 0.9375rem;
 }
@@ -198,34 +198,34 @@
 .topic-stats .stat-label {
   padding-right: 3.5rem;
 }
-.theme-v2 .topic-detail-layout {
+.topic-detail-layout {
   gap: 1rem;
   margin-top: 1rem;
 }
 
 /* Score history & rationale */
-.theme-v2 .topic-detail-layout .movement-list li {
+.topic-detail-layout .movement-list li {
   padding: 0.875rem 0;
 }
-.theme-v2 .topic-detail-layout .movement-list li:first-child {
+.topic-detail-layout .movement-list li:first-child {
   padding-top: 0;
   border-top: 0;
 }
-.theme-v2 .topic-detail-layout .movement-list .row.between > span {
+.topic-detail-layout .movement-list .row.between > span {
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
-.theme-v2 .topic-detail-layout .movement-list p {
+.topic-detail-layout .movement-list p {
   margin: 0.375rem 0;
   font-size: 0.875rem;
   line-height: 1.55;
 }
-.theme-v2 .topic-detail-layout .movement-list .small {
+.topic-detail-layout .movement-list .small {
   font-size: 0.8125rem;
 }
 
 /* Practice history filters sit in one row. */
-.theme-v2 .history-filters {
+.history-filters {
   gap: 0.75rem;
 }
 .topic-related-note {
@@ -238,7 +238,7 @@
   .topic-stats {
     grid-template-columns: minmax(0, 1fr);
   }
-  .theme-v2 .topic-timeline .section-heading .field {
+  .topic-timeline .section-heading .field {
     flex-direction: column;
     align-items: stretch;
   }
