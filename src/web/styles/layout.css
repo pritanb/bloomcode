@@ -263,15 +263,6 @@ small,
   margin-top: 0.5rem;
   color: var(--muted-foreground);
 }
-.budget {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-}
-.budget span {
-  color: var(--muted-foreground);
-}
 .panel {
   padding: 1.5rem;
   margin-bottom: 1.5rem;

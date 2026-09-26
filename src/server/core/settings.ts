@@ -21,7 +21,6 @@ const settingsUpdate = z
     recommendations: recommendationSchema.optional(),
     timezone: z.string().refine(validTimezone, 'Invalid timezone').optional(),
     questionsPerDay: z.number().int().min(1).max(20).optional(),
-    budgetMinutes: z.number().int().min(5).max(240).optional(),
     primaryCount: z.number().int().min(1).max(10).optional(),
     optionalCount: z.number().int().min(0).max(10).optional(),
   })

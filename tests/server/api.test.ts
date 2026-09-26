@@ -479,9 +479,6 @@ it('builds a stable budgeted day, resumes work across midnight and transitions a
   expect(day.items).toHaveLength(2);
   expect(day.items[0].title).toBe('Legacy');
   expect(day.items[0].reason).not.toContain('Arrays');
-  expect(
-    day.items.reduce((sum: number, i: { suggestedMinutes: number }) => sum + i.suggestedMinutes, 0),
-  ).toBeLessThanOrEqual(40);
   expect((await request('POST', '/api/daily-plan/ensure', {})).json()).toEqual(day);
   const a = (
     await request('POST', '/api/attempts', {
@@ -673,7 +670,7 @@ describe('loopback authentication', () => {
           method: 'PATCH',
           url: '/api/settings',
           headers: { cookie },
-          payload: { budgetMinutes: 60 },
+          payload: { questionsPerDay: 3 },
         })
       ).statusCode,
     ).toBe(403);
@@ -683,7 +680,7 @@ describe('loopback authentication', () => {
           method: 'PATCH',
           url: '/api/settings',
           headers: { cookie, 'x-csrf-token': session.json().csrfToken },
-          payload: { budgetMinutes: 60 },
+          payload: { questionsPerDay: 3 },
         })
       ).statusCode,
     ).toBe(200);
@@ -759,15 +756,13 @@ it('returns only score history during mixed practice while keeping topic metadat
   expect((await request('GET', '/api/topics/missing/history')).statusCode).toBe(404);
 });
 
-it('honors the daily question target without a budget cap and preserves existing plans', async () => {
+it('honors the daily question target and preserves existing plans', async () => {
   for (const slug of ['count-a', 'count-b', 'count-c', 'count-d'])
     await request('POST', '/api/problems', {
       title: slug,
       url: `https://leetcode.com/problems/${slug}/`,
     });
-  expect(
-    (await request('PATCH', '/api/settings', { questionsPerDay: 3, budgetMinutes: 5 })).statusCode,
-  ).toBe(200);
+  expect((await request('PATCH', '/api/settings', { questionsPerDay: 3 })).statusCode).toBe(200);
   const day = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(day.items).toHaveLength(3);
   expect(day.items.map((item: { status: string }) => item.status)).toEqual([

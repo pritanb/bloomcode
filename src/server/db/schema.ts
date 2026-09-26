@@ -3,7 +3,6 @@ export const SCHEMA = `
 CREATE TABLE settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   timezone TEXT NOT NULL,
-  budgetMinutes INTEGER NOT NULL,
   primaryCount INTEGER NOT NULL,
   optionalCount INTEGER NOT NULL,
   questionsPerDay INTEGER,
@@ -70,7 +69,6 @@ CREATE TABLE plan_items (
   attemptId TEXT REFERENCES attempts (id),
   status TEXT NOT NULL CHECK (status IN ('active', 'queued', 'optional', 'completed', 'skipped')),
   reason TEXT NOT NULL,
-  suggestedMinutes INTEGER NOT NULL,
   recommendationKind TEXT CHECK (recommendationKind IN ('topic', 'refresher', 'balanced'))
 );
 CREATE INDEX plan_items_plan ON plan_items (planId);

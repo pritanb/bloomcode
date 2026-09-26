@@ -203,7 +203,7 @@ function PlanRow({
               : done
                 ? 'Done'
                 : ['active', 'queued'].includes(item.status)
-                  ? `~${item.suggestedMinutes} min`
+                  ? null
                   : enumLabel(item.status)}
           </span>
         </div>

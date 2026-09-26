@@ -196,7 +196,6 @@ it('attributes recap and activity by study date and only counts assigned schedul
     problemId: p.id,
     status: 'completed',
     reason: 'Scheduled review',
-    suggestedMinutes: 20,
   });
   insert(db, 'attempts', { ...saved, id: 'scheduled', planItemId: 'item', help: 'small' });
   const recap = (await request('GET', '/api/recap?week=2026-09-16')).json();

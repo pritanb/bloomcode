@@ -129,7 +129,6 @@ export interface PlanItem {
   url: string | null;
   status: 'active' | 'queued' | 'optional' | 'completed' | 'skipped';
   reason: string;
-  suggestedMinutes: number;
   attemptId: string | null;
 }
 export interface DailyPlan {
@@ -145,7 +144,6 @@ export interface Settings {
   recommendations?: import('./recommendations.js').RecommendationSettings;
   questionsPerDay?: number;
   timezone: string;
-  budgetMinutes: number;
   primaryCount: number;
   optionalCount: number;
   lastBackupAt: string | null;

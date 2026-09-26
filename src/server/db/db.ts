@@ -36,14 +36,22 @@ export function openDb(path: string): Db {
   db.pragma('busy_timeout = 5000');
   db.pragma('foreign_keys = ON');
   // A non-zero user_version marks a database whose tables already exist.
-  if (!db.pragma('user_version', { simple: true }))
+  const version = db.pragma('user_version', { simple: true });
+  if (!version)
     db.transaction(() => {
       db.exec(SCHEMA);
-      db.pragma('user_version = 7');
+      db.pragma('user_version = 8');
+    })();
+  // One-off: version 7 kept unused minute budgets. Delete once the live database is at 8.
+  else if (version === 7)
+    db.transaction(() => {
+      db.exec(`ALTER TABLE settings DROP COLUMN budgetMinutes;
+        ALTER TABLE plan_items DROP COLUMN suggestedMinutes;`);
+      db.pragma('user_version = 8');
     })();
   db.prepare(
-    `INSERT OR IGNORE INTO settings (id, timezone, budgetMinutes, primaryCount, optionalCount, onboardingComplete)
-     VALUES (1, ?, 40, 1, 1, 0)`,
+    `INSERT OR IGNORE INTO settings (id, timezone, primaryCount, optionalCount, onboardingComplete)
+     VALUES (1, ?, 1, 1, 0)`,
   ).run(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   return db;
 }

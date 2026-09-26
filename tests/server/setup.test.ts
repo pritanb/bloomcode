@@ -121,6 +121,45 @@ it('does not offer setup to a workspace saved before onboarding existed', async 
   }
 });
 
+it('drops the unused minute budgets from a version 7 workspace and keeps planning', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'lc-v7-'));
+  const dbPath = join(dir, 'leetcode.sqlite');
+  const headers = { authorization: 'Bearer setup-test' };
+  // Recreate the version 7 columns, both NOT NULL, as the live database has them.
+  const old = openDb(dbPath);
+  old.exec(`ALTER TABLE settings ADD COLUMN budgetMinutes INTEGER NOT NULL DEFAULT 40;
+    ALTER TABLE plan_items ADD COLUMN suggestedMinutes INTEGER NOT NULL DEFAULT 13;`);
+  old.pragma('user_version = 7');
+  old.close();
+  const app = await createApp({ dbPath, token: 'setup-test' });
+  try {
+    await app.inject({
+      method: 'POST',
+      url: '/api/problems',
+      headers,
+      payload: { title: 'Two Sum', url: 'https://leetcode.com/problems/two-sum/' },
+    });
+    const plan = await app.inject({
+      method: 'POST',
+      url: '/api/daily-plan/ensure',
+      headers,
+      payload: {},
+    });
+    expect(plan.statusCode).toBe(200);
+    expect(plan.json().items).toHaveLength(1);
+  } finally {
+    await app.close();
+  }
+  const db = openDb(dbPath);
+  const columns = (table: string) =>
+    (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name);
+  expect(db.pragma('user_version', { simple: true })).toBe(8);
+  expect(columns('settings')).not.toContain('budgetMinutes');
+  expect(columns('plan_items')).not.toContain('suggestedMinutes');
+  db.close();
+  await rm(dir, { recursive: true, force: true });
+});
+
 it('imports a validated custom pack idempotently without creating completion or score evidence', async () => {
   const app = await createApp({ dbPath: ':memory:', token: 'pack-test' });
   const headers = { authorization: 'Bearer pack-test' };

@@ -3,7 +3,6 @@ import { type Db, one, update } from './db.js';
 
 interface SettingsRow {
   timezone: string;
-  budgetMinutes: number;
   primaryCount: number;
   optionalCount: number;
   questionsPerDay: number | null;
@@ -18,7 +17,6 @@ export function readSettings(db: Db): Settings {
   const recommendations = r.recommendations ? JSON.parse(r.recommendations) : null;
   return {
     timezone: r.timezone,
-    budgetMinutes: r.budgetMinutes,
     primaryCount: r.primaryCount,
     optionalCount: r.optionalCount,
     lastBackupAt: r.lastBackupAt,

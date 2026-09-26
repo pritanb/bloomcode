@@ -77,7 +77,6 @@ function newItem(
   plan: PlanRecord,
   p: Problem,
   status: PlanItem['status'],
-  minutes: number,
   position: number,
 ) {
   const ctx = recommendationContext(db);
@@ -94,7 +93,6 @@ function newItem(
       : ctx.config.strategy === 'topic'
         ? 'topic'
         : 'balanced',
-    suggestedMinutes: Math.max(1, minutes),
     attemptId: null,
   });
   return id;
@@ -182,8 +180,7 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
           timezone: settings.timezone,
           version: 1,
         });
-      const slots = slotsFor(settings),
-        minutes = Math.floor(settings.budgetMinutes / slots);
+      const slots = slotsFor(settings);
       const retained = active ? [problemView(db, active.problemId)] : [];
       const available = [
         ...retained,
@@ -199,7 +196,7 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
         plan = getPlan(db, plan.id);
       }
       for (const [i, p] of available.slice(0, slots).entries()) {
-        const item = newItem(db, plan, p, i === 0 ? 'active' : 'queued', minutes, i);
+        const item = newItem(db, plan, p, i === 0 ? 'active' : 'queued', i);
         if (i === 0 && active) {
           update(db, 'attempts', active.id, { planItemId: item });
           update(db, 'plan_items', item, { attemptId: active.id });
@@ -248,14 +245,7 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
       const position = Math.max(-1, ...keep.map((i) => i.position)) + 1;
       const hasActive = keep.some((i) => i.status === 'active');
       for (const [index, p] of available.entries())
-        newItem(
-          db,
-          plan,
-          p,
-          !hasActive && index === 0 ? 'active' : 'queued',
-          Math.floor(settings.budgetMinutes / slots),
-          position + index,
-        );
+        newItem(db, plan, p, !hasActive && index === 0 ? 'active' : 'queued', position + index);
       bumpPlan(db, plan.id);
       return planView(db, getPlan(db, plan.id));
     });
@@ -323,7 +313,7 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
           )[0];
         if (!replacement)
           throw conflict('No alternative candidate available within your recommendation settings');
-        newItem(db, plan, replacement, item.status, item.suggestedMinutes, items.length);
+        newItem(db, plan, replacement, item.status, items.length);
       }
       update(db, 'plan_items', item.id, { status: 'skipped', reason: b.reason ?? b.action });
       if (item.status === 'active') {
