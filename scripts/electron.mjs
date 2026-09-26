@@ -22,7 +22,6 @@ for (const [source, target] of [
   ['desktop/assets/icon.icns', 'assets/icon.icns'],
   ['dist/server', 'dist/server'],
   ['dist/web', 'dist/web'],
-  ['migrations', 'migrations'],
   ['src/integrations/manifests', 'src/integrations/manifests'],
   ['scripts/runtime.mjs', 'scripts/runtime.mjs'],
   ['desktop/package.json', 'package.json'],

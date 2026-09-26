@@ -25,7 +25,7 @@ flowchart LR
 ```
 
 - **UI:** React, TypeScript and Vite; CodeMirror for editing; TanStack Query for server state and refetching.
-- **Backend:** Node.js + Fastify, Zod validation, SQLite through better-sqlite3 with plain SQL and numbered `.sql` migrations.
+- **Backend:** Node.js + Fastify, Zod validation, SQLite through better-sqlite3 with plain SQL; the schema is `src/server/db/schema.ts`.
 - **MCP:** a thin TypeScript SDK adapter launched by Hermes. It translates named tools into authenticated backend requests; it has no model or database of its own.
 - **Deployment:** one backend process serves the built UI and API on loopback. A launcher starts it and opens the browser. The MCP adapter is a separate small process only needed for tutoring.
 - **AI:** responses use the model selected in Hermes. Daily scheduling, saving and dashboard reads require no model call. Requested reviews may send saved code/context to that provider.

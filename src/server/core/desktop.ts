@@ -70,7 +70,7 @@ try {
       );
   }
   release = acquireServerLock(dataDir);
-  // Check the fixed port before migrations or other database writes occur.
+  // Check the fixed port before any database write.
   await new Promise<void>((resolve, reject) => {
     const probe = createServer();
     probe.once('error', () =>

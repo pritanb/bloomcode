@@ -1,6 +1,5 @@
--- The whole schema. Earlier migrations were folded into this file, so it is numbered 6:
--- databases they produced are already at user_version 6. Add changes as 0007_*.sql onwards.
-
+/** The whole schema, created once in a new, empty database. */
+export const SCHEMA = `
 CREATE TABLE settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   timezone TEXT NOT NULL,
@@ -166,3 +165,4 @@ CREATE TABLE import_records (
 CREATE TABLE idempotency (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response TEXT NOT NULL);
 CREATE TABLE learning_insights (id TEXT PRIMARY KEY NOT NULL, data TEXT NOT NULL);
 CREATE TABLE insight_embeddings (id TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, model TEXT NOT NULL, vector TEXT NOT NULL);
+`;

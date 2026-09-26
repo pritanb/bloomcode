@@ -1,9 +1,8 @@
 import Database from 'better-sqlite3';
-import { fileURLToPath } from 'node:url';
-import { chmodSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { repoRoot } from '../paths.js';
+import { chmodSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { missing } from './errors.js';
+import { SCHEMA } from './schema.js';
 
 export type Db = Database.Database;
 type Param = string | number | bigint | null | Buffer;
@@ -31,46 +30,18 @@ export function openDb(path: string): Db {
   if (path !== ':memory:') chmodSync(path, 0o600);
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 5000');
-  migrate(db, path);
   db.pragma('foreign_keys = ON');
+  // user_version marks a database whose tables exist; 6 is where the old migrations ended.
+  if (!db.pragma('user_version', { simple: true }))
+    db.transaction(() => {
+      db.exec(SCHEMA);
+      db.pragma('user_version = 6');
+    })();
   db.prepare(
     `INSERT OR IGNORE INTO settings (id, timezone, budgetMinutes, primaryCount, optionalCount, onboardingComplete)
      VALUES (1, ?, 40, 1, 1, 0)`,
   ).run(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   return db;
-}
-
-/**
- * Runs each numbered .sql file in migrations/ once, in order. SQLite's user_version
- * holds the number of the last file applied. Before migrating an existing database it
- * saves a copy to backups/, which daily backup pruning leaves alone.
- */
-function migrate(db: Db, path: string) {
-  const folder = fileURLToPath(new URL('migrations/', repoRoot));
-  const applied = db.pragma('user_version', { simple: true }) as number;
-  const pending = readdirSync(folder)
-    .filter((f) => /^\d{4}_.+\.sql$/.test(f) && Number(f.slice(0, 4)) > applied)
-    .sort();
-  if (!pending.length) return;
-  if (applied > 0 && path !== ':memory:') {
-    const backups = join(dirname(path), 'backups');
-    mkdirSync(backups, { recursive: true, mode: 0o700 });
-    const copy = join(
-      backups,
-      `before-migration-${new Date().toISOString().replaceAll(':', '-')}.sqlite`,
-    );
-    db.prepare('VACUUM INTO ?').run(copy);
-    chmodSync(copy, 0o600);
-  }
-  // Rebuilding a table needs foreign keys off; they are checked once all files have run.
-  db.pragma('foreign_keys = OFF');
-  for (const file of pending)
-    db.transaction(() => {
-      db.exec(readFileSync(join(folder, file), 'utf8'));
-      db.pragma(`user_version = ${Number(file.slice(0, 4))}`);
-    })();
-  const broken = db.pragma('foreign_key_check') as unknown[];
-  if (broken.length) throw new Error(`Migration left ${broken.length} broken references`);
 }
 
 /** The single row a query must find; a missing row is a 404. */

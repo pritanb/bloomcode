@@ -3,22 +3,22 @@
 ## Layout
 
 - `core/`: process entry points (`index.ts`, `desktop.ts`), `app.ts`, which wires the feature modules, and the local credential (`auth.ts`).
-- `db/`: the SQLite connection, migration runner and query helpers (`db.ts`), settings, `ApiError`, idempotent replay and new-tag hues. Every other folder builds on this one.
+- `db/`: the SQLite connection and query helpers (`db.ts`), the schema (`schema.ts`), settings, `ApiError`, idempotent replay and new-tag hues. Every other folder builds on this one.
 - `attempts/`, `scoring/`, `plans/`, `catalogue/` (including imports and first-run setup), `topics/`, `transfer/` (backups), `insights/` and `tutor/`: feature modules. `tutor/` holds the Codex worker and its jobs (tutor reports, learning insights, topic picks), which call the queues and services directly.
 - Shared records, views, queries and rules live in model files with no routes: `attempts/attempt-model.ts`, `attempts/attempt-context.ts`, `attempts/auto-review-queue.ts`, `attempts/review-schedule.ts`, `scoring/review-model.ts`, `catalogue/problem-model.ts`, `catalogue/list-projection.ts`, `topics/topic-model.ts` and `plans/plan-model.ts`, plus `insights/records.ts`. Route files (`registerX`) import these and are imported only by `core/app.ts`. Keep it that way: when two features need the same helper, put it in a model file, not in either route file. The server has no import cycles.
-- `paths.ts` resolves the repository root for runtime files (`migrations/`, `dist/web/`, manifests). It must stay directly under `src/server`, the same depth as the bundled `dist/server/*.js`.
+- `paths.ts` resolves the repository root for runtime files (`dist/web/`, manifests). It must stay directly under `src/server`, the same depth as the bundled `dist/server/*.js`.
 
 ## Runtime
 
 `createApp({ dbPath, token?, serveStatic?, clock? })` returns an awaited Fastify instance. `serveStatic: true` serves `dist/web`; a string is an optional internal/test static-root override. `clock` is a `() => Date`. `openDb(path)` returns the `better-sqlite3` connection; the caller owns closing it. The app closes its connection on `app.close()`.
 
-`src/server/core/index.ts` listens only on `127.0.0.1`, uses `PORT=4317` by default and stores the database under `DATA_DIR`, defaulting to `~/Library/Application Support/LeetcodeTutor-dev`. It never seeds study data. Both source execution (`tsx src/server/core/index.ts`) and the bundled server expect the repository's `migrations/` directory alongside `src/` or `dist/`.
+`src/server/core/index.ts` listens only on `127.0.0.1`, uses `PORT=4317` by default and stores the database under `DATA_DIR`, defaulting to `~/Library/Application Support/LeetcodeTutor-dev`. It never seeds study data.
 
 The first boot creates a 0600 `api-token` in a 0700 data directory. It is never returned to the browser. Same-origin browser sessions use HttpOnly/SameSite=Strict cookies and per-session CSRF tokens; import and backup always require the local bearer credential. Requests validate loopback remote address, Host, actual listening port and exact Origin. Serve the built UI from this server for the production same-origin flow.
 
-## Persistence and migration
+## Persistence
 
-`migrations/0006_schema.sql` is the whole schema. `openDb` runs each numbered `.sql` file above the database's `user_version` once, in order, inside a transaction, and sets `user_version` to the file's number; add the next change as `0007_*.sql`. Foreign keys are off while migrating and checked afterwards. Before migrating an existing database it saves `backups/before-migration-<time>.sqlite`.
+`db/schema.ts` is the whole schema. `openDb` creates it in a new database (`user_version` 0) and leaves an existing one alone; there are no migrations. A schema change must also alter existing databases, so add that step to `openDb` when one is needed.
 
 Tables are typed: `0005_relational_schema.sql` is the schema to read. Column names match the TypeScript fields, so `SELECT *` returns API-shaped rows; booleans are 0/1 and a few small lists (`leetcodeTopics`, `mistakeLabels`, settings `recommendations`) are JSON text. Values another table already holds are never copied: a problem's latest attempt, solve time, attempt count and review date, an attempt's problem, and a decision's topic name are joined or computed in the model files' queries. CHECK constraints, foreign keys, unique names/slugs/days and a partial unique index (one active or paused attempt) hold the rules. `learning_insights` stays one JSON column per record, validated by `learningRecordSchema`; imported source rows keep their original `raw` JSON. Scores are absolute decimal values (at most two decimal places), never accumulated deltas.
 
@@ -37,4 +37,4 @@ There is no JSON restore: recovery means opening a SQLite backup as the database
 
 ## Verification
 
-`npm exec vitest run tests/server` exercises temporary on-disk SQLite databases, Fastify inject and a real loopback child server. It covers catalogue filters and bucket boundaries, hidden-safe attempts, restart/timer recovery, transactional finish/review rollback and idempotency, scoring evidence, scheduling, import reconciliation, export and backup, native backups, browser/MCP authentication, static serving and migration tracking. No test writes the pilot database, live workbook or Hermes configuration.
+`npm exec vitest run tests/server` exercises temporary on-disk SQLite databases, Fastify inject and a real loopback child server. It covers catalogue filters and bucket boundaries, hidden-safe attempts, restart/timer recovery, transactional finish/review rollback and idempotency, scoring evidence, scheduling, import reconciliation, export and backup, native backups, browser/MCP authentication and static serving. No test writes the pilot database, live workbook or Hermes configuration.

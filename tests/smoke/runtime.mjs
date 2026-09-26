@@ -27,7 +27,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   const address = output.match(/listening at (http:\/\/127\.0\.0\.1:\d+)/)?.[1];
-  assert.ok(address, `Built server must start with real SQLite migrations: ${output}`);
+  assert.ok(address, `Built server must start with a real SQLite database: ${output}`);
   const health = await fetch(`${address}/health`);
   assert.equal(health.status, 200);
   assert.equal((await health.json()).buildId, readFileSync('dist/server/build-id', 'utf8').trim());
@@ -45,7 +45,7 @@ try {
   assert.equal(typeof (await settings.json()).timezone, 'string');
   assert.equal((await fetch(`${address}/api/settings`)).status, 401);
   console.log(
-    'Production smoke passed: flat entrypoints, SQLite migration, build identity, launcher reuse, SPA deep link, authenticated settings and anonymous rejection.',
+    'Production smoke passed: flat entrypoints, SQLite schema, build identity, launcher reuse, SPA deep link, authenticated settings and anonymous rejection.',
   );
 } finally {
   if (child.exitCode === null) {

@@ -80,6 +80,6 @@ The notebook is attached to every tag. Questions carry separate manually entered
 
 Every tag has a notebook page; `kind` does not restrict notebook access or assignment.
 
-## Schema migrations
+## Schema
 
-`migrations/0006_schema.sql` is the whole schema; earlier migrations were folded into it. `openDb` applies each numbered SQL file above the database's `user_version` and sets `user_version` to that file's number, so the next change goes in `0007_*.sql`. When an existing database has migrations pending, it first saves a copy as `backups/before-migration-<time>.sqlite`; daily backup pruning never deletes these.
+`src/server/db/schema.ts` is the whole schema. `openDb` creates it in a new database and leaves an existing one alone; there are no migrations. Earlier `backups/before-migration-*.sqlite` copies hold the old JSON-column format and need an older commit to open.
