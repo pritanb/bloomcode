@@ -2,7 +2,6 @@ dist/
 coverage/
 playwright-report/
 test-results/
-drizzle/
 desktop/package-lock.json
 evals/learning-insights-results.json
 src/web/components/ui/
