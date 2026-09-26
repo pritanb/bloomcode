@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
-import sheetEvidenceImport from './fixtures/sheet-evidence-import.json';
+import legacyEvidenceImport from './fixtures/legacy-evidence-import.json';
 import type { ImportPayload } from '../../src/shared/contracts.js';
 import { applyAndVerify } from '../../src/integrations/import-client.js';
 import { readTables } from '../tables.js';
@@ -19,8 +19,8 @@ test('real backend accepts mapped source records, idempotent replay and a comple
   try {
     const url = await a.listen({ port: 0, host: '127.0.0.1' });
     const api = new LocalApi({ dataDir: first, baseUrl: url });
-    // Captured from the retired Sheet mapper: a topic rating and one tracked attempt.
-    const mapped = { payload: sheetEvidenceImport as ImportPayload };
+    // Captured from a retired progress importer: a topic rating and one tracked attempt.
+    const mapped = { payload: legacyEvidenceImport as ImportPayload };
     expect((await applyAndVerify(api, mapped.payload)).verified).toBe(true);
     expect((await applyAndVerify(api, mapped.payload)).verified).toBe(true);
     const env = { ...process.env, DATA_DIR: first, PORT: new URL(url).port };

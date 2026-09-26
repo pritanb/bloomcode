@@ -1,5 +1,5 @@
 {
-  "importId": "sheet-v2-370270626b3d77362152afecde1db5ca07aceea8eb96808062abdc9b21eddaea",
+  "importId": "legacy-v2-370270626b3d77362152afecde1db5ca07aceea8eb96808062abdc9b21eddaea",
   "dryRun": true,
   "source": {
     "retrievedAt": "2026-09-16T00:00:00Z"
@@ -14,7 +14,7 @@
       "legacyCompleted": false,
       "exposed": true,
       "tags": [],
-      "lists": ["Sheet: Tutor Tracker"]
+      "lists": ["Tutor Tracker"]
     }
   ],
   "attempts": [
@@ -65,7 +65,7 @@
         "gridData": {}
       },
       "status": "metadata",
-      "reason": "Workbook metadata; non-LeetCode tabs excluded."
+      "reason": "Source metadata; non-LeetCode tabs excluded."
     },
     {
       "sourceKey": "Topic%20Ratings:1",

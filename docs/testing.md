@@ -1,8 +1,8 @@
-# Testing policy
+# Testing
 
-This is a local-first, single-user study app. Keep tests proportional to the risk of losing work or producing incorrect study records—not the number of screens or components.
+BloomCode is a local-first, single-user app. Tests are sized to the risk of losing work or recording wrong results, not to the number of screens.
 
-## Kept
+## What runs
 
 `npm test` runs the critical function suite:
 
@@ -13,24 +13,24 @@ This is a local-first, single-user study app. Keep tests proportional to the ris
 - Local API authentication/CSRF, browser mutation ordering and lost-response retry.
 - One real MCP protocol flow and verified-list ingestion.
 
-`npm run test:e2e` includes two startup compatibility checks and one browser practice flow: create a fresh workspace, open a result report, enter notes and required solution code, autosave, reload, enter LeetCode solve time, and verify the saved result. It uses a disposable database. Build first if application code has changed.
+`npm run test:e2e` runs two startup checks and one browser practice flow on a disposable database: create a workspace, open a result report, enter notes and solution code, autosave, reload, enter the LeetCode solve time and check the saved result. Build first if application code has changed.
 
-The reduced suites were exercised in 6.87 seconds (functions) and 5.5 seconds (browser, including startup) on this Mac. These are observations, not performance guarantees.
+Both suites finish in seconds.
 
 ## What to run for a change
 
 | Change                             | Verification                                                                          |
 | ---------------------------------- | ------------------------------------------------------------------------------------- |
-| Copy, colours, spacing or icons    | Inspect the affected screen; no full test suite or review-agent cycle                 |
+| Copy, colours, spacing or icons    | Inspect the affected screen                                                           |
 | UI interaction or TypeScript logic | Relevant test file(s), typecheck; browser flow only if practice/save flow is affected |
 | Scoring, scheduling or persistence | Relevant critical tests; full `npm test` for changes spanning these functions         |
-| Import, backup or restore          | Relevant integration/regression tests on disposable data                              |
-| Startup/build/dependency changes   | Build; optional `npm run test:smoke`                                                  |
+| Import, backup or restore          | Relevant integration tests on disposable data                                         |
+| Startup, build or dependencies     | Build; optionally `npm run test:smoke`                                                |
 
-Run a relevant file with `npm test -- tests/web/attemptQueue.test.ts` (or its corresponding domain file). Never use the real pilot database for QA.
+Run one file with `npm test -- tests/web/attemptQueue.test.ts`. Never use your real workspace for QA.
 
-## Removed
+## What not to add
 
-The full screen × viewport × theme matrix, font/colour/layout assertions, repeated mocked UI workflows, overlapping reviewer probes, CLI mock duplicates and redundant startup/visual scripts were deleted—not merely skipped or hidden behind a default filter. Git history retains them if a specific regression ever warrants bringing a case back.
+Screen × viewport × theme matrices, font/colour/layout assertions, repeated mocked UI workflows and duplicate startup scripts were removed. Git history has them if a regression ever needs one back.
 
-Do not rebuild the removed matrices. Add a small regression only when it protects a critical function or a demonstrated data-loss/incorrect-record bug. Do not require independent review agents for ordinary cosmetic or test-maintenance changes. Broader security review is reserved for meaningful changes to authentication, data exposure or destructive operations.
+Add a regression test only when it protects a critical function or a real data-loss or wrong-record bug. Ordinary cosmetic or test changes need no separate review. Save security review for changes to authentication, data exposure or destructive operations.

@@ -21,11 +21,11 @@ Your practice history is stored on your computer. Practice tracking and review s
 
 ## Get started
 
-**[Download experimental preview — Apple silicon Mac](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0)**
+**[Download the v0.1.0 preview for Apple silicon Macs](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0)**
 
-The preview is still distributed as **LeetCode Tutor.app**. Unzip the download, move it to Applications, and open it. Choose your timezone, daily target and a starter list. Node.js is not needed for the desktop app.
+Unzip the download, move the app to Applications and open it, then choose your timezone, daily target and a starter list. v0.1.0 ships as **LeetCode Tutor.app**; the next release ships as **BloomCode.app**.
 
-This early desktop release is not Developer ID signed or notarized, so macOS may block the download. See [installation instructions](docs/desktop.md) for details. Intel Macs, Windows and Linux desktop builds are not yet supported.
+The app is not yet signed or notarized, so macOS may block it; see [installation](docs/desktop.md). Intel Macs, Windows and Linux are not supported yet.
 
 ### Run from source
 
@@ -42,7 +42,7 @@ This builds the app and opens it in its desktop window. See [building the Electr
 
 After installing and building, run `npm run demo` and open [localhost:4331](http://127.0.0.1:4331).
 
-Explore 150 questions, sample practice history and example tutor feedback. You can edit and save freely: the demo uses a separate temporary database and never opens your personal workspace. Stop with Ctrl+C; restart for fresh sample data. This is a local demo, not a public website.
+Explore 150 questions, sample practice history and example tutor feedback. Edit freely: the demo uses its own temporary database and never opens your workspace. Stop with Ctrl+C; restart for fresh sample data.
 
 ## Screenshots
 
@@ -78,9 +78,9 @@ Data is stored outside the repository:
 - **Linux:** `~/.local/share/bloomcode/` (or under `XDG_DATA_HOME`)
 - **Windows:** `%LOCALAPPDATA%\BloomCode\`
 
-Existing workspaces from before the BloomCode rename (`LeetCodeTutor`, `leetcode-tutor` or macOS `LeetcodeTutor-dev`) keep their location. Copy [.env.example](.env.example) to `.env` to choose a different data directory or port. The app and integrations must use matching settings.
+Workspaces from before the BloomCode rename (`LeetCodeTutor`, `leetcode-tutor` or macOS `LeetcodeTutor-dev`) keep their location. To use a different data directory or port for the scripts and MCP adapter, copy [.env.example](.env.example) to `.env`; the app and integrations must match.
 
-The app backs up once a day at startup; run `npm run backup` while it is running for an extra copy. Keep credentials, exports and backups private. See [Operations](docs/operations.md) before updating or restoring.
+The app backs up once a day at startup; run `npm run backup` while it is running for an extra copy. See [Operations](docs/operations.md) for restoring.
 
 ## Documentation
 

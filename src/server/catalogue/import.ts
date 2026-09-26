@@ -115,7 +115,7 @@ export function applyImport(db: Db, b: ImportPayload, clock: () => Date): Import
     warnings: string[] = [],
     unresolved: ImportRecord[] = b.records.filter((r) => r.status === 'unresolved');
   const fingerprint = createHash('sha256')
-      // `planned` was dropped with the Sheet import; hashing it empty keeps batches
+      // `planned` was dropped with a retired progress importer; hashing it empty keeps batches
       // applied before then (such as the public lists) replaying as no-ops.
       .update(canonical({ ...b, planned: [], dryRun: false }))
       .digest('hex'),

@@ -1,16 +1,16 @@
 # Project conventions
 
-This is Pritan's personal LeetCode study app, not a multi-user enterprise service.
+BloomCode is a single-user, local-first study app. Keep changes small and tests proportional.
 
-## Verification scope
+## Verification
 
-Follow `docs/testing.md`. The user explicitly wants only critical function tests and faster iteration.
+Follow [docs/testing.md](docs/testing.md): test critical functions only and iterate quickly.
 
-- Protect saved work, correct scores/schedules, import/restore integrity, auth and MCP functionality.
-- Run tests relevant to the changed function. The full critical suite is appropriate for cross-cutting logic changes, not every CSS or copy edit.
-- Keep one browser practice/save/reload flow, invoked when that workflow changes.
-- Do not add per-screen/theme/viewport matrices, cosmetic token assertions, duplicate test layers or automatic multi-agent review cycles for routine changes.
-- Visually inspect the affected screen for design edits; typecheck when TypeScript changes.
-- Do not access the live pilot for QA. Reads can record pattern exposure. Own a disposable database and server rather than reusing a live URL.
+- Protect saved work, correct scores and schedules, import/backup integrity, authentication and MCP tools.
+- Run the tests for the function you changed. Run the full critical suite for cross-cutting logic, not for CSS or copy edits.
+- Keep one browser practice/save/reload flow and run it when that workflow changes.
+- Do not add per-screen, theme or viewport matrices, cosmetic assertions, duplicate test layers or automatic multi-agent review cycles.
+- Inspect the affected screen after design edits; typecheck after TypeScript changes.
+- Never use your real workspace for QA: reading a question can record pattern exposure. Start your own server on a disposable database.
 
-Keep changes small. Do not change study data, scoring rules or Hermes/Sheet cutover configuration as a side effect of UI work.
+Do not change study data, scoring rules or MCP client configuration as a side effect of UI work.

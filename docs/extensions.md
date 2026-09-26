@@ -1,6 +1,6 @@
 # Extending BloomCode
 
-The initial extension surface is data and local APIs. There is no runtime plugin loader or execution of code supplied by a question pack. The app currently supports original LeetCode problem URLs; adding other exercise providers requires a separate identity/schema change.
+BloomCode extends through data and local APIs. There is no plugin loader, and question packs never run code. Only LeetCode problem URLs are supported; other exercise providers would need a schema change.
 
 ## Question packs, version 1
 
@@ -8,9 +8,9 @@ The app bundles NeetCode 150 and Blind 75 from NeetCode's MIT-licensed repositor
 
 See [the runnable example](../examples/question-pack.json). The top-level fields are `version: 1`, `name`, and `questions`. Each question has a title, an HTTPS LeetCode problem URL, optional difficulty (`Easy`, `Medium`, `Hard` or null), and optional tag names. Unknown fields, unsupported versions, duplicate slugs and the bundled list names (Blind 75, NeetCode 150) are rejected. Maximum: 1,000 questions per file.
 
-Run `npm run import:pack -- --input <file> --dry-run` first, then use `--apply` with the app running. Dry-run checks format and identities; it does not preview how data merges with an existing workspace. Import reads back saved source records. Identical normalized content has the same import ID. Changed packs are additive: they can add questions and tags but do not delete old memberships or overwrite saved work. Rename a list if it represents a different collection. Existing titles and non-null difficulties are retained by the core importer.
+Run `npm run import:pack -- --input <file> --dry-run` first to check format and identities, then use `--apply` with the app running. Import reads back saved source records. Identical normalized content has the same import ID. Changed packs are additive: they can add questions and tags but do not delete old memberships or overwrite saved work. Rename a list if it represents a different collection. Existing titles and non-null difficulties are retained by the core importer.
 
-Version 1 is an additive metadata format. Do not add attempts, scores, executable scripts or solved flags to it. A new incompatible format must use a new version, with a reader/migration documented before release. The source timestamp for a local pack is a fixed epoch marker, not a claimed web retrieval date.
+Version 1 holds metadata only: no attempts, scores, scripts or solved flags. An incompatible format needs a new version number. A local pack's source timestamp is a fixed epoch marker.
 
 ## Progress import adapters
 
@@ -20,9 +20,9 @@ Use the authenticated `/api/import` endpoint and `applyAndVerify` helper rather 
 
 ## Tutor adapters
 
-Prefer the built MCP adapter; its `tools/list` response is the executable tool contract. The six tools are `get_today`, `search_questions`, `get_attempt_context`, `finish_attempt`, `save_review`, and `set_review_date`. See [Tutor integration](tutor-integration.md).
+Prefer the built MCP adapter; its `tools/list` response is the tool contract. See [Operations](operations.md#mcp-adapter) for the tool list and [Tutor integration](tutor-integration.md) for setup.
 
-For custom local HTTP integrations, use `LocalApi` from `src/integrations/local-api.ts`. Respect optimistic versions, idempotency keys, disclosure restrictions and read-back verification. A 409 means re-read and reconcile, not blindly overwrite. Never create a new idempotency key after an uncertain write. The current HTTP API and TypeScript interfaces are pre-1.0; pin your integration to a tested app release/commit. Question-pack versioning does not imply the entire HTTP API is frozen.
+For custom local HTTP integrations, use `LocalApi` from `src/integrations/local-api.ts`. Respect optimistic versions, idempotency keys, disclosure restrictions and read-back verification. A 409 means re-read and reconcile, not blindly overwrite. Never create a new idempotency key after an uncertain write. The HTTP API and TypeScript interfaces are pre-1.0, so pin your integration to a tested release or commit.
 
 ## Boundaries
 

@@ -252,7 +252,7 @@ it('atomically finishes answers with durable idempotency, unknown time and manua
 });
 
 const imported = (): ImportPayload => ({
-  importId: 'sheet-1',
+  importId: 'legacy-1',
   dryRun: false,
   source: { retrievedAt: '2026-09-16T00:00:00Z' },
   problems: [

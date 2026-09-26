@@ -12,7 +12,7 @@ import { readTables } from '../tables.js';
 
 const exec = promisify(execFile);
 // End-to-end verification of the unchanged CLI and canonical API, using only an
-// isolated throwaway database. This never reads or writes the live pilot.
+// isolated throwaway database.
 test('real list CLI exposes both verified filters and retries without creating study history', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'lc-verified-lists-'));
   const app = await createApp({ dbPath: join(dir, 'leetcode.sqlite') });

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
-import sheetListsImport from './fixtures/sheet-lists-import.json';
+import legacyListsImport from './fixtures/legacy-lists-import.json';
 import { mapVerifiedLists, PINNED_REVISION } from '../../src/integrations/lists.js';
 import type { ImportPayload, ProblemList, ProblemPage } from '../../src/shared/contracts.js';
 
@@ -35,8 +35,8 @@ test('projects verified slug memberships without rewriting stored history', asyn
       sourceUrl: 'https://neetcode.io/main.f39af0c52a4e9fb5.js',
       sourceVersion: 'sha256:426da304cbc42c91a25986ed680c06fd632fc25da741ac2881fd928ac9a051a8',
     });
-    // Captured from the retired Sheet mapper: a list, one attempt and raw records.
-    const payload = structuredClone(sheetListsImport) as ImportPayload;
+    // Captured from a retired progress importer: a list, one attempt and raw records.
+    const payload = structuredClone(legacyListsImport) as ImportPayload;
     payload.problems.push(
       {
         key: 'concatenation-of-array',

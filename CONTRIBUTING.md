@@ -1,19 +1,33 @@
 # Contributing
 
-Use Node.js 22.23 or later and `npm ci`. Contributions are accepted under the project's [MIT License](LICENSE).
+Use Node.js 22.23 or later and `npm ci`. Contributions are accepted under the [MIT License](LICENSE).
 
-For development, run `npm run dev` and `npm run dev:web` in separate terminals. Set `DATA_DIR` to an absolute disposable directory in both your app and integration environment. Development commands do not load `.env` automatically. Never use a real study database for QA: even reading question details can record exposure.
+## Development
 
-Follow [docs/testing.md](docs/testing.md). Run typechecking for TypeScript changes and tests relevant to the changed function. Persistence/import/authentication changes warrant the critical suite. Build before browser verification. GitHub runs typechecking, lint, critical tests and the production startup smoke check on Linux; it does not create viewport/theme matrices.
+`npm run electron:dev` runs the full desktop app with live UI updates; see [Desktop](docs/desktop.md#develop-with-live-ui-updates).
+
+For a browser-only loop, run the backend and Vite in two terminals with a disposable workspace:
+
+```sh
+DATA_DIR=$(mktemp -d) PORT=4346 npm run dev   # backend, restarts on change
+TUTOR_DEV_API_PORT=4346 npm run dev:web        # UI at http://127.0.0.1:5173
+```
+
+Vite proxies `/api` to the backend port. These commands do not load `.env`. Never point QA at your real workspace: even reading question details can record exposure.
+
+## Checks
+
+Follow [docs/testing.md](docs/testing.md). Typecheck TypeScript changes and run the tests for the function you changed. GitHub runs typechecking, lint, the format check, the critical tests and a startup smoke check on Linux.
 
 ```sh
 npm run typecheck
 npm run lint
+npm run format:check
 npm test
 npm run test:smoke
 npm run test:e2e
 ```
 
-The browser suite owns a temporary database and refuses to reuse another server. It includes the onboarding-to-practice/save/reload flow. Install Chromium with `npx playwright install chromium` if needed.
+The browser suite uses its own temporary database and server. Install Chromium with `npx playwright install chromium` if needed.
 
-Keep changes small, document compatibility changes, and preserve saved work, explicit review dates and source provenance. Extension examples belong in `examples/`; private tokens, progress exports, logs and database files do not belong in commits. See [Extension guide](docs/extensions.md).
+Keep changes small and preserve saved work, explicit review dates and source provenance. Extension examples belong in `examples/`; tokens, progress exports, logs and database files do not belong in commits. See the [extension guide](docs/extensions.md).

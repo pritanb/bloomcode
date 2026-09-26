@@ -119,7 +119,7 @@ it('locks an uncertain finish and retries the identical idempotent payload after
   expect(finishes[0]).toEqual(finishes[1]);
 });
 
-it('asks for a tutor report on submit and shows it once Hermes has written it', async () => {
+it('asks for a tutor report on submit and shows it once the tutor has written it', async () => {
   let a = { ...initial, code: 'return 42' };
   let polls = 0;
   let finishBody: Record<string, unknown> = {};

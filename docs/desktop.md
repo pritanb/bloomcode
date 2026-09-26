@@ -1,10 +1,10 @@
 # Desktop app (macOS)
 
-BloomCode uses Electron to package its study interface, local server and runtime in one application. Once installed, it does not need Node.js or the project folder. The initial target is Apple silicon Macs; Intel, Windows and Linux packages have not been verified.
+BloomCode uses Electron to package its interface, local server and runtime in one application. Once installed, it needs neither Node.js nor the project folder. Builds target Apple silicon Macs; Intel, Windows and Linux are not supported yet.
 
 ## Install and open
 
-1. Download the Apple silicon ZIP from the [experimental preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0). Unzip the desktop build archive and move **LeetCode Tutor.app** to Applications.
+1. Download the Apple silicon ZIP from the [v0.1.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0), unzip it and move the app to Applications. v0.1.0 still ships as **LeetCode Tutor.app**; the next release ships as **BloomCode.app**.
 2. Open it, then drag its icon to the Dock for one-click access.
 3. For a new workspace, choose your timezone, daily target and starter question list.
 
@@ -12,7 +12,7 @@ Builds are not yet Developer ID signed or notarized. macOS may block a downloade
 
 ## Build from source
 
-Building requires macOS, Node.js 22.23 or later, Apple's Command Line Tools, and internet access to download dependencies. These are build requirements only.
+Building requires macOS, Node.js 22.23 or later, Apple's Command Line Tools and internet access.
 
 ```sh
 npm ci
@@ -21,36 +21,32 @@ npm run electron:make -- --arch=arm64
 
 The installable ZIP is under `dist/electron/make/zip/darwin/arm64/`. To create only the application bundle, use `npm run electron:package -- --arch=arm64`; its output is `dist/electron/BloomCode-darwin-arm64/BloomCode.app`.
 
-The desktop build stages its own runtime dependencies, including Electron's SQLite binary. Your workspace, API token and `.env` file are not included in the package.
+The build stages its own runtime dependencies, including Electron's SQLite binary. Your workspace, API token and `.env` are never packaged.
 
 ### Develop with live UI updates
 
-Run `npm run electron:dev` from the project directory. This builds the backend once, starts Vite on port 5173, and opens the Electron window. React and CSS edits appear automatically through hot module replacement; keep the command running while editing. Restart the command after backend or Electron changes. Packaging is only needed to distribute an updated app.
+`npm run electron:dev` builds the backend, starts Vite on port 5173 and opens the Electron window. React and CSS edits update live; restart the command after backend or Electron changes.
 
-Quit the regular app first: development uses the same study workspace and backend port by default, so the existing MCP configuration continues to work. For QA, always use disposable data instead:
+By default it uses your normal workspace and port, so quit the installed app first. For QA, use disposable data:
 
 ```sh
 DESKTOP_TEST_DATA_DIR=$(mktemp -d /tmp/leetcode-dev-XXXXXX) DESKTOP_TEST_PORT=4346 npm run electron:dev
 ```
 
-The test override isolates both study records and the Electron profile. Close the development window to stop its backend and Vite server. Packaged apps ignore the development renderer setting.
+This isolates both the study records and the Electron profile. Close the window to stop the backend and Vite.
 
 ## Build on GitHub
 
-After the workflow is on the repository's default branch, open **Actions → Build desktop app → Run workflow**. Download the `bloomcode-macos-arm64` artifact from the completed run, extract it, then unzip the app archive inside.
-
-This manual workflow builds on an Apple silicon macOS runner and keeps the archive for 14 days. It does not publish a GitHub release or sign/notarize the app. A signed public release requires a separately configured Apple Developer identity and notarization credentials.
+Open **Actions → Build desktop app → Run workflow**, then download the `bloomcode-macos-arm64` artifact from the finished run and unzip the app archive inside. The workflow runs on an Apple silicon runner, keeps the archive for 14 days, and does not sign, notarize or publish a release.
 
 ## Workspace and updates
 
-Study records stay outside the application in `~/Library/Application Support/BloomCode/`. Existing `LeetCodeTutor` and `LeetcodeTutor-dev` workspaces keep their original location. Replacing the application does not replace this data. Export your records from Settings before updating; see [Operations](operations.md) for backup and restore details.
+Study records live outside the app in `~/Library/Application Support/BloomCode/`; existing `LeetCodeTutor` and `LeetcodeTutor-dev` workspaces keep their location. Replacing the app leaves this data alone. The app backs up daily; run `npm run backup` for an extra copy before updating. See [Operations](operations.md) for restore steps.
 
-The packaged app does not read a project's `.env` file. It uses the standard workspace and port `4317`, unless `DATA_DIR` or `PORT` are supplied in its launch environment. If your browser setup uses a custom workspace, use matching settings before switching to desktop.
+The packaged app does not read `.env`. It uses the standard workspace and port `4317` unless `DATA_DIR` or `PORT` are set in its launch environment.
 
 ## Startup and optional tutor
 
-The desktop app owns its local server. Closing the window or choosing Quit stops that server; opening the app twice brings the existing window forward. Keep the app open while using browser or MCP connections.
+The app owns its local server. Quitting stops it; opening the app twice brings the existing window forward. Keep the app open while an MCP client is connected. If another server already holds the workspace or port, the app reports it rather than stopping that process.
 
-If an older browser server is still running, stop it before opening the desktop app. The app reports an occupied workspace or port instead of terminating another process. See [Operations](operations.md) for stopping an existing server.
-
-The AI tutor can run through the signed-in Codex CLI with no other app open: choose **Settings → AI tutor → Codex**. Existing MCP clients can still connect to the desktop server using the same workspace and port. The desktop package does not configure a tutor client or provide a standalone MCP installer. The [optional tutor setup](tutor-integration.md) for MCP clients still uses Node.js and the adapter built from this repository. Normal practice and saving need neither.
+For tutor reports, choose **Settings → AI tutor → Codex**. MCP clients connect to the same workspace and port through the adapter built from this repository, which needs Node.js; see [tutor setup](tutor-integration.md).

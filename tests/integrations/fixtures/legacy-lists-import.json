@@ -1,5 +1,5 @@
 {
-  "importId": "sheet-v2-fe55adb6bc0ec636b57d791620e28be131a0a741213524772ec250ded50ceae0",
+  "importId": "legacy-v2-fe55adb6bc0ec636b57d791620e28be131a0a741213524772ec250ded50ceae0",
   "dryRun": true,
   "source": {
     "retrievedAt": "2026-09-16T00:00:00Z"
@@ -46,7 +46,7 @@
         "gridData": {}
       },
       "status": "metadata",
-      "reason": "Workbook metadata; non-LeetCode tabs excluded."
+      "reason": "Source metadata; non-LeetCode tabs excluded."
     },
     {
       "sourceKey": "Neetcode%20List:1",
