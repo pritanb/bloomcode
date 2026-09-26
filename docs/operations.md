@@ -82,4 +82,4 @@ Every tag has a notebook page; `kind` does not restrict notebook access or assig
 
 ## Schema
 
-`src/server/db/schema.ts` is the whole schema. `openDb` creates it in a new database and leaves an existing one alone; there are no migrations. Earlier `backups/before-migration-*.sqlite` copies hold the old JSON-column format and need an older commit to open.
+`src/server/db/schema.ts` is the whole schema. `openDb` creates it in a new database and leaves an existing one alone; there are no migrations.

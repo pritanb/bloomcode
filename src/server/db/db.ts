@@ -31,7 +31,7 @@ export function openDb(path: string): Db {
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 5000');
   db.pragma('foreign_keys = ON');
-  // user_version marks a database whose tables exist; 6 is where the old migrations ended.
+  // A non-zero user_version marks a database whose tables already exist.
   if (!db.pragma('user_version', { simple: true }))
     db.transaction(() => {
       db.exec(SCHEMA);
