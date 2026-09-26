@@ -4,12 +4,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const apps: Awaited<ReturnType<typeof createApp>>[] = [];
-async function fixture() {
-  const app = await createApp({
-    dbPath: ':memory:',
-    token: 'test',
-    clock: () => new Date('2026-09-16T01:00:00Z'),
-  });
+async function fixture(dbPath = ':memory:', clock = () => new Date('2026-09-16T01:00:00Z')) {
+  const app = await createApp({ dbPath, token: 'test', clock });
   apps.push(app);
   const request = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) =>
     app.inject({
@@ -82,12 +78,12 @@ async function fixture() {
     completed: 'exclude',
     refresherSlots: 1,
   };
-  return { request, config };
+  return { app, request, config };
 }
 afterEach(async () => {
   for (const app of apps.splice(0)) await app.close();
 });
-it('persists explicit recommendation settings and restores them while rejecting invalid values', async () => {
+it('persists explicit recommendation settings while rejecting invalid values', async () => {
   const app = await createApp({ dbPath: ':memory:', token: 'test' });
   apps.push(app);
   const headers = { authorization: 'Bearer test' };
@@ -125,22 +121,6 @@ it('persists explicit recommendation settings and restores them while rejecting 
         })
       ).statusCode,
     ).toBe(400);
-  const snapshot = (await app.inject({ url: '/api/export', headers })).json();
-  const other = await createApp({ dbPath: ':memory:', token: 'test' });
-  apps.push(other);
-  expect(
-    (
-      await other.inject({
-        method: 'POST',
-        url: '/api/restore',
-        headers,
-        payload: { snapshot, confirmEmpty: true },
-      })
-    ).statusCode,
-  ).toBe(200);
-  expect((await other.inject({ url: '/api/settings', headers })).json().recommendations).toEqual(
-    recommendations,
-  );
 });
 it('uses a hard list boundary, counts completions and progresses in verified topic order', async () => {
   const { request, config } = await fixture();
@@ -248,18 +228,12 @@ it('rebuilds only unstarted items with a version guard and preserves all saved w
     expect(after[table]).toEqual(before[table]);
 });
 it('resumes after restart and across days using completion evidence, not yesterday’s queue or later retries', async () => {
-  const { request, config: initial } = await fixture();
-  const config = { ...initial, startTopic: 'Arrays & Hashing' };
-  await request('POST', '/api/problems', {
-    title: 'Valid Anagram',
-    url: 'https://leetcode.com/problems/valid-anagram/',
-    listIds: [config.listId],
-  });
-  await request('PATCH', '/api/settings', { questionsPerDay: 1, recommendations: config });
-  const snapshot = (await request('GET', '/api/export')).json();
   const dir = mkdtempSync(join(tmpdir(), 'lc-recommendations-'));
   let now = new Date('2026-09-16T01:00:00Z');
-  let app = await createApp({ dbPath: join(dir, 'test.sqlite'), token: 'test', clock: () => now });
+  const fixed = await fixture(join(dir, 'test.sqlite'), () => now);
+  let app = fixed.app;
+  apps.splice(apps.indexOf(app), 1); // this test closes and reopens it itself
+  const config = { ...fixed.config, startTopic: 'Arrays & Hashing' };
   const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) =>
     app.inject({
       method,
@@ -268,9 +242,12 @@ it('resumes after restart and across days using completion evidence, not yesterd
       ...(payload ? { payload } : {}),
     });
   try {
-    expect((await call('POST', '/api/restore', { snapshot, confirmEmpty: true })).statusCode).toBe(
-      200,
-    );
+    await call('POST', '/api/problems', {
+      title: 'Valid Anagram',
+      url: 'https://leetcode.com/problems/valid-anagram/',
+      listIds: [config.listId],
+    });
+    await call('PATCH', '/api/settings', { questionsPerDay: 1, recommendations: config });
     const first = (await call('POST', '/api/daily-plan/ensure', {})).json();
     now = new Date('2026-09-17T01:00:00Z');
     const second = (await call('POST', '/api/daily-plan/ensure', {})).json();
@@ -401,23 +378,6 @@ it('records known-topic recommendations as targeted evidence even after settings
   ).json();
   expect(started.evidence).toBe('near_transfer');
   expect((await request('GET', `/api/attempts/${started.id}/context`)).statusCode).toBe(200);
-  const snapshot = (await request('GET', '/api/export')).json();
-  const restored = await createApp({ dbPath: ':memory:', token: 'test' });
-  apps.push(restored);
-  const headers = { authorization: 'Bearer test' };
-  expect(
-    (
-      await restored.inject({
-        method: 'POST',
-        url: '/api/restore',
-        headers,
-        payload: { snapshot, confirmEmpty: true },
-      })
-    ).statusCode,
-  ).toBe(200);
-  expect((await restored.inject({ url: '/api/export', headers })).json().tables).toEqual(
-    snapshot.tables,
-  );
 });
 it('does not spend refresher allowance on a newly completed curriculum item during rebuild', async () => {
   const { request, config } = await fixture();

@@ -49,26 +49,18 @@ Tools: `get_today`, `search_questions`, `get_attempt_context`, `finish_attempt`,
 
 For finish/review writes, generate a unique idempotency key **once per intended operation**, retain it, and resend **identical** arguments/key after uncertain network delivery. Attempt and topic versions are mandatory. A 409 is a conflict, not permission to overwrite: fetch current state and reconcile. The adapter reads back committed attempts/context and returns both `committed` and `current`; a later current version may legitimately be newer than the idempotent committed response. `COMMITTED_READBACK_*` errors mean the write may already exist—do not create a new key. Tool failures return `isError: true` and structured error code/message; tokens are not logged.
 
-## Portable export, SQLite backup and empty-only restore
+## SQLite backup and recovery
 
 ```sh
-# Private, exclusive-create JSON export of all durable user tables
-npm run export -- --output /absolute/existing-directory/tutor-export.json
-
 # Consistent SQLite backup, restricted by the backend to DATA_DIR/backups
 npm run backup
-
-# Separate fresh restore workspace (POSIX shell; use PowerShell $env:NAME on Windows)
-DATA_DIR=/absolute/new-restore-directory PORT=4318 NO_OPEN=1 npm run local
-DATA_DIR=/absolute/new-restore-directory PORT=4318 npm run restore -- \
-  --input /absolute/existing-directory/tutor-export.json --confirm-empty
 ```
 
-`backup.ts` calls `/api/backup`, checks that the returned real path is directly inside `DATA_DIR/backups`, opens it read-only and runs SQLite `integrity_check` and `foreign_key_check`. It does not copy an active database file.
+`backup.ts` calls `/api/backup`, checks that the returned real path is directly inside `DATA_DIR/backups`, opens it read-only and runs SQLite `integrity_check` and `foreign_key_check`. It does not copy an active database file. Backups contain private notes and answers; keep them outside Git and store an encrypted/off-device copy if desired.
 
-`export.ts` calls `/api/export`; `restore.ts` sends `{snapshot, confirmEmpty:true}` to `/api/restore`. The backend enforces schema/table validation, transactionality and empty-only restoration. The restore CLI then exports the target again and compares **every table and row**, ignoring only the top-level export timestamp and row/key ordering. A mismatch is an error, never a successful restore. Source exports are created with mode 0600 and `wx` (existing files and symlinks are refused). They contain private notes, answers and raw Sheet provenance; keep them outside Git and store an encrypted/off-device copy if desired.
+To recover, quit the app, keep the original data directory, and copy a verified backup into a **new** data directory as `leetcode.sqlite`. Start the app with that `DATA_DIR`, confirm representative answers, score decisions and dates, then switch to it. Never replace a live database or discard its WAL.
 
-The portable restore CLI accepts JSON, not `.sqlite`. For binary disaster recovery, retain the original directory, stop the service, and copy a verified SQLite backup to a **new** data directory as `leetcode.sqlite` before starting that isolated instance. Never replace a live database or discard its WAL. A successful integrity check is not a full recovery drill: reopen the restored app and confirm representative answers, score decisions, relationships and dates before cutover.
+There is no JSON export/restore. `GET /api/export` remains as a read-only table dump that import tools use to verify what they applied.
 
 ## Verification
 
@@ -84,4 +76,4 @@ Integration tests use temporary directories and loopback fake HTTP services, an 
 
 The notebook is attached to every tag. Questions carry separate manually entered `leetcodeTopics` labels; these do not create or modify proficiency scores. Pattern membership and per-question difficulty continue to use `problem_tags`. Notebook fields live on the tag itself.
 
-At startup and on portable restore, former standalone notebook entries merge into tags by case-insensitive, trimmed name. Missing tags are created, distinct notes are retained, and former example links become tag assignments without overwriting existing difficulty values. The old `patterns` table remains empty for backup compatibility. This upgrade runs transactionally and is idempotent. Every tag, including imported categories and formerly classified topic tags, has a notebook page. Legacy kind fields remain compatible with backups but do not restrict notebook access or assignment. No reclassification is needed.
+At startup, former standalone notebook entries merge into tags by case-insensitive, trimmed name. Missing tags are created, distinct notes are retained, and former example links become tag assignments without overwriting existing difficulty values. The old `patterns` table remains empty for backup compatibility. This upgrade runs transactionally and is idempotent. Every tag, including imported categories and formerly classified topic tags, has a notebook page. Legacy kind fields remain compatible with backups but do not restrict notebook access or assignment. No reclassification is needed.

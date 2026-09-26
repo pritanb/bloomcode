@@ -28,22 +28,12 @@ import type { Tag } from '../../shared/contracts.js';
 import { decisionView } from './topic-model.js';
 import type { ItemRecord } from '../plans/plan-model.js';
 
-export const reflectionFields = {
+const reflectionFields = {
   mistakeLabels: z
     .array(z.enum(MISTAKE_LABELS))
     .max(MISTAKE_LABELS.length)
     .refine((v) => new Set(v).size === v.length, 'Duplicate mistake label'),
   takeaway: z.string().max(2000),
-};
-export const legacyPatternFields = {
-  title: z.string().trim().min(1).max(300),
-  recognitionCues: z.string().max(100000),
-  pitfalls: z.string().max(100000),
-  notes: z.string().max(100000),
-  exampleProblemIds: z
-    .array(z.string().min(1))
-    .max(100)
-    .refine((v) => new Set(v).size === v.length, 'Duplicate example'),
 };
 export function activityDays(s: Store, end: string): ActivityDay[] {
   const counts = new Map<string, number>();

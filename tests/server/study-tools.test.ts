@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createApp } from '../../src/server/core/app.js';
-import { sameTables } from '../../src/integrations/snapshot.js';
+import { sameTables } from './snapshot-compare.js';
 import type { Attempt, Snapshot } from '../../src/shared/contracts.js';
+import { openDb, type Table } from '../../src/server/db/db.js';
+import { Store } from '../../src/server/db/store.js';
 let app: Awaited<ReturnType<typeof createApp>>;
 const clock = () => new Date('2026-09-16T01:00:00Z');
 const request = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object, key?: string) =>
@@ -18,9 +20,28 @@ const request = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object
 beforeEach(async () => {
   app = await createApp({ dbPath: ':memory:', token: 'test', clock });
 });
+const dirs: string[] = [];
 afterEach(async () => {
   await app.close();
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
+/** Restart the app on a database holding `tables` as an older version left them,
+ * so its startup migrations run exactly as they would after an upgrade. */
+async function reopenWith(tables: Snapshot['tables']) {
+  await app.close();
+  const dir = mkdtempSync(join(tmpdir(), 'lc-study-upgrade-'));
+  dirs.push(dir);
+  const dbPath = join(dir, 'test.sqlite');
+  const db = openDb(dbPath);
+  const store = new Store(db.sqlite);
+  store.transaction(() => {
+    store.sql.pragma('defer_foreign_keys = ON');
+    for (const [table, rows] of Object.entries(tables))
+      for (const row of rows) store.put(table as Table, row as { id: string });
+  });
+  db.sqlite.close();
+  app = await createApp({ dbPath, token: 'test', clock });
+}
 async function problem(slug = 'example') {
   return (
     await request('POST', '/api/problems', {
@@ -166,12 +187,6 @@ it('keeps notebook notes on pattern tags, derives assigned questions, and keeps 
   expect(full.schemaVersion).toBe(4);
   for (const table of ['topics', 'score_decisions', 'review_targets', 'attempts'])
     expect(full.tables[table]).toEqual(before.tables[table]);
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  expect(
-    (await request('POST', '/api/restore', { confirmEmpty: true, snapshot: full })).statusCode,
-  ).toBe(200);
-  expect(sameTables(full, (await request('GET', '/api/export')).json())).toBe(true);
   await request('PATCH', `/api/problems/${p.id}`, { tags: [] });
   expect((await request('GET', `/api/patterns/${tag.id}`)).json().examples).toEqual([]);
   expect((await request('GET', `/api/problems/${p.id}`)).json().problem.leetcodeTopics).toEqual([
@@ -185,7 +200,7 @@ it('keeps notebook notes on pattern tags, derives assigned questions, and keeps 
   await finish(mixed);
 });
 
-it('consolidates v2 notebook records losslessly and restores v1 snapshots', async () => {
+it('consolidates legacy notebook records losslessly on startup', async () => {
   const p = await problem();
   const other = await problem('other');
   const tag = (
@@ -197,8 +212,6 @@ it('consolidates v2 notebook records losslessly and restores v1 snapshots', asyn
   await request('PATCH', `/api/problems/${p.id}`, { tags: [{ tagId: tag.id, difficulty: 7 }] });
   const completed = await finish(await start(p.id));
   const old = (await request('GET', '/api/export')).json<Snapshot>();
-  old.schemaVersion = 2;
-  delete old.tables.learning_insights;
   old.tables.patterns = [
     {
       id: 'old',
@@ -224,17 +237,7 @@ it('consolidates v2 notebook records losslessly and restores v1 snapshots', asyn
       updatedAt: clock().toISOString(),
     },
   ];
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  const invalid = structuredClone(old);
-  invalid.tables.patterns![0]!.exampleProblemIds = ['missing'];
-  expect(
-    (await request('POST', '/api/restore', { confirmEmpty: true, snapshot: invalid })).statusCode,
-  ).toBe(400);
-  expect((await request('GET', '/api/export')).json().tables.problems).toEqual([]);
-  expect(
-    (await request('POST', '/api/restore', { confirmEmpty: true, snapshot: old })).statusCode,
-  ).toBe(200);
+  await reopenWith(old.tables);
   const migrated = (await request('GET', '/api/export')).json<Snapshot>();
   expect(sameTables(old, migrated)).toBe(true);
   expect(migrated.tables.patterns).toEqual([]);
@@ -250,15 +253,6 @@ it('consolidates v2 notebook records losslessly and restores v1 snapshots', asyn
   expect((await request('GET', `/api/attempts/${completed.id}`)).json()).toEqual(completed);
   for (const table of ['problems', 'topics', 'score_decisions', 'review_targets', 'audit_events'])
     expect(migrated.tables[table]).toEqual(old.tables[table]);
-  const legacy = structuredClone(old);
-  legacy.schemaVersion = 1;
-  delete legacy.tables.patterns;
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  expect(
-    (await request('POST', '/api/restore', { confirmEmpty: true, snapshot: legacy })).statusCode,
-  ).toBe(200);
-  expect(sameTables(legacy, (await request('GET', '/api/export')).json())).toBe(true);
 });
 it('attributes recap and activity by study date and only counts assigned scheduled reviews', async () => {
   const p = await problem();
@@ -296,11 +290,7 @@ it('attributes recap and activity by study date and only counts assigned schedul
     planItemId: 'item',
     help: 'small',
   });
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  expect((await request('POST', '/api/restore', { confirmEmpty: true, snapshot })).statusCode).toBe(
-    200,
-  );
+  await reopenWith(snapshot.tables);
   const recap = (await request('GET', '/api/recap?week=2026-09-16')).json();
   expect(recap).toMatchObject({
     weekStart: '2026-09-14',
@@ -371,7 +361,7 @@ it('upgrades an on-disk v1 database without changing saved work', async () => {
   }
 });
 
-it('gives every tag a notebook regardless of former classification and preserves backups', async () => {
+it('gives every tag a notebook regardless of former classification', async () => {
   const p = await problem();
   const broad = (await request('POST', '/api/tags', { name: 'Binary Search' })).json();
   const technique = (
@@ -403,11 +393,7 @@ it('gives every tag a notebook regardless of former classification and preserves
       movements: [],
     },
   });
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  expect(
-    (await request('POST', '/api/restore', { confirmEmpty: true, snapshot: legacy })).statusCode,
-  ).toBe(200);
+  await reopenWith(legacy.tables);
   expect((await request('GET', '/api/patterns')).json()).toMatchObject([
     { id: broad.id },
     { id: technique.id },
@@ -443,11 +429,4 @@ it('gives every tag a notebook regardless of former classification and preserves
     notes: 'Saved before correction',
     examples: [{ id: p.id, patternDifficulty: 4 }],
   });
-  const corrected = (await request('GET', '/api/export')).json<Snapshot>();
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  expect(
-    (await request('POST', '/api/restore', { confirmEmpty: true, snapshot: corrected })).statusCode,
-  ).toBe(200);
-  expect((await request('GET', '/api/patterns')).json()).toHaveLength(2);
 });

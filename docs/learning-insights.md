@@ -63,9 +63,9 @@ responses. Source fingerprints, model identity when returned, analysis/prompt
 version, timings, retrieved IDs and errors support diagnosis. Raw model traces
 are not written to log files.
 
-Portable snapshot format 4 adds learning records. Formats 1–3 still restore. Running
-claims are reset on restore; embeddings are rebuilt, and model files are not included
-in portable exports. SQLite backups include cache data. Existing study records,
+Learning records live in the database, so SQLite backups include them. Running claims
+are reset when the app starts; embeddings are rebuilt, and model files are not part of
+the database. Existing study records,
 score rules and Hermes/Sheet configuration are unchanged.
 
 While a mixed assessment is active, insight content and retrieval are hidden and
@@ -115,7 +115,7 @@ For human report review, record each finding alongside its cited attempts and ju
 
 Keep accepted and rejected cases, the model/prompt version, and reviewer decisions.
 Backend tests cover fabricated citations, invalid quotes, recurrence gates, correction
-suppression, stale claims, restore, and disclosure protections. A test runs the
+suppression, stale claims, restart recovery, and disclosure protections. A test runs the
 app's Codex worker against a deterministic stand-in executable to verify orchestration
 and review priority; it verifies plumbing, not the quality of the model.
 
@@ -137,7 +137,7 @@ libraries are explicitly unpacked from ASAR for desktop loading.
 
 New reports use three presentation fields: Habit (`title`, at most 6 whitespace-separated words), Next time (`action`, at most 25 words), and Why (`explanation`, at most 35 words). The prompt requires one concrete action starting with a verb and familiar language. Evidence references and uncertainty remain available in the detail panel. Length and reference validation are enforced; plain language and usefulness still require qualitative evaluation.
 
-The worker makes at most one correction request for malformed JSON, schema violations, or rejected evidence. It includes the validation errors and shares one time budget across both model calls. Timeout, disconnect, and stale-claim failures do not trigger a correction call. Failed correction retains the previous report and exposes retry. Legacy report snapshots remain valid on restore; new submissions must satisfy the concise contract. Report-format versioning refreshes synthesis without re-extracting attempts or rebuilding embeddings.
+The worker makes at most one correction request for malformed JSON, schema violations, or rejected evidence. It includes the validation errors and shares one time budget across both model calls. Timeout, disconnect, and stale-claim failures do not trigger a correction call. Failed correction retains the previous report and exposes retry. Reports saved in the older format stay valid; new submissions must satisfy the concise contract. Report-format versioning refreshes synthesis without re-extracting attempts or rebuilding embeddings.
 
 ### Topic priorities
 

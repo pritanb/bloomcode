@@ -557,7 +557,7 @@ it('builds a stable budgeted day, resumes work across midnight and transitions a
   ).toBe('2026-09-25');
 });
 
-it('exports all durable data, restores only to an empty database and produces a consistent private SQLite backup', async () => {
+it('exports all durable data without secrets and produces a complete private SQLite backup', async () => {
   await request('POST', '/api/import', imported());
   const snapshotResponse = await request('GET', '/api/export');
   expect(snapshotResponse.statusCode).toBe(200);
@@ -566,64 +566,6 @@ it('exports all durable data, restores only to an empty database and produces a 
   expect(snapshot.tables.import_records[0].raw).toEqual({ unknown: '2:xx', formula: '=A1' });
   expect(snapshot.tables).not.toHaveProperty('idempotency');
   expect(JSON.stringify(snapshot)).not.toContain('test-token');
-  expect((await request('POST', '/api/restore', { snapshot, confirmEmpty: true })).statusCode).toBe(
-    409,
-  );
-  const second = await createApp({
-    dbPath: join(dir, 'restore.sqlite'),
-    token: 'test-token',
-    clock: () => now,
-  });
-  try {
-    const restore = await second.inject({
-      method: 'POST',
-      url: '/api/restore',
-      headers,
-      payload: { snapshot, confirmEmpty: true },
-    });
-    expect(restore.statusCode).toBe(200);
-    expect(restore.json().counts.attempts).toBe(1);
-    expect((await second.inject({ url: '/api/export', headers })).json().tables).toEqual(
-      snapshot.tables,
-    );
-  } finally {
-    await second.close();
-  }
-  const empty = await createApp({
-    dbPath: join(dir, 'invalid.sqlite'),
-    token: 'test-token',
-    clock: () => now,
-  });
-  try {
-    const bad = structuredClone(snapshot);
-    bad.tables.attempts[0].problemId = 'missing';
-    expect(
-      (
-        await empty.inject({
-          method: 'POST',
-          url: '/api/restore',
-          headers,
-          payload: { snapshot: bad, confirmEmpty: true },
-        })
-      ).statusCode,
-    ).toBe(400);
-    expect((await empty.inject({ url: '/api/problems', headers })).json().total).toBe(0);
-    expect(
-      (
-        await empty.inject({
-          method: 'POST',
-          url: '/api/restore',
-          headers,
-          payload: {
-            snapshot: { ...snapshot, tables: { ...snapshot.tables, sqlite_master: [] } },
-            confirmEmpty: true,
-          },
-        })
-      ).statusCode,
-    ).toBe(400);
-  } finally {
-    await empty.close();
-  }
   const backup = await request('POST', '/api/backup', {});
   expect(backup.statusCode).toBe(200);
   expect(backup.json().path.startsWith(join(dir, 'backups') + '/')).toBe(true);
@@ -633,7 +575,10 @@ it('exports all durable data, restores only to an empty database and produces a 
     clock: () => now,
   });
   try {
-    expect((await recovered.inject({ url: '/api/problems', headers })).json().total).toBe(1);
+    // Restoring is opening the backup file as the database: nothing may be lost.
+    expect((await recovered.inject({ url: '/api/export', headers })).json().tables).toEqual(
+      snapshot.tables,
+    );
   } finally {
     await recovered.close();
   }

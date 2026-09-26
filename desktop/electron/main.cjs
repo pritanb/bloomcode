@@ -1,7 +1,7 @@
 'use strict';
 /* eslint-disable @typescript-eslint/no-require-imports -- Electron main uses CommonJS. */
 const { app, BrowserWindow, Menu, dialog, shell, utilityProcess, ipcMain } = require('electron');
-const { join, basename } = require('node:path');
+const { join } = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 app.setName('LeetCode Tutor');
@@ -127,29 +127,8 @@ function makeWindow() {
       details.isMainFrame === true &&
       allowedLocal(origin),
   );
-  window.webContents.session.on('will-download', (event, item, contents) => {
-    const url = item.getURL();
-    if (
-      contents !== window?.webContents ||
-      !(allowedLocal(url) || (url.startsWith('blob:') && allowedLocal(url.slice(5))))
-    ) {
-      event.preventDefault();
-      return;
-    }
-    // Electron presents its native save dialog when no automatic save path is set.
-    item.setSaveDialogOptions({
-      title: 'Export study backup',
-      defaultPath: basename(item.getFilename()),
-      filters: [{ name: 'Study backup', extensions: ['json'] }],
-    });
-    item.once('done', (_event, state) => {
-      if (state === 'interrupted')
-        dialog.showErrorBox(
-          'Export interrupted',
-          'The backup could not be saved. Please try exporting again.',
-        );
-    });
-  });
+  // The app offers no downloads, so none may start.
+  window.webContents.session.on('will-download', (event) => event.preventDefault());
   window.on('closed', () => {
     window = undefined;
   });

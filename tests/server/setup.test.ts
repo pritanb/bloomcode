@@ -3,6 +3,10 @@ import { createApp } from '../../src/server/core/app.js';
 import { mapQuestionPack } from '../../src/integrations/question-pack.js';
 import { resolveDataDir } from '../../scripts/runtime.mjs';
 import { join, resolve } from 'node:path';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { openDb } from '../../src/server/db/db.js';
+import { settings } from '../../src/server/db/schema.js';
 
 it('keeps explicit and legacy workspace paths while giving new installations platform defaults', () => {
   const home = '/test-home';
@@ -29,9 +33,8 @@ it('keeps explicit and legacy workspace paths while giving new installations pla
   );
 });
 
-it('authenticates setup, imports exactly the selected starter list, and preserves setup through restore', async () => {
+it('authenticates setup and imports exactly the selected starter list', async () => {
   const app = await createApp({ dbPath: ':memory:', token: 'setup-test' });
-  const other = await createApp({ dbPath: ':memory:', token: 'setup-test' });
   const headers = { authorization: 'Bearer setup-test' };
   const payload = { timezone: 'Europe/London', questionsPerDay: 3, list: 'Blind 75' };
   try {
@@ -82,42 +85,26 @@ it('authenticates setup, imports exactly the selected starter list, and preserve
         })
       ).statusCode,
     ).toBe(409);
-    const restored = await other.inject({
-      method: 'POST',
-      url: '/api/restore',
-      headers,
-      payload: { snapshot, confirmEmpty: true },
-    });
-    expect(restored.statusCode, restored.body).toBe(200);
-    expect((await other.inject({ url: '/api/setup', headers })).json()).toEqual({
-      required: false,
-    });
-    expect((await other.inject({ url: '/api/export', headers })).json().tables).toEqual(
-      snapshot.tables,
-    );
   } finally {
     await app.close();
-    await other.close();
   }
 });
 
-it('does not offer setup for a legacy snapshot or overwrite a populated workspace', async () => {
-  const app = await createApp({ dbPath: ':memory:', token: 'setup-test' });
+it('does not offer setup to a workspace saved before onboarding existed', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'lc-setup-legacy-'));
+  const dbPath = join(dir, 'leetcode.sqlite');
   const headers = { authorization: 'Bearer setup-test' };
+  await (await createApp({ dbPath, token: 'setup-test' })).close();
+  // Settings written by an older version have no onboardingComplete flag.
+  const db = openDb(dbPath);
+  const { onboardingComplete: _removed, ...legacy } = db.orm.select().from(settings).get()!.data;
+  db.orm
+    .update(settings)
+    .set({ data: { ...legacy, timezone: 'Australia/Sydney' } as typeof legacy })
+    .run();
+  db.sqlite.close();
+  const app = await createApp({ dbPath, token: 'setup-test' });
   try {
-    const snapshot = (await app.inject({ url: '/api/export', headers })).json();
-    delete snapshot.tables.settings[0].onboardingComplete;
-    snapshot.tables.settings[0].timezone = 'Australia/Sydney';
-    expect(
-      (
-        await app.inject({
-          method: 'POST',
-          url: '/api/restore',
-          headers,
-          payload: { snapshot, confirmEmpty: true },
-        })
-      ).statusCode,
-    ).toBe(200);
     expect((await app.inject({ url: '/api/setup', headers })).json()).toEqual({ required: false });
     expect(
       (
@@ -134,6 +121,7 @@ it('does not offer setup for a legacy snapshot or overwrite a populated workspac
     );
   } finally {
     await app.close();
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

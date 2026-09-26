@@ -4,7 +4,6 @@ import { Store } from '../../src/server/db/store.js';
 import { TopicAnalysis } from '../../src/server/topics/topic-analysis.js';
 import { Insights } from '../../src/server/insights/service.js';
 import { learningRecordSchema } from '../../src/shared/insights.js';
-import { restoreLearningReferences } from '../../src/server/insights/restore.js';
 import type { Topic } from '../../src/shared/contracts.js';
 
 it('generates topics without attempts, embeddings or Learning Insights, preserving scores and refreshing only on request', () => {
@@ -78,7 +77,7 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     expect(learning.jobs()[0].status).toBe('failed');
     const running = topics.claim()!;
     expect(learningRecordSchema.parse(topics.record()).kind).toBe('topic_analysis');
-    restoreLearningReferences(s);
+    topics.recover(); // what startup does for a run interrupted by a restart
     expect(topics.record()).toMatchObject({ status: 'pending', claimId: null });
     expect(topics.claim()!.job.claimId).not.toBe(running.job.claimId);
   } finally {

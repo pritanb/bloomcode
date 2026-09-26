@@ -4,15 +4,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SelectField, SelectOption } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Database, Download, Palette, Save } from 'lucide-react';
+import { CalendarDays, Database, Palette, Save } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type {
-  Settings as SettingsData,
-  Snapshot,
-  Dashboard,
-  DailyPlan,
-} from '../../../shared/contracts';
+import type { Settings as SettingsData, Dashboard, DailyPlan } from '../../../shared/contracts';
 import {
   defaultRecommendations,
   type RecommendationOptions,
@@ -42,7 +37,7 @@ export function Settings() {
     <>
       <PageTitle
         title="Settings & data"
-        description="A workload that fits your day. Records you can take with you."
+        description="A workload that fits your day, with your records backed up."
       />
       <SettingsForm settings={query.data} />
     </>
@@ -84,32 +79,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
       recommendations,
     }),
   );
-  const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [exported, setExported] = useState(false);
-  async function download() {
-    setExporting(true);
-    setError(null);
-    try {
-      const snapshot = await api.get<Snapshot>('/export');
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `leetcode-tutor-${snapshot.exportedAt.slice(0, 10)}.json`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setExported(true);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setExporting(false);
-    }
-  }
+
   return (
     <div className="settings-grid fill-page">
       <Card className="panel settings-main">
@@ -328,33 +298,11 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
             </div>
           </dl>
           <section className="settings-group">
-            <h3>Portable export</h3>
-            <p className="settings-help">
-              Download questions, answers, notes, lists, review dates and score history as JSON.
-            </p>
-            <p className="settings-caveat">
-              Keep this file private: it contains your study records.
-            </p>
-            <Button variant="outline" disabled={exporting} onClick={() => void download()}>
-              <Icon icon={Download} />
-              {exporting ? 'Preparing export…' : 'Download export'}
-            </Button>
-            {exported && (
-              <p className="positive" role="status">
-                Export prepared for download.
-              </p>
-            )}
-            <ErrorNotice error={error} retry={() => void download()} />
-          </section>
-          <section className="settings-group">
             <h3>Backup & restore</h3>
-            <p className="settings-caveat">
-              Local database backups and restore use the authenticated command-line tools. Restore
-              is only allowed into an empty database.
-            </p>
             <p className="settings-help">
-              See the project’s operations guide for the verified commands. Browser sessions cannot
-              access the administrative token.
+              Back up with <code>npm run backup</code>, which saves a copy of the database. To
+              restore, quit the app and copy a backup file back over the database. The operations
+              guide has the details.
             </p>
           </section>
           <section className="settings-group">

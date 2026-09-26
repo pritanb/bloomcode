@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ZodError } from 'zod';
 import type { ApiError } from '../../src/server/db/errors.js';
 import { createApp } from '../../src/server/core/app.js';
@@ -108,7 +111,11 @@ it('validates evidence, deduplicates completed jobs, rejects stale claims and pr
   expect(next.job.claimId).not.toBe(work.job.claimId);
   expect(extraction(next).takeaway).toBe('Check bounds next time');
 });
-it('persists corrections and job recovery through export/restore, accepts old snapshots', async () => {
+it('keeps corrections and hands a running job out again after a restart', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lc-insights-restart-'));
+  const dbPath = join(dir, 'leetcode.sqlite');
+  await app.close();
+  app = await createApp({ dbPath, token: 'test', embed });
   const a = await completed();
   await call('POST', '/api/insights/enable', { enabled: true });
   const work = claim()!;
@@ -129,13 +136,8 @@ it('persists corrections and job recovery through export/restore, accepts old sn
   });
   const pending = claim()!;
   expect(extraction(pending).corrections).toHaveLength(1);
-  const snapshot = (await call('GET', '/api/export')).json();
-  expect(snapshot.schemaVersion).toBe(4);
   await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', embed });
-  expect((await call('POST', '/api/restore', { confirmEmpty: true, snapshot })).statusCode).toBe(
-    200,
-  );
+  app = await createApp({ dbPath, token: 'test', embed });
   const recovered = claim()!;
   expect(recovered.job.claimId).not.toBe(pending.job.claimId);
   expect(extraction(recovered).corrections[0].reason).toContain('hypothetical');
@@ -145,15 +147,7 @@ it('persists corrections and job recovery through export/restore, accepts old sn
       .json()
       .tables.learning_insights.filter((r: { kind: string }) => r.kind === 'observation'),
   ).toHaveLength(1);
-  const legacy = structuredClone(first);
-  legacy.schemaVersion = 3;
-  delete legacy.tables.learning_insights;
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', embed });
-  expect(
-    (await call('POST', '/api/restore', { confirmEmpty: true, snapshot: legacy })).statusCode,
-  ).toBe(200);
-  expect((await call('GET', '/api/insights')).json().enabled).toBe(false);
+  rmSync(dir, { recursive: true, force: true });
 });
 it('protects mixed assessment data and requires bearer authentication for evidence search', async () => {
   await completed();
@@ -369,27 +363,6 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
   }
 });
 
-it('rolls back restore when a correction points at unrelated evidence', async () => {
-  await completed();
-  await call('POST', '/api/insights/enable', { enabled: true });
-  const work = claim()!;
-  complete(work, { observations: [observation], limitation: '' });
-  const snapshot = (await call('GET', '/api/export')).json();
-  const o = snapshot.tables.learning_insights.find(
-    (r: { kind: string }) => r.kind === 'observation',
-  );
-  await call('POST', `/api/insights/observations/${o.id}/dismiss`, { reason: 'Incorrect reading' });
-  const invalid = (await call('GET', '/api/export')).json();
-  invalid.tables.learning_insights.find(
-    (r: { kind: string }) => r.kind === 'correction',
-  ).observationId = 'state';
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', embed });
-  expect(
-    (await call('POST', '/api/restore', { confirmEmpty: true, snapshot: invalid })).statusCode,
-  ).toBe(400);
-  expect((await call('GET', '/api/export')).json().tables.attempts).toEqual([]);
-});
 it('reports a failed model download without affecting saved attempts and supports retry', async () => {
   await app.close();
   let fail = true;

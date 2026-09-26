@@ -150,7 +150,7 @@ export async function createApp(options: AppOptions) {
       equal(req.headers.authorization.slice(7), token)
     )
       return;
-    if (['/api/import', '/api/restore', '/api/backup'].includes(req.url.split('?')[0]!))
+    if (['/api/import', '/api/backup'].includes(req.url.split('?')[0]!))
       throw new ApiError(
         403,
         'BEARER_REQUIRED',

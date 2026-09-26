@@ -58,7 +58,7 @@ Screenshots use sample records. Tutor feedback is illustrative; connecting an AI
 - **Consistent study records:** daily plans persist across reloads; manual review dates and recorded score decisions stay explicit.
 - **Desktop lifecycle:** a bundled local server starts with Electron, shuts down on quit, and prevents concurrent access to the same workspace.
 - **Shared backend:** the React UI and MCP tutor adapter use the same authenticated local API.
-- **Extensible data:** versioned question packs, validated imports, SQLite backups and portable exports.
+- **Extensible data:** versioned question packs, validated imports and SQLite backups.
 - **Focused tests:** critical function tests, a browser save/reload flow and [automated GitHub checks](.github/workflows/checks.yml).
 
 See the [technical design](docs/technical-design.md) for architecture details.

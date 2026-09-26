@@ -40,7 +40,7 @@ The former **Connected MCP client (Hermes)** provider, which ran the model throu
 - **Usage**: usage counts toward your ChatGPT plan limits. After a usage-limit, sign-in, missing-install or unavailable-model error, the app pauses and shows the reason instead of failing every queued job. Saving the settings or a successful test resumes work.
 - **Privacy**: the same saved code, notes and metadata go to OpenAI as with the Hermes `openai-codex` provider.
 
-Settings are stored in `tutor-settings.json` beside the database. This machine-specific file is not part of portable exports.
+Settings are stored in `tutor-settings.json` beside the database. This machine-specific file is not part of the database or its backups.
 
 ## Automatic reports
 
