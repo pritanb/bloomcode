@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { z } from 'zod';
-import { runNextJob } from '../../integrations/auto-review.js';
-import type { Api, Generate } from '../../integrations/generate.js';
+import { runNextJob, type TutorJobs } from './jobs.js';
+import type { Generate } from './generate.js';
 import {
   defaultTutorSettings,
   TUTOR_EFFORTS,
@@ -106,7 +106,7 @@ export class CodexWorker {
   private codexPath: string | null = null;
   constructor(
     private settings: TutorSettingsFile,
-    private api: Api,
+    private jobs: TutorJobs,
     private clock: () => Date,
   ) {}
   start() {
@@ -134,7 +134,7 @@ export class CodexWorker {
           while (
             !this.stopped &&
             (await this.ready()) &&
-            (await runNextJob(this.api, this.generate, CODEX_REPORT_BUDGET_MS))
+            (await runNextJob(this.jobs, this.generate, CODEX_REPORT_BUDGET_MS))
           );
         } catch {
           /* The job stays queued for the next wake. */

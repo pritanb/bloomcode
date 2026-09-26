@@ -1,12 +1,11 @@
-import { analyzeTopicsNext } from './topic-analysis.js';
-import { analyzeNext } from './learning-insights.js';
-import type { Attempt, Topic } from '../shared/contracts.js';
-import { ApiError } from './local-api.js';
-import type { Api, Generate } from './generate.js';
+import type { Store } from '../db/store.js';
+import type { AttemptRecord } from '../attempts/attempt-model.js';
+import type { AutoReviewQueue } from '../attempts/auto-review-queue.js';
+import { attemptContext, type AttemptContext } from '../attempts/attempt-context.js';
+import { saveReview } from '../scoring/review-model.js';
+import type { Generate } from './generate.js';
 
-// Writes the tutor report for attempts submitted in the web app, using the
-// model supplied by the app's Codex worker.
-type Context = { attempt: Attempt; history: Attempt[]; topics: Topic[] };
+// Writes the tutor report for attempts submitted in the web app.
 export const reviewSystemPrompt = `You are a supportive LeetCode interview tutor reviewing one finished practice attempt.
 Write a short report the learner reads straight after submitting. Plain text only: no Markdown headings, bold, tables or code fences.
 Use exactly these labelled sections, each 1-4 short lines:
@@ -18,7 +17,7 @@ Practise next:
 Judge the submitted code itself: correctness, edge cases, clarity and interview communication. Be specific and honest; do not invent test results. Do not reveal a full alternative solution, only the key idea to try.`;
 const mins = (s: number | null) =>
   s === null ? 'unknown' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-export function reviewPrompt({ attempt: a, history }: Context): string {
+export function reviewPrompt({ attempt: a, history }: AttemptContext): string {
   const past = history
     .filter((h) => h.status === 'completed')
     .slice(0, 5)
@@ -39,53 +38,37 @@ export function reviewPrompt({ attempt: a, history }: Context): string {
     `Submitted ${a.language} code:\n${a.code}`,
   ].join('\n\n');
 }
-/** Claim one queued attempt, generate its report and save it. Returns whether a job was found. */
-export async function reviewNext(api: Api, generate: Generate): Promise<boolean> {
-  const { job } = (await api.request('POST', '/api/auto-reviews/claim', {})) as {
-    job: { attemptId: string; claimId: string } | null;
-  };
-  if (!job) return false;
+/** Write the report for the next queued attempt. Returns whether there was one. */
+export async function reviewNext(
+  { s, clock, reviews }: { s: Store; clock: () => Date; reviews: AutoReviewQueue },
+  generate: Generate,
+): Promise<boolean> {
+  const next = reviews.take(s);
+  if (!next) return false;
   try {
-    const context = (await api.request('GET', `/api/attempts/${job.attemptId}/context`)) as Context;
     const feedback = (
       await generate({
         kind: 'review',
         system: reviewSystemPrompt,
-        user: reviewPrompt(context),
+        user: reviewPrompt(attemptContext(s, next.id)),
         maxTokens: 1200,
         timeoutMs: 180_000,
       })
     ).text.trim();
-    if (!feedback) throw new ApiError('EMPTY_REVIEW', 'The tutor returned an empty report.');
+    if (!feedback) throw new Error('The tutor returned an empty report.');
     // Re-read the version: the learner may have saved a reflection meanwhile.
-    const current = (await api.request('GET', `/api/attempts/${job.attemptId}`)) as Attempt;
-    if (current.feedback) return true;
-    await api.request(
-      'POST',
-      `/api/attempts/${job.attemptId}/reviews`,
-      { version: current.version, feedback },
-      `auto-review:${job.claimId}`,
-    );
+    s.transaction(() => {
+      const a = s.get<AttemptRecord>('attempts', next.id);
+      if (!a.feedback) saveReview(s, clock, a.id, { version: a.version, feedback, decisions: [] });
+    });
+    reviews.done(next.id);
   } catch (error) {
-    const message =
+    reviews.fail(
+      next.id,
       error instanceof Error && error.message
         ? error.message.slice(0, 500)
-        : 'The tutor could not write this report.';
-    await api
-      .request('POST', `/api/auto-reviews/${job.attemptId}/fail`, { claimId: job.claimId, message })
-      .catch(() => {});
+        : 'The tutor could not write this report.',
+    );
   }
   return true;
-}
-/** Run the next queued tutor job, attempt reports first. Returns whether one was found. */
-export async function runNextJob(
-  api: Api,
-  generate: Generate,
-  reportBudgetMs?: number,
-): Promise<boolean> {
-  return (
-    (await reviewNext(api, generate)) ||
-    (await analyzeNext(api, generate, reportBudgetMs)) ||
-    (await analyzeTopicsNext(api, generate))
-  );
 }

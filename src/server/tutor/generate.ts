@@ -1,5 +1,4 @@
-import type { TutorJobKind } from '../shared/tutor.js';
-import type { LocalApi } from './local-api.js';
+import type { TutorJobKind } from '../../shared/tutor.js';
 
 // One model call. The app's Codex worker runs the model.
 export interface GenerateRequest {
@@ -12,4 +11,3 @@ export interface GenerateRequest {
 export type Generate = (
   request: GenerateRequest,
 ) => Promise<{ text: string; model: string | null }>;
-export type Api = Pick<LocalApi, 'request'>;

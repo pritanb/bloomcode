@@ -9,7 +9,7 @@ import { type AttemptRecord, attemptView, checkVersion, version } from './attemp
 import { ApiError, conflict } from '../db/errors.js';
 import { applyAutoScore } from '../scoring/auto-score.js';
 import { idempotent } from '../db/idempotency.js';
-import type { AutoReviewQueue } from './auto-review.js';
+import type { AutoReviewQueue } from './auto-review-queue.js';
 import { outcome, help, seconds } from './attempt-model.js';
 import { recommendation, updateTarget } from './review-schedule.js';
 export function registerCloseout(

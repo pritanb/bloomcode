@@ -1,8 +1,9 @@
 import { expect, it, vi } from 'vitest';
-import { ApiError, type LocalApi } from '../../src/integrations/local-api.js';
-import { selectFocusTopics } from '../../src/integrations/topic-analysis.js';
-import { analyzeNext } from '../../src/integrations/learning-insights.js';
-import type { GenerateRequest } from '../../src/integrations/generate.js';
+import { ApiError } from '../../src/server/db/errors.js';
+import type { Insights } from '../../src/server/insights/service.js';
+import { selectFocusTopics } from '../../src/server/tutor/topic-job.js';
+import { analyzeNext } from '../../src/server/tutor/insight-job.js';
+import type { GenerateRequest } from '../../src/server/tutor/generate.js';
 import { conciseReportResult, reportResult } from '../../src/shared/insights.js';
 const finding = {
   title: 'Check your search bounds',
@@ -15,26 +16,25 @@ const finding = {
 };
 const valid = { findings: [finding], limitation: 'Retrieved evidence only.' };
 function harness(outputs: unknown[], failure?: ApiError) {
-  const request = vi.fn(async (_method: string, path: string) => {
-    if (path.endsWith('/claim'))
-      return {
-        work: {
-          job: { id: 'report-job', attemptId: null, claimId: 'claim' },
-          context: { evidence: [{ id: 'e1' }] },
-        },
-      };
-    if (path.endsWith('/complete') && failure) throw failure;
+  const complete = vi.fn(() => {
+    if (failure) throw failure;
     return { ok: true };
   });
+  const fail = vi.fn();
+  const insights = {
+    claim: () => ({
+      job: { id: 'report-job', attemptId: null, claimId: 'claim' },
+      context: { evidence: [{ id: 'e1' }] },
+    }),
+    complete,
+    fail,
+    refresh: async () => {},
+  } as unknown as Insights;
   const generate = vi.fn(async (_request: GenerateRequest) => ({
     model: 'test',
     text: JSON.stringify(outputs.shift()),
   }));
-  return {
-    request,
-    generate,
-    run: () => analyzeNext({ request } as unknown as LocalApi, generate),
-  };
+  return { complete, fail, generate, run: () => analyzeNext(insights, generate) };
 }
 it('enforces writing limits without breaking legacy saved reports', () => {
   for (const [field, words] of [
@@ -59,20 +59,20 @@ it('corrects invalid output once and sends specific errors back to the tutor', a
   await h.run();
   expect(h.generate).toHaveBeenCalledTimes(2);
   expect(JSON.stringify(h.generate.mock.calls[1])).toContain('Habit must contain at most 6 words');
-  expect(h.request.mock.calls.filter((c) => c[1].endsWith('/complete'))).toHaveLength(1);
+  expect(h.complete).toHaveBeenCalledTimes(1);
 });
 it('stops after one failed correction and does not save invalid reports', async () => {
   const h = harness([{}, {}]);
   await h.run();
   expect(h.generate).toHaveBeenCalledTimes(2);
-  expect(h.request.mock.calls.some((c) => c[1].endsWith('/complete'))).toBe(false);
-  expect(h.request.mock.calls.some((c) => c[1].endsWith('/fail'))).toBe(true);
+  expect(h.complete).not.toHaveBeenCalled();
+  expect(h.fail).toHaveBeenCalled();
 });
 it('corrects invalid citations but does not retry stale claims', async () => {
-  const evidence = harness([valid, valid], new ApiError('EVIDENCE', 'Unknown evidence ID', 400));
+  const evidence = harness([valid, valid], new ApiError(400, 'EVIDENCE', 'Unknown evidence ID'));
   await evidence.run();
   expect(evidence.generate).toHaveBeenCalledTimes(2);
-  const stale = harness([valid], new ApiError('CONFLICT', 'Evidence changed', 409));
+  const stale = harness([valid], new ApiError(409, 'CONFLICT', 'Evidence changed'));
   await stale.run();
   expect(stale.generate).toHaveBeenCalledTimes(1);
 });

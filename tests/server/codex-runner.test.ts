@@ -114,7 +114,6 @@ test('with Codex selected, the app writes queued reviews itself', async () => {
     await rm(data, { recursive: true, force: true });
   });
   const api = new LocalApi({ dataDir: data, baseUrl: url });
-  expect(await api.request('POST', '/api/auto-reviews/claim', {})).toEqual({ job: null });
   const p = (await api.request('POST', '/api/problems', {
     title: 'Two Sum',
     url: 'https://leetcode.com/problems/two-sum/',

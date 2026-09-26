@@ -1,13 +1,12 @@
-import { assertMetadataVisible } from '../catalogue/problem-model.js';
+import { attemptContext } from './attempt-context.js';
 import { idempotent } from '../db/idempotency.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Problem, Settings } from '../../shared/contracts.js';
 import { bumpPlan, type ItemRecord, linkAttempt } from '../plans/plan-model.js';
-import { topicView } from '../topics/topic-model.js';
 import { decisionView } from '../topics/topic-model.js';
-import type { Topic, ScoreDecision } from '../../shared/contracts.js';
+import type { ScoreDecision } from '../../shared/contracts.js';
 import { Store } from '../db/store.js';
 import { ApiError, conflict } from '../db/errors.js';
 import {
@@ -122,24 +121,9 @@ export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Da
       .map(decisionView);
     return scoreDecisions.length ? { ...view, scoreDecisions } : view;
   });
-  app.get<{ Params: { id: string } }>('/api/attempts/:id/context', (req) => {
-    assertMetadataVisible(s);
-    const a = s.get<AttemptRecord>('attempts', req.params.id);
-    if (a.context === 'mixed' && a.status !== 'completed')
-      throw new ApiError(
-        403,
-        'HIDDEN_ASSESSMENT',
-        'Complete the mixed assessment before requesting history',
-      );
-    return {
-      attempt: attemptView(a),
-      history: s
-        .all<AttemptRecord>('attempts')
-        .filter((x) => x.problemId === a.problemId && x.id !== a.id)
-        .map(attemptView),
-      topics: s.all<Topic>('topics').map((t) => topicView(s, t)),
-    };
-  });
+  app.get<{ Params: { id: string } }>('/api/attempts/:id/context', (req) =>
+    attemptContext(s, req.params.id),
+  );
   app.patch<{ Params: { id: string } }>('/api/attempts/:id/draft', (req) => {
     const b = z
       .object({

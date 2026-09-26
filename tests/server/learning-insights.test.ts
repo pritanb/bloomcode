@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { ZodError } from 'zod';
+import type { ApiError } from '../../src/server/db/errors.js';
 import { createApp } from '../../src/server/core/app.js';
 import type { Attempt } from '../../src/shared/contracts.js';
 import { Insights } from '../../src/server/insights/service.js';
@@ -51,43 +53,39 @@ const observation: ObservationInput = {
   sourceField: 'notes',
   excerpt: 'I forgot to check an empty input.',
 };
-const claim = async () => (await call('POST', '/api/insights/claim', {})).json().work;
-const complete = async (work: { job: { id: string; claimId: string } }, result: unknown) =>
-  call('POST', '/api/insights/complete', {
-    id: work.job.id,
-    claimId: work.job.claimId,
-    result,
-    model: 'test-tutor',
-  });
+// The Codex worker's side of the queue, called in-process; returns an HTTP-style status.
+const claim = () => app.tutorJobs.insights.claim();
+const extraction = (work: { context: unknown }) =>
+  work.context as ReturnType<Insights['extractionContext']>;
+const complete = (work: { job: { id: string; claimId: string | null } }, result: unknown) => {
+  try {
+    app.tutorJobs.insights.complete(work.job.id, work.job.claimId!, result, 'test-tutor');
+    return 200;
+  } catch (error) {
+    return error instanceof ZodError ? 400 : (error as ApiError).status;
+  }
+};
 it('validates evidence, deduplicates completed jobs, rejects stale claims and preserves study records', async () => {
   const a = await completed();
   const before = (await call('GET', '/api/export')).json();
   await call('POST', '/api/insights/enable', { enabled: true });
-  const work = await claim();
-  expect(work.context.attemptId).toBe(a.id);
-  expect(await claim()).toBeNull();
+  const work = claim()!;
+  expect(extraction(work).attemptId).toBe(a.id);
+  expect(claim()).toBeNull();
   expect(
-    (
-      await complete(work, {
-        observations: [{ ...observation, excerpt: 'invented' }],
-        limitation: '',
-      })
-    ).statusCode,
+    complete(work, {
+      observations: [{ ...observation, excerpt: 'invented' }],
+      limitation: '',
+    }),
   ).toBe(400);
   expect(
-    (
-      await complete(work, {
-        observations: [{ ...observation, evidenceType: 'code_inferred' }],
-        limitation: '',
-      })
-    ).statusCode,
+    complete(work, {
+      observations: [{ ...observation, evidenceType: 'code_inferred' }],
+      limitation: '',
+    }),
   ).toBe(400);
-  expect((await complete(work, { observations: [observation], limitation: '' })).statusCode).toBe(
-    200,
-  );
-  expect((await complete(work, { observations: [observation], limitation: '' })).statusCode).toBe(
-    200,
-  );
+  expect(complete(work, { observations: [observation], limitation: '' })).toBe(200);
+  expect(complete(work, { observations: [observation], limitation: '' })).toBe(200);
   const exported = (await call('GET', '/api/export')).json();
   expect(
     exported.tables.learning_insights.filter((r: { kind: string }) => r.kind === 'observation'),
@@ -105,16 +103,16 @@ it('validates evidence, deduplicates completed jobs, rejects stale claims and pr
     mistakeLabels: [],
     takeaway: 'Check bounds next time',
   });
-  expect((await complete(work, { observations: [], limitation: '' })).statusCode).toBe(409);
-  const next = await claim();
+  expect(complete(work, { observations: [], limitation: '' })).toBe(409);
+  const next = claim()!;
   expect(next.job.claimId).not.toBe(work.job.claimId);
-  expect(next.context.takeaway).toBe('Check bounds next time');
+  expect(extraction(next).takeaway).toBe('Check bounds next time');
 });
 it('persists corrections and job recovery through export/restore, accepts old snapshots', async () => {
   const a = await completed();
   await call('POST', '/api/insights/enable', { enabled: true });
-  const work = await claim();
-  await complete(work, { observations: [observation], limitation: '' });
+  const work = claim()!;
+  complete(work, { observations: [observation], limitation: '' });
   const first = (await call('GET', '/api/export')).json();
   const o = first.tables.learning_insights.find((r: { kind: string }) => r.kind === 'observation');
   expect(
@@ -129,8 +127,8 @@ it('persists corrections and job recovery through export/restore, accepts old sn
     mistakeLabels: [],
     takeaway: 'Updated context',
   });
-  const pending = await claim();
-  expect(pending.context.corrections).toHaveLength(1);
+  const pending = claim()!;
+  expect(extraction(pending).corrections).toHaveLength(1);
   const snapshot = (await call('GET', '/api/export')).json();
   expect(snapshot.schemaVersion).toBe(4);
   await app.close();
@@ -138,10 +136,10 @@ it('persists corrections and job recovery through export/restore, accepts old sn
   expect((await call('POST', '/api/restore', { confirmEmpty: true, snapshot })).statusCode).toBe(
     200,
   );
-  const recovered = await claim();
+  const recovered = claim()!;
   expect(recovered.job.claimId).not.toBe(pending.job.claimId);
-  expect(recovered.context.corrections[0].reason).toContain('hypothetical');
-  await complete(recovered, { observations: [observation], limitation: '' });
+  expect(extraction(recovered).corrections[0].reason).toContain('hypothetical');
+  complete(recovered, { observations: [observation], limitation: '' });
   expect(
     (await call('GET', '/api/export'))
       .json()
@@ -157,10 +155,10 @@ it('persists corrections and job recovery through export/restore, accepts old sn
   ).toBe(200);
   expect((await call('GET', '/api/insights')).json().enabled).toBe(false);
 });
-it('protects mixed assessment data and requires bearer authentication for processing', async () => {
+it('protects mixed assessment data and requires bearer authentication for evidence search', async () => {
   await completed();
   await call('POST', '/api/insights/enable', { enabled: true });
-  const work = await claim();
+  const work = claim()!;
   const p = (
     await call('POST', '/api/problems', {
       title: 'fresh',
@@ -174,32 +172,29 @@ it('protects mixed assessment data and requires bearer authentication for proces
     observations: [],
     suggestions: [],
   });
-  for (const path of ['claim', 'retrieve'])
-    expect(
-      (await call('POST', `/api/insights/${path}`, path === 'retrieve' ? { query: 'empty' } : {}))
-        .statusCode,
-    ).toBe(403);
-  expect((await complete(work, { observations: [], limitation: '' })).statusCode).toBe(403);
+  expect(claim).toThrow(expect.objectContaining({ status: 403 }));
+  expect((await call('POST', '/api/insights/retrieve', { query: 'empty' })).statusCode).toBe(403);
+  expect(complete(work, { observations: [], limitation: '' })).toBe(403);
   const session = await app.inject({ method: 'GET', url: '/api/session' });
   const response = await app.inject({
     method: 'POST',
-    url: '/api/insights/claim',
+    url: '/api/insights/retrieve',
     headers: {
       cookie: session.headers['set-cookie'] as string,
       'x-csrf-token': session.json().csrfToken,
     },
-    payload: {},
+    payload: { query: 'empty' },
   });
   expect(response.statusCode).toBe(403);
   const spoof = await app.inject({
     method: 'POST',
-    url: '/api/insights/claim',
+    url: '/api/insights/retrieve',
     headers: {
       authorization: 'Bearer invalid',
       cookie: session.headers['set-cookie'] as string,
       'x-csrf-token': session.json().csrfToken,
     },
-    payload: {},
+    payload: { query: 'empty' },
   });
   expect(spoof.json().error.code).toBe('BEARER_REQUIRED');
 });
@@ -209,19 +204,15 @@ it('recovers expired claims and retries failures without dropping pending attemp
   app = await createApp({ dbPath: ':memory:', token: 'test', embed, clock: () => new Date(now) });
   await completed();
   await call('POST', '/api/insights/enable', { enabled: true });
-  const first = await claim();
+  const first = claim()!;
   now += 241000;
-  const next = await claim();
+  const next = claim()!;
   expect(next.job.claimId).not.toBe(first.job.claimId);
-  expect((await complete(first, { observations: [], limitation: '' })).statusCode).toBe(409);
-  await call('POST', '/api/insights/fail', {
-    id: next.job.id,
-    claimId: next.job.claimId,
-    error: 'Disconnected',
-  });
+  expect(complete(first, { observations: [], limitation: '' })).toBe(409);
+  app.tutorJobs.insights.fail(next.job.id, next.job.claimId!, 'Disconnected');
   expect((await call('GET', '/api/insights')).json().failed).toBe(1);
   await call('POST', '/api/insights/retry', {});
-  expect((await claim()).job.status).toBe('running');
+  expect(claim()!.job.status).toBe('running');
 });
 it('validates cross-problem recurrence, citations and suggestions; dismissal removes stale findings', async () => {
   const db = openDb(':memory:'),
@@ -381,8 +372,8 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
 it('rolls back restore when a correction points at unrelated evidence', async () => {
   await completed();
   await call('POST', '/api/insights/enable', { enabled: true });
-  const work = await claim();
-  await complete(work, { observations: [observation], limitation: '' });
+  const work = claim()!;
+  complete(work, { observations: [observation], limitation: '' });
   const snapshot = (await call('GET', '/api/export')).json();
   const o = snapshot.tables.learning_insights.find(
     (r: { kind: string }) => r.kind === 'observation',

@@ -1,5 +1,6 @@
-import { registerInsights } from '../insights/routes.js';
+import { createInsights, registerInsights } from '../insights/routes.js';
 import { registerTutor } from '../tutor/routes.js';
+import type { TutorJobs } from '../tutor/jobs.js';
 import type { Embed } from '../insights/embeddings.js';
 import Fastify from 'fastify';
 import { recommendationSchema } from '../../shared/recommendations.js';
@@ -26,7 +27,8 @@ import { ApiError } from '../db/errors.js';
 import { Store } from '../db/store.js';
 import { dirname } from 'node:path';
 import { loadToken } from './auth.js';
-import { AutoReviewQueue, registerAutoReview } from '../attempts/auto-review.js';
+import { registerAutoReview } from '../attempts/auto-review.js';
+import { AutoReviewQueue } from '../attempts/auto-review-queue.js';
 import { registerTransfer } from '../transfer/transfer.js';
 import { registerPlans } from '../plans/plans.js';
 import { registerScoring } from '../scoring/scoring.js';
@@ -39,6 +41,12 @@ import { registerStudyTools } from '../topics/study-tools.js';
 import { registerSetup } from '../catalogue/setup.js';
 import { registerCatalogue } from '../catalogue/catalogue.js';
 declare const __TUTOR_BUILD_ID__: string;
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** The tutor job queues, for tests that drive them without Codex. */
+    tutorJobs: TutorJobs;
+  }
+}
 // Captured in the bundle, never read from mutable files on each health check.
 const buildId = typeof __TUTOR_BUILD_ID__ === 'string' ? __TUTOR_BUILD_ID__ : 'development';
 const equal = (a: string, b: string) => {
@@ -219,10 +227,14 @@ export async function createApp(options: AppOptions) {
   registerSetup(app, store, clock, options.demo);
   registerCatalogue(app, store, clock);
   registerAttempts(app, store, clock);
-  const tutor = registerTutor(app, options.dbPath, token, clock);
-  const reviews = new AutoReviewQueue(clock, tutor.active);
+  const { insights, topics } = createInsights(app, store, clock, options.dbPath, options.embed);
+  const reviews = new AutoReviewQueue();
+  const jobs: TutorJobs = { s: store, clock, reviews, insights, topics };
+  const tutor = registerTutor(app, options.dbPath, clock, jobs);
+  insights.onEmbeddingsReady = tutor.wake;
+  app.decorate('tutorJobs', jobs);
   registerCloseout(app, store, clock, reviews);
-  registerAutoReview(app, store, reviews);
+  registerAutoReview(app, store, reviews, tutor.active);
   registerImport(app, store, clock);
   registerTopics(app, store);
   registerScoring(app, store, clock);
@@ -232,11 +244,10 @@ export async function createApp(options: AppOptions) {
   registerInsights(
     app,
     store,
-    clock,
-    options.dbPath,
+    insights,
+    topics,
     (header) => !!header?.startsWith('Bearer ') && equal(header.slice(7), token),
     tutor,
-    options.embed,
   );
   return app;
 }

@@ -70,7 +70,6 @@ const freshJob = (id: string, attemptId: string | null, fingerprint: string): In
 export class Insights {
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
   error: string | null = null;
-  tutorActive = () => false;
   /** A learning report can only be claimed once local search is ready. */
   onEmbeddingsReady = () => {};
   private busy = false;
@@ -559,6 +558,16 @@ export class Insights {
       return { ok: true };
     });
   }
+  fail(id: string, claimId: string, error: string) {
+    const job = this.currentJob(id, claimId);
+    if (job.status !== 'done')
+      this.put({
+        ...job,
+        status: 'failed',
+        error,
+        durationMs: Math.max(0, this.clock().getTime() - job.claimedAt),
+      });
+  }
   dismiss(id: string, reason: string) {
     assertMetadataVisible(this.s);
     const o = this.observations().find((o) => o.id === id);
@@ -575,7 +584,7 @@ export class Insights {
       createdAt: this.clock().toISOString(),
     });
   }
-  status(discloseSuggestions = true): InsightStatus {
+  status(discloseSuggestions = true): Omit<InsightStatus, 'tutorConnected'> {
     const hidden = this.s
       .all<AttemptRecord>('attempts')
       .some((a) => a.context === 'mixed' && a.status !== 'completed');
@@ -668,7 +677,6 @@ export class Insights {
       ...coverage,
       pending: jobs.filter((j) => j.status === 'pending' || j.status === 'running').length,
       failed: jobs.filter((j) => j.status === 'failed').length,
-      tutorConnected: this.tutorActive(),
       embeddingStatus: this.embeddingStatus,
       error: hidden ? null : (this.error ?? jobs.find((j) => j.status === 'failed')?.error ?? null),
       report: hidden ? null : visible,

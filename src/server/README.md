@@ -4,8 +4,8 @@
 
 - `core/`: process entry points (`index.ts`, `desktop.ts`), `app.ts`, which wires the feature modules, and the local credential (`auth.ts`).
 - `db/`: SQLite connection and migrations, schema, `Store`, `ApiError`, idempotent replay and new-tag hues. Every other folder builds on this one.
-- `attempts/`, `scoring/`, `plans/`, `catalogue/` (including imports and first-run setup), `topics/`, `transfer/` (export/restore/backup), `insights/`, `tutor/` and `mcp/`: feature modules.
-- Shared records, views and rules live in model files with no routes: `attempts/attempt-model.ts`, `attempts/review-schedule.ts`, `catalogue/problem-model.ts`, `catalogue/list-projection.ts`, `topics/topic-model.ts` and `plans/plan-model.ts`. Route files (`registerX`) import these and are imported only by `core/app.ts`. Keep it that way: when two features need the same helper, put it in a model file, not in either route file. The server has no import cycles.
+- `attempts/`, `scoring/`, `plans/`, `catalogue/` (including imports and first-run setup), `topics/`, `transfer/` (export/restore/backup), `insights/` and `tutor/`: feature modules. `tutor/` holds the Codex worker and its jobs (tutor reports, learning insights, topic picks), which call the queues and services directly.
+- Shared records, views and rules live in model files with no routes: `attempts/attempt-model.ts`, `attempts/attempt-context.ts`, `attempts/auto-review-queue.ts`, `attempts/review-schedule.ts`, `scoring/review-model.ts`, `catalogue/problem-model.ts`, `catalogue/list-projection.ts`, `topics/topic-model.ts` and `plans/plan-model.ts`. Route files (`registerX`) import these and are imported only by `core/app.ts`. Keep it that way: when two features need the same helper, put it in a model file, not in either route file. The server has no import cycles.
 - `paths.ts` resolves the repository root for runtime files (`drizzle/`, `dist/web/`, manifests). It must stay directly under `src/server`, the same depth as the bundled `dist/server/*.js`.
 
 ## Runtime

@@ -74,11 +74,10 @@ exposure through the existing catalogue mechanism. Background candidate selectio
 alone does not mark questions exposed.
 
 Authenticated browser endpoints under `/api/insights` provide status, enable/pause,
-retry and dismissal. Bearer-only endpoints provide claim, retrieve, complete and fail.
-The MCP tools `get_learning_insights` and `retrieve_learning_evidence` let a chat
-tutor read the report and search observations. Only the app's Codex worker claims
-analysis; claims include a JSON result schema. Analysis has no score or schedule
-mutation capability.
+retry and dismissal. A bearer-only endpoint provides evidence retrieval. The MCP tools
+`get_learning_insights` and `retrieve_learning_evidence` let a chat tutor read the
+report and search observations. Only the app's Codex worker runs analysis, calling the
+service in-process. Analysis has no score or schedule mutation capability.
 
 ## Evaluation
 

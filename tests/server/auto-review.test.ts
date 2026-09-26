@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
-import { reviewNext } from '../../src/integrations/auto-review.js';
+import { reviewNext } from '../../src/server/tutor/review-job.js';
 import type { Attempt, AutoReviewStatus } from '../../src/shared/contracts.js';
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -44,16 +44,16 @@ async function backend() {
     ) as Promise<Attempt>;
   const status = () =>
     api.request('GET', `/api/attempts/${started.id}/auto-review`) as Promise<AutoReviewStatus>;
-  return { dir, url, api, attemptId: started.id, finish, status };
+  return { api, jobs: app.tutorJobs, attemptId: started.id, finish, status };
 }
-test('a web submission queues a report that one claim generates, and a failure can be retried', async () => {
-  const { api, attemptId, finish, status } = await backend();
+test('a web submission queues a report that the worker writes, and a failure can be retried', async () => {
+  const { api, jobs, attemptId, finish, status } = await backend();
   await finish(true);
   expect((await status()).status).toBe('pending');
   await finish(true); // an idempotent replay must not restart the queue
   let prompt = '';
   expect(
-    await reviewNext(api, async () => {
+    await reviewNext(jobs, async () => {
       throw new Error('Codex timed out');
     }),
   ).toBe(true);
@@ -61,10 +61,10 @@ test('a web submission queues a report that one claim generates, and a failure c
     status: 'failed',
     error: 'Codex timed out',
   });
-  expect(await reviewNext(api, async () => ({ text: 'never asked', model: null }))).toBe(false); // failed jobs wait for the learner
+  expect(await reviewNext(jobs, async () => ({ text: 'never asked', model: null }))).toBe(false); // failed jobs wait for the learner
   await api.request('POST', `/api/attempts/${attemptId}/auto-review`, {});
   expect(
-    await reviewNext(api, async (request) => {
+    await reviewNext(jobs, async (request) => {
       prompt = request.user;
       return { text: 'Summary:\nClean one-pass hash map.', model: null };
     }),
@@ -77,20 +77,8 @@ test('a web submission queues a report that one claim generates, and a failure c
   );
 });
 test('a finish without the web flag (the tutor finishing in chat) queues nothing', async () => {
-  const { api, finish, status } = await backend();
+  const { jobs, finish, status } = await backend();
   await finish(false);
   expect((await status()).status).toBe('none');
-  expect(await reviewNext(api, async () => ({ text: 'unused', model: null }))).toBe(false);
-});
-test('the browser session cannot claim review work', async () => {
-  const { url } = await backend();
-  const session = await fetch(`${url}/api/session`);
-  const cookie = session.headers.get('set-cookie')!.split(';')[0]!;
-  const { csrfToken } = (await session.json()) as { csrfToken: string };
-  const claim = await fetch(`${url}/api/auto-reviews/claim`, {
-    method: 'POST',
-    headers: { cookie, 'x-csrf-token': csrfToken, 'content-type': 'application/json' },
-    body: '{}',
-  });
-  expect(claim.status).toBe(403);
+  expect(await reviewNext(jobs, async () => ({ text: 'unused', model: null }))).toBe(false);
 });

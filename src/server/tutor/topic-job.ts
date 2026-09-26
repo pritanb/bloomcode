@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import type { Api, Generate } from './generate.js';
+import type { TopicAnalysis } from '../topics/topic-analysis.js';
+import type { Generate } from './generate.js';
 import {
   TOPIC_READINESS_TARGET,
   TOPIC_REASON_MAX_WORDS,
   topicReason,
   type TopicAnalysisContext,
-  type TopicAnalysisRecord,
-} from '../shared/topic-analysis.js';
-import { parseJson } from './learning-insights.js';
+} from '../../shared/topic-analysis.js';
+import { parseJson } from './insight-job.js';
 
 export async function selectFocusTopics(
   generate: Generate,
@@ -47,25 +47,25 @@ export async function selectFocusTopics(
   };
 }
 
-export async function analyzeTopicsNext(api: Api, generate: Generate): Promise<boolean> {
-  const { work } = (await api.request('POST', '/api/topics/analysis/claim', {})) as {
-    work: { job: TopicAnalysisRecord; topics: TopicAnalysisContext[] } | null;
-  };
+/** Run a requested "Where to focus" selection. Returns whether one was waiting. */
+export async function analyzeTopicsNext(
+  topics: TopicAnalysis,
+  generate: Generate,
+): Promise<boolean> {
+  const work = topics.claim();
   if (!work) return false;
   try {
     const { topicIds, reasons } = await selectFocusTopics(generate, work.topics);
-    await api.request('POST', '/api/topics/analysis/complete', {
-      claimId: work.job.claimId,
-      topicIds,
-      reasons,
-    });
+    topics.complete(work.job.claimId!, topicIds, reasons);
   } catch (error) {
-    await api
-      .request('POST', '/api/topics/analysis/fail', {
-        claimId: work.job.claimId,
-        error: (error instanceof Error ? error.message : 'Topic analysis failed').slice(0, 1000),
-      })
-      .catch(() => {});
+    try {
+      topics.fail(
+        work.job.claimId!,
+        (error instanceof Error ? error.message : 'Topic analysis failed').slice(0, 1000),
+      );
+    } catch {
+      /* The request was turned off or superseded meanwhile. */
+    }
   }
   return true;
 }
