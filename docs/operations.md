@@ -51,6 +51,8 @@ For finish/review writes, generate a unique idempotency key **once per intended 
 
 ## SQLite backup and recovery
 
+The app backs up automatically when it starts if the last backup is more than a day old, and keeps the newest seven copies in `DATA_DIR/backups`. To take one by hand:
+
 ```sh
 # Consistent SQLite backup, restricted by the backend to DATA_DIR/backups
 npm run backup

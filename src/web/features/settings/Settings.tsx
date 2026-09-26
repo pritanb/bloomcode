@@ -297,21 +297,9 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
               </dd>
             </div>
           </dl>
-          <section className="settings-group">
-            <h3>Backup & restore</h3>
-            <p className="settings-help">
-              Back up with <code>npm run backup</code>, which saves a copy of the database. To
-              restore, quit the app and copy a backup file back over the database. The operations
-              guide has the details.
-            </p>
-          </section>
-          <section className="settings-group">
-            <h3>Migration stays explicit</h3>
-            <p className="settings-caveat">
-              This app never writes to your source spreadsheet. The spreadsheet is a read-only
-              archive; this app is the authoritative record.
-            </p>
-          </section>
+          <p className="settings-help">
+            The app backs up your data automatically once a day and keeps the last seven copies.
+          </p>
         </Card>
       </div>
     </div>

@@ -12,6 +12,7 @@ try {
     dbPath: join(dataDir, 'leetcode.sqlite'),
     serveStatic: true,
     followSystemTimezone: true,
+    dailyBackup: true,
   });
   app.addHook('onClose', async () => {
     await release();

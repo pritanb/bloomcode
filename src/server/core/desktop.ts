@@ -89,6 +89,7 @@ try {
     dbPath: join(dataDir, 'leetcode.sqlite'),
     serveStatic: process.env.TUTOR_WEB_ROOT || true,
     followSystemTimezone: true,
+    dailyBackup: true,
   });
   if (stopping) throw new Error('Desktop startup was cancelled.');
   const address = await backend.listen({ host: '127.0.0.1', port });

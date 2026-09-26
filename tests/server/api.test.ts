@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ImportPayload } from '../../src/shared/contracts.js';
@@ -596,6 +596,38 @@ it('exports all durable data without secrets and produces a complete private SQL
     ).statusCode,
   ).toBe(403);
   expect((await request('POST', '/api/backup', { path: '/tmp/not-allowed' })).statusCode).toBe(400);
+});
+
+it('backs up once a day at startup and keeps only the newest seven backups', async () => {
+  const backups = () => readdirSync(join(dir, 'backups')).sort();
+  const start = async () => {
+    await app.close();
+    app = await createApp({
+      dbPath: join(dir, 'test.sqlite'),
+      token: 'test-token',
+      clock: () => now,
+      dailyBackup: true,
+    });
+    await app.ready();
+  };
+  await request('POST', '/api/problems', {
+    title: 'Two Sum',
+    url: 'https://leetcode.com/problems/two-sum/',
+  });
+  await start();
+  expect(backups()).toHaveLength(1);
+  expect((await request('GET', '/api/settings')).json().lastBackupAt).toBe(now.toISOString());
+  now = new Date(now.getTime() + 60 * 60 * 1000);
+  await start(); // same day: nothing new
+  expect(backups()).toHaveLength(1);
+  const first = backups()[0];
+  for (let day = 1; day <= 8; day++) {
+    now = new Date(Date.parse('2026-09-16T01:00:00Z') + day * 24 * 60 * 60 * 1000);
+    await start();
+  }
+  expect(backups()).toHaveLength(7);
+  expect(backups()).not.toContain(first);
+  expect(backups().at(-1)).toContain('2026-09-24');
 });
 
 it('rolls back every earlier score write when a later decision is stale', async () => {

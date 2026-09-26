@@ -21,7 +21,15 @@ export function registerStudyRoutes(
     clock,
     dbPath,
     demo,
-  }: { db: Db; store: Store; clock: () => Date; dbPath: string; demo?: boolean },
+    dailyBackup,
+  }: {
+    db: Db;
+    store: Store;
+    clock: () => Date;
+    dbPath: string;
+    demo?: boolean;
+    dailyBackup?: boolean;
+  },
 ) {
   registerSettings(app, db, store);
   registerSetup(app, store, clock, demo);
@@ -32,5 +40,5 @@ export function registerStudyRoutes(
   registerScoring(app, store, clock);
   registerPlans(app, store, clock);
   registerStudyTools(app, store, clock);
-  registerTransfer(app, store, clock, dbPath);
+  registerTransfer(app, store, clock, dbPath, dailyBackup);
 }
