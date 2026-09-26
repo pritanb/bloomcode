@@ -25,9 +25,16 @@ body,
   letter-spacing: -0.02em;
 }
 .brand strong {
+  display: inline;
+  font-size: inherit;
+  margin-left: 0.25rem;
   font-weight: 700;
 }
 .brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
   border-radius: 0.625rem;
   background: var(--brand);
   color: var(--brand-fg);
@@ -44,6 +51,7 @@ body,
   color: var(--foreground);
 }
 .sidebar nav a:hover {
+  color: var(--foreground);
   background: var(--sidebar-accent);
   text-decoration: none;
 }
@@ -53,6 +61,14 @@ body,
   font-weight: 500;
 }
 .sidebar nav a.active::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary);
   display: none;
 }
 .sidebar nav a.active .icon {
@@ -64,6 +80,10 @@ body,
   padding: 1.75rem 1.75rem 1.5rem;
 }
 .page-title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.25rem;
   align-items: flex-end;
 }
@@ -90,15 +110,29 @@ body,
   box-shadow: 0 0 0 1px var(--card-ring);
 }
 .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   flex-wrap: nowrap;
 }
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
   font-family: var(--font-display);
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .section-title > .icon {
+  box-sizing: content-box;
+  width: 0.875rem;
+  height: 0.875rem;
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
   display: none;
 }
 .desk-link,
@@ -356,10 +390,14 @@ body,
   color: var(--muted-foreground);
 }
 .activity-strip {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
   gap: 0.3125rem;
   margin: 0;
 }
 .activity-day {
+  display: block;
+  aspect-ratio: 1;
   border-radius: 0.3125rem;
   background: var(--heat-0);
 }
@@ -481,6 +519,7 @@ body,
 
 /* Shared primitives for every page */
 .back-link {
+  margin-bottom: 1rem;
   font-size: 0.875rem;
   color: var(--muted-foreground);
 }
@@ -504,6 +543,15 @@ body,
   font-weight: 500;
 }
 .panel .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 2rem 1.25rem;
+  text-align: center;
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
   border-radius: 1rem;
 }
 @media (min-width: 701px) {
@@ -523,12 +571,16 @@ body,
     min-width: 12rem;
   }
   .responsive-table thead .table-sort {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
     text-transform: none;
   }
   .responsive-table tbody td {
     padding: 0.875rem 0.625rem;
   }
   .responsive-table tbody tr {
+    transition: background-color 120ms ease;
     border-color: var(--border);
   }
   .responsive-table tbody tr:hover {
