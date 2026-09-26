@@ -62,13 +62,13 @@ async function main() {
   const checkBuild = (status) => {
     if (status.buildId !== expectedBuild)
       throw Error(
-        `The local server at ${base} is out of date. Stop the existing LeetCode Tutor server, then launch again. No process was stopped and no browser was opened.`,
+        `The local server at ${base} is out of date. Stop the existing BloomCode server, then launch again. No process was stopped and no browser was opened.`,
       );
   };
   const running = await ready();
   if (running) {
     checkBuild(running);
-    process.stdout.write(`LeetCode Tutor already running: ${base}\n`);
+    process.stdout.write(`BloomCode already running: ${base}\n`);
     await showBrowser();
     return;
   }

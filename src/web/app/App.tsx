@@ -94,15 +94,13 @@ function Workspace({
           <NavLink
             to="/"
             className="brand"
-            aria-label="LeetCode Tutor"
-            title={collapsed ? 'LeetCode Tutor' : undefined}
+            aria-label="BloomCode"
+            title={collapsed ? 'BloomCode' : undefined}
           >
             <span className="brand-mark" aria-hidden="true">
               <Icon icon={CodeXml} />
             </span>
-            <span className="sidebar-label">
-              LeetCode<strong>Tutor</strong>
-            </span>
+            <span className="sidebar-label">BloomCode</span>
           </NavLink>
         </div>
         <nav id="sidebar-navigation" aria-label="Main navigation">

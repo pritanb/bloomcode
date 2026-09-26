@@ -19,7 +19,7 @@ try {
   });
   try {
     const address = await app.listen({ host: '127.0.0.1', port });
-    console.log(`LeetCode Tutor listening at ${address}`);
+    console.log(`BloomCode listening at ${address}`);
   } catch (error) {
     await app.close();
     throw error;

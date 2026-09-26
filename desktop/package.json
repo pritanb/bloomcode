@@ -1,6 +1,6 @@
 {
   "name": "leetcode-tutor-desktop",
-  "productName": "LeetCode Tutor",
+  "productName": "BloomCode",
   "version": "0.1.0",
   "private": true,
   "description": "A local-first LeetCode study workspace",

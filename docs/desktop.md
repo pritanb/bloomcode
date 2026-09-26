@@ -1,10 +1,10 @@
 # Desktop app (macOS)
 
-LeetCode Tutor uses Electron to package its study interface, local server and runtime in one application. Once installed, it does not need Node.js or the project folder. The initial target is Apple silicon Macs; Intel, Windows and Linux packages have not been verified.
+BloomCode uses Electron to package its study interface, local server and runtime in one application. Once installed, it does not need Node.js or the project folder. The initial target is Apple silicon Macs; Intel, Windows and Linux packages have not been verified.
 
 ## Install and open
 
-1. Download the Apple silicon ZIP from the [experimental preview release](https://github.com/pritanb/leetcode-tutor/releases/tag/v0.1.0). Unzip the desktop build archive and move **LeetCode Tutor.app** to Applications.
+1. Download the Apple silicon ZIP from the [experimental preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0). Unzip the desktop build archive and move **LeetCode Tutor.app** to Applications.
 2. Open it, then drag its icon to the Dock for one-click access.
 3. For a new workspace, choose your timezone, daily target and starter question list.
 
@@ -19,7 +19,7 @@ npm ci
 npm run electron:make -- --arch=arm64
 ```
 
-The installable ZIP is under `dist/electron/make/zip/darwin/arm64/`. To create only the application bundle, use `npm run electron:package -- --arch=arm64`; its output is `dist/electron/LeetCode Tutor-darwin-arm64/LeetCode Tutor.app`.
+The installable ZIP is under `dist/electron/make/zip/darwin/arm64/`. To create only the application bundle, use `npm run electron:package -- --arch=arm64`; its output is `dist/electron/BloomCode-darwin-arm64/BloomCode.app`.
 
 The desktop build stages its own runtime dependencies, including Electron's SQLite binary. Your workspace, API token and `.env` file are not included in the package.
 
@@ -54,9 +54,3 @@ The desktop app owns its local server. Closing the window or choosing Quit stops
 If an older browser server is still running, stop it before opening the desktop app. The app reports an occupied workspace or port instead of terminating another process. See [Operations](operations.md) for stopping an existing server.
 
 The AI tutor can run through the signed-in Codex CLI with no other app open: choose **Settings → AI tutor → Codex**. Existing MCP clients can still connect to the desktop server using the same workspace and port. The desktop package does not configure a tutor client or provide a standalone MCP installer. The [optional tutor setup](tutor-integration.md) for MCP clients still uses Node.js and the adapter built from this repository. Normal practice and saving need neither.
-
-The earlier Swift launcher depended on a local project and Node installation. Electron replaces that launcher; its old build command is not needed for the self-contained app.
-
-## Verification
-
-The packaged Apple silicon app was run from outside the checkout with disposable data. Checks covered first-run setup, code copying, draft autosave and reload, attempt completion, quit/reopen persistence, graceful server shutdown, and native JSON export. The exported records were restored into a separate empty workspace and every table matched. Startup ownership/crash recovery tests, the production server smoke check, lint and typecheck also passed. Public download installation and the GitHub build workflow still need verification once released.
