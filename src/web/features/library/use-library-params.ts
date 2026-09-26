@@ -4,13 +4,12 @@ import { useSearchParams } from 'react-router-dom';
 // The library opens on the most recent practice; the API keeps its own title order.
 export const defaultSort = 'lastAttempt';
 export const defaultDirection = 'desc';
+// The first value of each filter is its default; sort and direction are not counted as filters.
 export const filterOptions: Record<string, string[]> = {
   status: ['all', 'solved', 'not_solved', 'stopped', 'not_submitted'],
   tagMode: ['any', 'all'],
   difficulty: ['', 'Easy', 'Medium', 'Hard'],
   timeBucket: ['', '0-10', '10-20', '20-30', '30-45', '45+', 'unknown'],
-  sort: ['title', 'lastAttempt', 'solveTime', 'reviewDate', 'tagDifficulty'],
-  direction: ['asc', 'desc'],
 };
 const libraryFiltersKey = 'library-filters';
 export const pageSizeKey = 'library-page-size';

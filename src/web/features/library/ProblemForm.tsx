@@ -144,12 +144,10 @@ export function ProblemForm({
                     step="1"
                     placeholder="Unknown"
                     value={selectedTags[t.id] ?? ''}
-                    onChange={(e) =>
-                      setTags({
-                        ...selectedTags,
-                        [t.id]: e.target.value === '' ? null : Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => {
+                      const difficulty = e.target.value === '' ? null : Number(e.target.value);
+                      setTags((old) => ({ ...old, [t.id]: difficulty }));
+                    }}
                   />
                 )}
               </div>
