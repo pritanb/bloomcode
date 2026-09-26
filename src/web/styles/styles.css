@@ -49,73 +49,116 @@
 }
 
 :root {
-  --background: #f7f6f2;
-  --foreground: #202124;
+  /* theme.tsx sets --brand and --brand-fg from the accent colour (Settings → Appearance). */
+  --background: #f6f6f7;
+  --foreground: #0a0a0b;
   --card: #ffffff;
-  --card-foreground: #202124;
+  --card-foreground: #0a0a0b;
   --popover: #ffffff;
   --popover-foreground: #202124;
-  --primary: #4f46e5;
-  --primary-foreground: #ffffff;
-  --secondary: #f0efeb;
-  --secondary-foreground: #363640;
-  --muted: #f0efeb;
-  --muted-foreground: #62636b;
-  --accent: #eeecff;
-  --accent-foreground: #4338ca;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-fg);
+  --secondary: #f1f1f3;
+  --secondary-foreground: #0a0a0b;
+  --muted: #f1f1f3;
+  --muted-foreground: #6b6b73;
+  --accent: #f1f1f3;
+  --accent-foreground: #0a0a0b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #dedfe5;
-  --input: #dedfe5;
-  --ring: #6366f1;
-  --chart-1: #4f46e5;
+  --border: #e6e6ea;
+  --input: #e2e2e6;
+  --ring: color-mix(in srgb, var(--brand) 60%, white);
+  --chart-1: var(--brand);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #4c4e5b;
-  --sidebar-primary: #4f46e5;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eeecff;
-  --sidebar-accent-foreground: #4338ca;
-  --sidebar-border: #e7e5e1;
-  --sidebar-ring: #6366f1;
+  --sidebar: #fbfbfc;
+  --sidebar-foreground: #0a0a0b;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-accent: #f1f1f3;
+  --sidebar-accent-foreground: #0a0a0b;
+  --sidebar-border: #ececef;
+  --sidebar-ring: var(--brand);
+  --brand: var(--foreground);
+  --brand-fg: var(--background);
+  --brand-text: color-mix(in srgb, var(--brand) 78%, var(--foreground));
+  --brand-soft: color-mix(in srgb, var(--brand) 14%, transparent);
+  --card-ring: rgb(10 10 11 / 0.08);
+  --up: #059669;
+  --warn: #c2410c;
+  --heat-0: #ececef;
+  --heat-1: color-mix(in srgb, var(--brand) 28%, white);
+  --heat-2: color-mix(in srgb, var(--brand) 62%, white);
+  --heat-3: var(--brand);
+  --tone-sky-bg: #e6f4fe;
+  --tone-sky: #0284c7;
+  --tone-emerald-bg: #e7f8f0;
+  --tone-emerald: #059669;
+  --tone-amber-bg: #fff4e0;
+  --tone-amber: #d97706;
+  --tone-rose-bg: #fff0ed;
+  --tone-rose: #ea580c;
+  --font-ui: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'DM Sans Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --surface-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 12px -4px rgb(16 24 40 / 0.08);
+  --page-glow: color-mix(in srgb, var(--brand) 6%, transparent);
 }
 
 .dark {
   color-scheme: dark;
-  --background: #121316;
-  --foreground: #f3f3f5;
-  --card: #1b1d22;
-  --card-foreground: #f3f3f5;
-  --popover: #1b1d22;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #131316;
+  --card-foreground: #fafafa;
+  --popover: #1c1e24;
   --popover-foreground: #f3f3f5;
-  --primary: #a5b4fc;
-  --primary-foreground: #121316;
-  --secondary: #272a31;
-  --secondary-foreground: #f3f3f5;
-  --muted: #272a31;
-  --muted-foreground: #b3b5bf;
-  --accent: #2b2d45;
-  --accent-foreground: #c7d2fe;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-fg);
+  --secondary: #1d1d21;
+  --secondary-foreground: #fafafa;
+  --muted: #1d1d21;
+  --muted-foreground: #a1a1aa;
+  --accent: #1d1d21;
+  --accent-foreground: #fafafa;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #363943;
-  --input: #444854;
-  --ring: #a5b4fc;
-  --chart-1: #a5b4fc;
+  --border: #26262b;
+  --input: #2e2e34;
+  --ring: var(--brand);
+  --chart-1: var(--brand);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #1b1d22;
-  --sidebar-foreground: #e1e2e8;
-  --sidebar-primary: #a5b4fc;
-  --sidebar-primary-foreground: #121316;
-  --sidebar-accent: #2b2d45;
-  --sidebar-accent-foreground: #c7d2fe;
-  --sidebar-border: #363943;
-  --sidebar-ring: #a5b4fc;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-accent: #1d1d21;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #1f1f23;
+  --sidebar-ring: var(--brand);
+  --brand-text: color-mix(in srgb, var(--brand) 78%, var(--foreground));
+  --brand-soft: color-mix(in srgb, var(--brand) 14%, transparent);
+  --card-ring: rgb(255 255 255 / 0.08);
+  --up: #34d399;
+  --warn: #fb923c;
+  --heat-0: #1f1f23;
+  --heat-1: color-mix(in srgb, var(--brand) 35%, #1f1f23);
+  --heat-2: color-mix(in srgb, var(--brand) 70%, #1f1f23);
+  --heat-3: var(--brand-text);
+  --tone-sky-bg: rgb(14 165 233 / 0.15);
+  --tone-sky: #7dd3fc;
+  --tone-emerald-bg: rgb(16 185 129 / 0.15);
+  --tone-emerald: #6ee7b7;
+  --tone-amber-bg: rgb(245 158 11 / 0.15);
+  --tone-amber: #fcd34d;
+  --tone-rose-bg: rgb(249 115 22 / 0.15);
+  --tone-rose: #fdba74;
+  --surface-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 10px 30px -18px rgb(0 0 0 / 0.7);
+  --page-glow: color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 @layer base {
@@ -508,20 +551,6 @@
 }
 
 /* Visual polish: depth, clearer hierarchy and a recognisable identity. */
-:root {
-  --surface-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 12px -4px rgb(16 24 40 / 0.08);
-  --page-glow: color-mix(in srgb, var(--brand) 6%, transparent);
-}
-.dark {
-  --background: #0f1013;
-  --card: #17191e;
-  --popover: #1c1e24;
-  --border: #2b2e36;
-  --sidebar: #131418;
-  --sidebar-border: #25272e;
-  --surface-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 10px 30px -18px rgb(0 0 0 / 0.7);
-  --page-glow: color-mix(in srgb, var(--brand) 8%, transparent);
-}
 .app {
   background:
     radial-gradient(900px 420px at 30% -120px, var(--page-glow), transparent 70%), var(--background);
@@ -654,28 +683,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Accent colour (Settings → Appearance). theme.tsx sets --brand and --brand-fg
-   on the root element; every accent token derives from them. */
-:root {
-  --brand: var(--foreground);
-  --brand-fg: var(--background);
-}
-:root,
-.dark {
-  --primary: var(--brand);
-  --primary-foreground: var(--brand-fg);
-  --ring: var(--brand);
-  --chart-1: var(--brand);
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--brand-fg);
-  --sidebar-ring: var(--brand);
-  --brand-text: color-mix(in srgb, var(--brand) 78%, var(--foreground));
-  --brand-soft: color-mix(in srgb, var(--brand) 14%, transparent);
-  --accent: color-mix(in srgb, var(--brand) 14%, var(--card));
-  --accent-foreground: var(--brand-text);
-  --sidebar-accent: color-mix(in srgb, var(--brand) 14%, var(--sidebar));
-  --sidebar-accent-foreground: var(--brand-text);
-}
 .accent-picker {
   display: flex;
   align-items: center;

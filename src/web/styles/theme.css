@@ -1,85 +1,10 @@
-/* Neutral, number-first visual system. main.tsx puts .theme-v2 on <body> so
-   every route and every portalled menu or dialog shares these tokens.
+/* Neutral, number-first visual system. Colour tokens are in styles.css.
    Page-specific rules live in the CSS file in each src/web/features folder. */
-.theme-v2 {
-  --background: #f6f6f7;
-  --foreground: #0a0a0b;
-  --card: #ffffff;
-  --card-foreground: #0a0a0b;
-  --primary: var(--brand);
-  --primary-foreground: var(--brand-fg);
-  --secondary: #f1f1f3;
-  --secondary-foreground: #0a0a0b;
-  --muted: #f1f1f3;
-  --muted-foreground: #6b6b73;
-  --accent: #f1f1f3;
-  --accent-foreground: #0a0a0b;
-  --border: #e6e6ea;
-  --input: #e2e2e6;
-  --ring: color-mix(in srgb, var(--brand) 60%, white);
-  --sidebar: #fbfbfc;
-  --sidebar-foreground: #0a0a0b;
-  --sidebar-accent: #f1f1f3;
-  --sidebar-accent-foreground: #0a0a0b;
-  --sidebar-border: #ececef;
-  --card-ring: rgb(10 10 11 / 0.08);
-  --up: #059669;
-  --warn: #c2410c;
-  --heat-0: #ececef;
-  --heat-1: color-mix(in srgb, var(--brand) 28%, white);
-  --heat-2: color-mix(in srgb, var(--brand) 62%, white);
-  --heat-3: var(--brand);
-  --tone-sky-bg: #e6f4fe;
-  --tone-sky: #0284c7;
-  --tone-emerald-bg: #e7f8f0;
-  --tone-emerald: #059669;
-  --tone-amber-bg: #fff4e0;
-  --tone-amber: #d97706;
-  --tone-rose-bg: #fff0ed;
-  --tone-rose: #ea580c;
-  --font-ui: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'DM Sans Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+body {
   font-family: var(--font-ui);
   font-size: 15px;
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
-}
-.dark .theme-v2 {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #131316;
-  --card-foreground: #fafafa;
-  --primary: var(--brand);
-  --primary-foreground: var(--brand-fg);
-  --secondary: #1d1d21;
-  --secondary-foreground: #fafafa;
-  --muted: #1d1d21;
-  --muted-foreground: #a1a1aa;
-  --accent: #1d1d21;
-  --accent-foreground: #fafafa;
-  --border: #26262b;
-  --input: #2e2e34;
-  --ring: var(--brand);
-  --sidebar: #0c0c0e;
-  --sidebar-foreground: #fafafa;
-  --sidebar-accent: #1d1d21;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #1f1f23;
-  --card-ring: rgb(255 255 255 / 0.08);
-  --up: #34d399;
-  --warn: #fb923c;
-  --heat-0: #1f1f23;
-  --heat-1: color-mix(in srgb, var(--brand) 35%, #1f1f23);
-  --heat-2: color-mix(in srgb, var(--brand) 70%, #1f1f23);
-  --heat-3: var(--brand-text);
-  --tone-sky-bg: rgb(14 165 233 / 0.15);
-  --tone-sky: #7dd3fc;
-  --tone-emerald-bg: rgb(16 185 129 / 0.15);
-  --tone-emerald: #6ee7b7;
-  --tone-amber-bg: rgb(245 158 11 / 0.15);
-  --tone-amber: #fcd34d;
-  --tone-rose-bg: rgb(249 115 22 / 0.15);
-  --tone-rose: #fdba74;
 }
 
 body.theme-v2,
