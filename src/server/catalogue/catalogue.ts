@@ -245,12 +245,7 @@ export function registerCatalogue(app: FastifyInstance, s: Store, clock: () => D
         if (q.status === 'not_submitted' && p.latestSubmission) return false;
         if (q.status === 'unsolved' && solved) return false;
         if (q.status === 'attempted' && p.attemptCount === 0) return false;
-        if (
-          q.listId &&
-          !p.lists.some((l) => l.id === q.listId) &&
-          !projection.hasStoredMembership(p.id, q.listId)
-        )
-          return false;
+        if (q.listId && !p.lists.some((l) => l.id === q.listId)) return false;
         if (q.difficulty && p.difficulty !== q.difficulty) return false;
         const matching = p.tags.filter(
           (t) =>

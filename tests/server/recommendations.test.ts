@@ -65,7 +65,6 @@ async function fixture(dbPath = ':memory:', clock = () => new Date('2026-09-16T0
         evidence: 'legacy',
       },
     ],
-    planned: [],
     records: [],
   });
   const list = (await request('GET', '/api/lists'))

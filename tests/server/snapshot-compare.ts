@@ -1,9 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
-import { consolidatePatternTables } from '../../src/shared/pattern-migration.js';
 import { snapshotSchema } from '../../src/integrations/snapshot.js';
 
-// Compares two table dumps ignoring row order, after the pattern-notebook
-// consolidation the app applies to legacy data on startup.
+// Compares two table dumps ignoring row order and interrupted analysis claims,
+// which the app resets on startup.
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object')
@@ -24,14 +23,13 @@ export function sameTables(a: unknown, b: unknown): boolean {
         rows.map((r) => JSON.stringify(canonical(r))).sort(),
       ]),
     );
-  const normalize = (snapshot: typeof first) =>
-    consolidatePatternTables({
-      ...snapshot.tables,
-      learning_insights: (snapshot.tables.learning_insights ?? []).map((r) =>
-        (r.kind === 'job' || r.kind === 'topic_analysis') && r.status === 'running'
-          ? { ...r, status: 'pending', claimId: null, claimedAt: 0 }
-          : r,
-      ),
-    });
+  const normalize = (snapshot: typeof first) => ({
+    ...snapshot.tables,
+    learning_insights: (snapshot.tables.learning_insights ?? []).map((r) =>
+      (r.kind === 'job' || r.kind === 'topic_analysis') && r.status === 'running'
+        ? { ...r, status: 'pending', claimId: null, claimedAt: 0 }
+        : r,
+    ),
+  });
   return isDeepStrictEqual(order(normalize(first)), order(normalize(second)));
 }

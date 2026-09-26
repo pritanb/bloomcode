@@ -14,15 +14,7 @@
       "legacyCompleted": false,
       "exposed": true,
       "tags": [],
-      "lists": [
-        "Sheet: Neetcode List",
-        "Sheet: Neetcode 250 Additions",
-        "Sheet: Neetcode250 Additions",
-        "Sheet: Others",
-        "Sheet: Microsoft Top Questions",
-        "Sheet: Tutor Tracker",
-        "Sheet: Current Plan"
-      ]
+      "lists": ["Microsoft Top Questions"]
     }
   ],
   "attempts": [
@@ -43,15 +35,6 @@
   ],
   "topics": [],
   "movements": [],
-  "planned": [
-    {
-      "sourceKey": "Current%20Plan:2",
-      "problemKey": "contains-duplicate",
-      "date": "2026-09-02",
-      "status": "",
-      "notes": ""
-    }
-  ],
   "records": [
     {
       "sourceKey": "snapshot:metadata",

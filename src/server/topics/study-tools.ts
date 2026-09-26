@@ -22,7 +22,6 @@ import {
 } from '../attempts/attempt-model.js';
 import { addDays } from '../attempts/review-schedule.js';
 import { conflict } from '../db/errors.js';
-import { patternNotebook } from '../../shared/pattern-migration.js';
 import type { TagLink } from '../catalogue/problem-model.js';
 import type { Tag } from '../../shared/contracts.js';
 import { decisionView } from './topic-model.js';
@@ -35,6 +34,19 @@ const reflectionFields = {
     .refine((v) => new Set(v).size === v.length, 'Duplicate mistake label'),
   takeaway: z.string().max(2000),
 };
+function patternNotebook(tag: Record<string, unknown>) {
+  return {
+    id: String(tag.id),
+    title: String(tag.name),
+    description: String(tag.description ?? ''),
+    archived: Boolean(tag.archived),
+    recognitionCues: String(tag.recognitionCues ?? ''),
+    pitfalls: String(tag.pitfalls ?? ''),
+    notes: String(tag.patternNotes ?? ''),
+    version: Number(tag.notebookVersion ?? 1),
+    updatedAt: tag.notebookUpdatedAt ? String(tag.notebookUpdatedAt) : null,
+  };
+}
 export function activityDays(s: Store, end: string): ActivityDay[] {
   const counts = new Map<string, number>();
   for (const attempt of s.all<AttemptRecord>('attempts'))

@@ -1,4 +1,3 @@
-import Database from 'better-sqlite3';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -200,60 +199,6 @@ it('keeps notebook notes on pattern tags, derives assigned questions, and keeps 
   await finish(mixed);
 });
 
-it('consolidates legacy notebook records losslessly on startup', async () => {
-  const p = await problem();
-  const other = await problem('other');
-  const tag = (
-    await request('POST', '/api/tags', {
-      name: 'Two pointers',
-      description: 'Existing description',
-    })
-  ).json();
-  await request('PATCH', `/api/problems/${p.id}`, { tags: [{ tagId: tag.id, difficulty: 7 }] });
-  const completed = await finish(await start(p.id));
-  const old = (await request('GET', '/api/export')).json<Snapshot>();
-  old.tables.patterns = [
-    {
-      id: 'old',
-      ...pattern([p.id, other.id]),
-      version: 1,
-      createdAt: clock().toISOString(),
-      updatedAt: clock().toISOString(),
-    },
-    {
-      id: 'duplicate',
-      ...pattern([p.id]),
-      notes: 'Second lesson',
-      version: 1,
-      createdAt: clock().toISOString(),
-      updatedAt: clock().toISOString(),
-    },
-    {
-      id: 'new',
-      ...pattern([other.id]),
-      title: 'Answer space',
-      version: 1,
-      createdAt: clock().toISOString(),
-      updatedAt: clock().toISOString(),
-    },
-  ];
-  await reopenWith(old.tables);
-  const migrated = (await request('GET', '/api/export')).json<Snapshot>();
-  expect(sameTables(old, migrated)).toBe(true);
-  expect(migrated.tables.patterns).toEqual([]);
-  expect(migrated.tables.tags).toHaveLength(2);
-  expect(migrated.tables.tags!.find((row) => row.id === tag.id)).toMatchObject({
-    description: 'Existing description',
-    patternNotes: 'Check bounds\n\nSecond lesson',
-  });
-  expect(
-    migrated.tables.problem_tags!.find((row) => row.problemId === p.id && row.tagId === tag.id)!
-      .difficulty,
-  ).toBe(7);
-  expect((await request('GET', `/api/attempts/${completed.id}`)).json()).toEqual(completed);
-  for (const table of ['problems', 'topics', 'score_decisions', 'review_targets', 'audit_events'])
-    expect(migrated.tables[table]).toEqual(old.tables[table]);
-});
 it('attributes recap and activity by study date and only counts assigned scheduled reviews', async () => {
   const p = await problem();
   await finish(await start(p.id, 'review'));
@@ -310,55 +255,6 @@ it('attributes recap and activity by study date and only counts assigned schedul
     dashboard.activity.find((d: { date: string }) => d.date === '2026-09-14').completedAttempts,
   ).toBe(2);
   expect(dashboard.activity.at(-1)).toEqual({ date: '2026-09-16', completedAttempts: 0 });
-});
-
-it('upgrades an on-disk v1 database without changing saved work', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'lc-pattern-migration-'));
-  try {
-    await app.close();
-    const dbPath = join(dir, 'test.sqlite');
-    app = await createApp({ dbPath, token: 'test', clock });
-    const p = await problem();
-    const a = await finish(await start(p.id));
-    const original = (await request('GET', '/api/export')).json<Snapshot>();
-    await app.close();
-    const sql = new Database(dbPath);
-    sql.exec('DROP TABLE patterns; DROP TABLE learning_insights; DROP TABLE insight_embeddings');
-    sql.prepare('DELETE FROM __drizzle_migrations WHERE created_at >= ?').run(1789516800001);
-    sql.close();
-    app = await createApp({ dbPath, token: 'test', clock });
-    expect((await request('GET', `/api/attempts/${a.id}`)).json()).toEqual(a);
-    expect((await request('GET', '/api/patterns')).json()).toEqual([]);
-    expect(sameTables(original, (await request('GET', '/api/export')).json())).toBe(true);
-    await app.close();
-    const oldDb = new Database(dbPath);
-    oldDb.prepare('INSERT INTO patterns(id,data) VALUES (?,?)').run(
-      'old-notebook',
-      JSON.stringify({
-        id: 'old-notebook',
-        ...pattern([p.id]),
-        version: 1,
-        createdAt: clock().toISOString(),
-        updatedAt: clock().toISOString(),
-      }),
-    );
-    oldDb.close();
-    app = await createApp({ dbPath, token: 'test', clock });
-    const consolidated = (await request('GET', '/api/export')).json<Snapshot>();
-    expect(consolidated.tables.patterns).toEqual([]);
-    expect(consolidated.tables.tags![0]).toMatchObject({
-      name: 'Two pointers',
-      patternNotes: 'Check bounds',
-    });
-    expect((await request('GET', `/api/attempts/${a.id}`)).json()).toEqual(a);
-    await app.close();
-    app = await createApp({ dbPath, token: 'test', clock });
-    expect(sameTables(consolidated, (await request('GET', '/api/export')).json())).toBe(true);
-  } finally {
-    await app.close();
-    rmSync(dir, { recursive: true, force: true });
-    app = await createApp({ dbPath: ':memory:', token: 'test', clock });
-  }
 });
 
 it('gives every tag a notebook regardless of former classification', async () => {

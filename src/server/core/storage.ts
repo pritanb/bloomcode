@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import { openDb } from '../db/db.js';
 import { Store } from '../db/store.js';
 import { syncSystemTimezone } from './settings.js';
-import { migratePatternNotebooks } from '../topics/pattern-migration.js';
 
 export type Db = ReturnType<typeof openDb>;
 
@@ -20,7 +19,6 @@ export function openStorage(
   });
   if (followSystemTimezone) syncSystemTimezone(db);
   const store = new Store(db.sqlite);
-  migratePatternNotebooks(store);
   // Re-saving a tag without a hue lets Store.put assign one.
   store.transaction(() => {
     for (const tag of store.all<{ id: string; hue?: number }>('tags'))

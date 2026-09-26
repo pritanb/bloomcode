@@ -74,8 +74,12 @@ npm run typecheck
 
 Integration tests use temporary directories and loopback fake HTTP services, an actual SDK stdio client/child process, and SQLite integrity checks. The launcher test starts/reuses a temporary bundled service with browser opening disabled. These tests do not touch the real Sheet, pilot database or Hermes configuration.
 
-## Pattern notebook consolidation
+## Pattern notebooks
 
 The notebook is attached to every tag. Questions carry separate manually entered `leetcodeTopics` labels; these do not create or modify proficiency scores. Pattern membership and per-question difficulty continue to use `problem_tags`. Notebook fields live on the tag itself.
 
-At startup, former standalone notebook entries merge into tags by case-insensitive, trimmed name. Missing tags are created, distinct notes are retained, and former example links become tag assignments without overwriting existing difficulty values. The old `patterns` table remains empty for backup compatibility. This upgrade runs transactionally and is idempotent. Every tag, including imported categories and formerly classified topic tags, has a notebook page. Legacy kind fields remain compatible with backups but do not restrict notebook access or assignment. No reclassification is needed.
+Every tag, including imported categories and formerly classified topic tags, has a notebook page. Legacy `kind` fields are kept but do not restrict notebook access or assignment. (The former standalone notebook table was merged into tags and then dropped by migration `0003_retire_sheet`.)
+
+## Schema migrations
+
+`openDb` applies the SQL migrations in `drizzle/`. When an existing database has migrations pending, it first saves a copy as `backups/before-migration-<time>.sqlite`; daily backup pruning never deletes these.

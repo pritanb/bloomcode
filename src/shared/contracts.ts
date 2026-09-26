@@ -149,7 +149,6 @@ export interface Settings {
   budgetMinutes: number;
   primaryCount: number;
   optionalCount: number;
-  dataMode: string;
   lastBackupAt: string | null;
 }
 export interface Dashboard {
@@ -222,13 +221,6 @@ export interface ImportMovement {
   rationale: string;
   evidence: string;
 }
-export interface ImportPlan {
-  sourceKey: string;
-  problemKey?: string;
-  date: string;
-  status: string;
-  notes: string;
-}
 export interface ImportRecord {
   sourceKey: string;
   tab: string;
@@ -240,12 +232,11 @@ export interface ImportRecord {
 export interface ImportPayload {
   importId: string;
   dryRun: boolean;
-  source: { spreadsheetId?: string; retrievedAt: string };
+  source: { retrievedAt: string };
   problems: ImportProblem[];
   attempts: ImportAttempt[];
   topics: ImportTopic[];
   movements: ImportMovement[];
-  planned: ImportPlan[];
   records: ImportRecord[];
 }
 export interface ImportReport {

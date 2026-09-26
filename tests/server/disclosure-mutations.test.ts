@@ -33,7 +33,6 @@ const batch = (): ImportPayload => ({
   topics: [{ name: 'Arrays', score: 3, notes: '', provisional: false }],
   attempts: [],
   movements: [],
-  planned: [],
   records: [],
 });
 const tables = async () => (await request('GET', '/api/export')).json().tables;

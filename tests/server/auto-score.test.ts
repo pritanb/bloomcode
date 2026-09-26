@@ -41,7 +41,6 @@ async function fixture(topicScore: number | null) {
     attempts: [],
     topics: [{ name: 'Arrays & Hashing', score: topicScore, notes: '', provisional: true }],
     movements: [],
-    planned: [],
     records: [],
   });
   // /api/problems discloses pattern metadata; the export is side-effect free.
@@ -225,7 +224,6 @@ it('falls back to a topic-named tag for a question outside the verified lists', 
     attempts: [],
     topics: [{ name: 'Trees', score: 2.5, notes: '', provisional: true }],
     movements: [],
-    planned: [],
     records: [],
   });
   const p = (await request('GET', '/api/export')).json().tables.problems[0] as { id: string };

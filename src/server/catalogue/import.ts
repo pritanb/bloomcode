@@ -31,12 +31,7 @@ export const importSchema = z
   .object({
     importId: key,
     dryRun: z.boolean(),
-    source: z
-      .object({
-        spreadsheetId: z.string().optional(),
-        retrievedAt: z.iso.datetime({ offset: true }),
-      })
-      .strict(),
+    source: z.object({ retrievedAt: z.iso.datetime({ offset: true }) }).strict(),
     problems: z.array(
       z
         .object({
@@ -95,17 +90,6 @@ export const importSchema = z
         })
         .strict(),
     ),
-    planned: z.array(
-      z
-        .object({
-          sourceKey: key,
-          problemKey: key.optional(),
-          date,
-          status: z.string(),
-          notes: z.string(),
-        })
-        .strict(),
-    ),
     records: z.array(
       z
         .object({
@@ -132,13 +116,14 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       attempts: 0,
       topics: 0,
       movements: 0,
-      planned: 0,
       records: 0,
     },
     warnings: string[] = [],
     unresolved: ImportRecord[] = b.records.filter((r) => r.status === 'unresolved');
   const fingerprint = createHash('sha256')
-      .update(canonical({ ...b, dryRun: false }))
+      // `planned` was dropped with the Sheet import; hashing it empty keeps batches
+      // applied before then (such as the public lists) replaying as no-ops.
+      .update(canonical({ ...b, planned: [], dryRun: false }))
       .digest('hex'),
     prior = s.all<Batch>('import_batches').find((x) => x.id === b.importId);
   if (prior) {
@@ -339,11 +324,6 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       importId: b.importId,
     } satisfies ScoreDecision & { sourceKey: string; importId: string });
     counts.movements!++;
-  }
-  for (const input of b.planned) {
-    const problemId = input.problemKey ? (problems.get(input.problemKey) ?? null) : null;
-    s.put('import_plans', { id: randomUUID(), ...input, problemId, importId: b.importId });
-    counts.planned!++;
   }
   for (const r of [...b.records, ...unresolved.filter((r) => r.tab === 'canonical')]) {
     s.put('import_records', { id: randomUUID(), ...r, importId: b.importId });

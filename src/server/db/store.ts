@@ -8,7 +8,6 @@ export const references: Partial<Record<Table, Record<string, string>>> = {
   score_decisions: { topic_id: 'topicId', attempt_id: 'attemptId' },
   attempt_topics: { topic_id: 'topicId', attempt_id: 'attemptId' },
   import_records: { import_id: 'importId' },
-  import_plans: { import_id: 'importId', problem_id: 'problemId' },
   review_targets: { problem_id: 'problemId' },
   answer_versions: { attempt_id: 'attemptId' },
   attempts: { problem_id: 'problemId' },

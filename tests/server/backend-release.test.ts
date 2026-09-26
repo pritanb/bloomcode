@@ -18,7 +18,7 @@ const request = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object
 const batch = (): ImportPayload => ({
   importId: 'first',
   dryRun: false,
-  source: { spreadsheetId: 'sheet', retrievedAt: '2026-09-16T00:00:00+10:00' },
+  source: { retrievedAt: '2026-09-16T00:00:00+10:00' },
   problems: [
     {
       key: 'p',
@@ -32,7 +32,6 @@ const batch = (): ImportPayload => ({
   topics: [{ name: 'Arrays', score: 3, notes: '', provisional: false }],
   attempts: [],
   movements: [],
-  planned: [],
   records: [],
 });
 beforeEach(async () => {

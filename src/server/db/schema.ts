@@ -90,14 +90,6 @@ export const importRecords = sqliteTable('import_records', {
     .notNull()
     .references(() => importBatches.id),
 });
-export const importPlans = sqliteTable('import_plans', {
-  id: text('id').primaryKey(),
-  data: text('data', { mode: 'json' }).notNull(),
-  importId: text('import_id')
-    .notNull()
-    .references(() => importBatches.id),
-  problemId: text('problem_id').references(() => problems.id),
-});
 export const dailyPlans = sqliteTable('daily_plans', {
   id: text('id').primaryKey(),
   data: text('data', { mode: 'json' }).notNull(),
@@ -114,11 +106,6 @@ export const planItems = sqliteTable('plan_items', {
 export const settings = sqliteTable('settings', {
   id: text('id').primaryKey(),
   data: text('data', { mode: 'json' }).$type<Settings>().notNull(),
-});
-
-export const patterns = sqliteTable('patterns', {
-  id: text('id').primaryKey(),
-  data: text('data', { mode: 'json' }).notNull(),
 });
 
 export const learningInsights = sqliteTable('learning_insights', {

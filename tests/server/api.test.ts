@@ -257,7 +257,7 @@ it('atomically finishes answers with durable idempotency, unknown time and manua
 const imported = (): ImportPayload => ({
   importId: 'sheet-1',
   dryRun: false,
-  source: { spreadsheetId: 'test-sheet', retrievedAt: '2026-09-16T00:00:00Z' },
+  source: { retrievedAt: '2026-09-16T00:00:00Z' },
   problems: [
     {
       key: 'p1',
@@ -295,15 +295,6 @@ const imported = (): ImportPayload => ({
       newScore: 3.2,
       rationale: 'Original movement',
       evidence: 'legacy',
-    },
-  ],
-  planned: [
-    {
-      sourceKey: 'plan1',
-      problemKey: 'p1',
-      date: '2026-08-01',
-      status: 'planned',
-      notes: 'Old candidate',
     },
   ],
   records: [

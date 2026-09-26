@@ -287,10 +287,6 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           <SectionTitle icon={Database}>Your data</SectionTitle>
           <dl className="data-status">
             <div>
-              <dt>Current workspace</dt>
-              <dd>{settings.dataMode}</dd>
-            </div>
-            <div>
               <dt>Last backup</dt>
               <dd>
                 {settings.lastBackupAt ? dateLabel(settings.lastBackupAt) : 'No backup recorded'}

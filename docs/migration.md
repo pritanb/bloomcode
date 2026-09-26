@@ -1,6 +1,6 @@
 # Read-only Sheet migration
 
-Cutover was approved on 2026-09-17: the app is authoritative and the Sheet is a read-only archive. This document remains as the historical record of how the import was performed and verified. Never write back to the Sheet or maintain two writable study histories. The Sheet importer (`scripts/import-sheet.ts`, `src/integrations/sheet.ts`) was removed on 2026-09-26; recover it from git history if ever needed. Imported plan rows no longer influence daily plans.
+Cutover was approved on 2026-09-17: the app is authoritative and the Sheet is a read-only archive. This document remains as the historical record of how the import was performed and verified. Never write back to the Sheet or maintain two writable study histories. The Sheet importer (`scripts/import-sheet.ts`, `src/integrations/sheet.ts`) was removed on 2026-09-26; recover it from git history if ever needed. On 2026-09-26 migration `0003_retire_sheet` dropped the imported plan rows (`import_plans`), deleted the hidden `Sheet: <tab>` source lists and their memberships, and renamed `Sheet: Microsoft Top Questions` to `Microsoft Top Questions`; a copy of the database was saved to `backups/` first. The list-projection rules below describe the app before that date.
 
 ## Snapshot format (version 1)
 

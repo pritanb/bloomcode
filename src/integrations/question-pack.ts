@@ -28,11 +28,8 @@ export const questionPackSchema = z
 /** A metadata-only format: cannot import scores, solved flags or executable code. */
 export function mapQuestionPack(value: unknown): ImportPayload {
   const pack = questionPackSchema.parse(value);
-  if (
-    ['blind 75', 'neetcode 150', 'neetcode 250'].includes(pack.name.toLowerCase()) ||
-    /^sheet:/i.test(pack.name)
-  )
-    throw Error('Use a custom list name; bundled and source-archive names are reserved.');
+  if (['blind 75', 'neetcode 150', 'neetcode 250'].includes(pack.name.toLowerCase()))
+    throw Error('Use a custom list name; the bundled list names are reserved.');
   const keys = pack.questions.map((question) => new URL(question.url).pathname.split('/')[2]!);
   if (new Set(keys).size !== keys.length)
     throw Error('A question pack cannot contain duplicate LeetCode slugs.');
@@ -49,7 +46,6 @@ export function mapQuestionPack(value: unknown): ImportPayload {
     attempts: [],
     topics: [],
     movements: [],
-    planned: [],
     records: pack.questions.map((question, index) => ({
       sourceKey: keys[index]!,
       tab: pack.name,

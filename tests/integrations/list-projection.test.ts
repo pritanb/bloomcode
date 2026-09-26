@@ -13,7 +13,7 @@ import type {
   Snapshot,
 } from '../../src/shared/contracts.js';
 
-test('projects verified slug memberships without exposing Sheet provenance or rewriting history', async () => {
+test('projects verified slug memberships without rewriting stored history', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'lc-list-projection-'));
   const app = await createApp({ dbPath: join(dir, 'test.sqlite') });
   try {
@@ -32,21 +32,21 @@ test('projects verified slug memberships without exposing Sheet provenance or re
     // List metadata exists, but no public-list membership edges were imported.
     for (const { count: _count, ...list } of verified.lists)
       await api.request('POST', '/api/lists', list);
-    // Captured from the retired Sheet mapper: lists, one attempt and one plan row.
+    // Captured from the retired Sheet mapper: a list, one attempt and raw records.
     const payload = structuredClone(sheetListsImport) as ImportPayload;
     payload.problems.push(
       {
         key: 'concatenation-of-array',
         title: 'Concatenation of Array',
         url: 'https://leetcode.com/problems/concatenation-of-array/',
-        lists: ['Sheet: Others'],
+        lists: [],
         exposed: true,
       },
       {
         key: 'unrelated-fixture',
         title: 'Contains Duplicate',
         url: 'https://leetcode.com/problems/unrelated-fixture/',
-        lists: ['Sheet: Neetcode List', 'My custom list'],
+        lists: ['My custom list'],
         exposed: true,
       },
     );
@@ -66,7 +66,6 @@ test('projects verified slug memberships without exposing Sheet provenance or re
         },
       ],
       attempts: [],
-      planned: [],
       records: [],
     });
     const before = (await api.request('GET', '/api/export')) as Snapshot;
@@ -107,19 +106,9 @@ test('projects verified slug memberships without exposing Sheet provenance or re
       expect(filtered.total).toBe(expected.length);
       expect(filtered.items.map((p) => p.slug).sort()).toEqual(expected);
     }
-    // Old source-list bookmarks retain their exact stored meaning, not a guessed alias.
-    const sourceList = before.tables.lists.find((l) => l.name === 'Sheet: Neetcode List')!;
-    const legacy = (await api.request(
-      'GET',
-      `/api/problems?listId=${sourceList.id}`,
-    )) as ProblemPage;
-    expect(legacy.items.map((p) => p.slug).sort()).toEqual([
-      'contains-duplicate',
-      'unrelated-fixture',
-    ]);
     expect(((await api.request('GET', '/api/export')) as Snapshot).tables).toEqual(before.tables);
     // The editor sends displayed memberships back even for a notes-only save.
-    // This must neither drop hidden provenance nor persist derived memberships.
+    // This must not persist memberships derived from the public manifests.
     await api.request('PATCH', `/api/problems/${question.id}`, {
       listIds: question.lists.map((l) => l.id),
     });

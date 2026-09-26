@@ -58,7 +58,6 @@ export function mapVerifiedLists(
     attempts: [],
     topics: [],
     movements: [],
-    planned: [],
     records: [],
   };
   for (const [index, row] of rows.entries()) {
