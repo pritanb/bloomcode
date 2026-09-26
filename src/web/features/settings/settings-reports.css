@@ -62,15 +62,6 @@
   background: var(--muted);
 }
 /* Data warnings stay in the foreground colour so they read as warnings, not hints. */
-.theme-v2 .settings-caveat {
-  margin: 0;
-  padding: 0.75rem 0.875rem;
-  border-radius: 0.75rem;
-  background: var(--tone-amber-bg);
-  color: var(--foreground);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
 .theme-v2 .settings-group > button,
 .theme-v2 .settings-group > [data-slot='button'] {
   align-self: flex-start;

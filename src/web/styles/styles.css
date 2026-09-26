@@ -260,22 +260,6 @@
   line-height: 1.4;
   font-weight: 600;
 }
-.insight-tile-summary {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.6;
-}
-.insight-tile-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: auto;
-  padding-top: 0.5rem;
-  color: var(--muted-foreground);
-}
 .insight-panel-overlay {
   position: fixed;
   inset: 0;
@@ -380,23 +364,6 @@
   font-size: 1.25rem;
   font-weight: 600;
 }
-.insight-status-details summary {
-  cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--muted-foreground);
-}
-.insight-status-details[open] > summary {
-  margin-bottom: 1.25rem;
-}
-
-.insight-status {
-  line-height: 1.5;
-}
-.insight-status-description {
-  display: block;
-  margin-top: 0.375rem;
-  padding-left: 1.5rem;
-}
 
 .insight-topics {
   display: flex;
@@ -416,19 +383,6 @@
 }
 .insight-panel-topics {
   margin-bottom: 1.5rem;
-}
-
-.topic-assess-row h3 {
-  margin: 0;
-  font-weight: 600;
-}
-.topic-assess-row p {
-  margin: 0.5rem 0 0;
-}
-.topic-assess-row a {
-  color: var(--primary);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 /* Rank sits beside the name so the score chart below keeps its room. */
@@ -551,10 +505,6 @@
   .focus-tile {
     transition: none;
   }
-}
-.topic-assess-row {
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--border);
 }
 
 /* Visual polish: depth, clearer hierarchy and a recognisable identity. */
