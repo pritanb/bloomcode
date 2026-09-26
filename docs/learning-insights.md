@@ -55,9 +55,11 @@ retrieval needs internet access. Tutor extraction and synthesis send selected sa
 code, reflections, metadata, corrections and evidence to OpenAI through the Codex
 CLI. Local embeddings do not make tutor generation local.
 
-`learning_insights` holds durable state, jobs, observations, corrections and report
-snapshots. `insight_embeddings` is a rebuildable cache. Attempt-analysis claims expire
-after four minutes and report claims after ten; stale fingerprints and superseded claims cannot commit results. Processing
+`insight_jobs`, `insight_observations`, `insight_corrections` and `insight_reports`
+hold jobs, observations, dismissals and report snapshots; `settings.insightsEnabled`
+records whether analysis is on. `insight_embeddings` is a rebuildable cache.
+Attempt-analysis claims expire after four minutes and report claims after ten; stale
+fingerprints and superseded claims cannot commit results. Processing
 is sequential with bounded context and no automatic retry loop for failed model
 responses. Source fingerprints, model identity when returned, analysis/prompt
 version, timings, retrieved IDs and errors support diagnosis. Raw model traces
