@@ -52,12 +52,12 @@ the prompt also instructs the tutor to respect their meaning.
 Embedding inference runs on your computer; texts are not sent to an embedding API.
 Model files are cached beside the database in `embedding-models/`. Initial model
 retrieval needs internet access. Tutor extraction and synthesis send selected saved
-code, reflections, metadata, corrections and evidence through your connected MCP
-client's model provider. Local embeddings do not make tutor generation local.
+code, reflections, metadata, corrections and evidence to OpenAI through the Codex
+CLI. Local embeddings do not make tutor generation local.
 
 `learning_insights` holds durable state, jobs, observations, corrections and report
-snapshots. `insight_embeddings` is a rebuildable cache. Job claims expire after four
-minutes; stale fingerprints and superseded claims cannot commit results. Processing
+snapshots. `insight_embeddings` is a rebuildable cache. Attempt-analysis claims expire
+after four minutes and report claims after ten; stale fingerprints and superseded claims cannot commit results. Processing
 is sequential with bounded context and no automatic retry loop for failed model
 responses. Source fingerprints, model identity when returned, analysis/prompt
 version, timings, retrieved IDs and errors support diagnosis. Raw model traces
@@ -65,8 +65,7 @@ are not written to log files.
 
 Learning records live in the database, so SQLite backups include them. Running claims
 are reset when the app starts; embeddings are rebuilt, and model files are not part of
-the database. Existing study records,
-score rules and Hermes/Sheet configuration are unchanged.
+the database.
 
 While a mixed assessment is active, insight content and retrieval are hidden and
 analysis results cannot commit. Displaying a suggested question records pattern
@@ -123,15 +122,10 @@ and review priority; it verifies plumbing, not the quality of the model.
 sources and correction controls. It uses its own disposable database and no AI calls
 until explicitly enabled.
 
-## Implementation verification
+## Desktop packaging
 
-Verified on the development M1 Pro using disposable databases: 110 critical tests,
-the three existing browser checks (including practice/save/reload), TypeScript
-checking, lint, production build, and manual report/evidence/dismissal inspection.
-The final bearer-credential hardening also passed the 12 relevant backend/MCP tests.
-The Apple silicon desktop package was launched with an isolated profile and its
-local MiniLM worker loaded successfully. Native `@img` and `onnxruntime-node`
-libraries are explicitly unpacked from ASAR for desktop loading.
+Native `@img` and `onnxruntime-node` libraries are explicitly unpacked from ASAR so
+the desktop app can load the local MiniLM worker.
 
 ### Concise report contract
 

@@ -12,7 +12,7 @@ Version 1 is an additive metadata format. Do not add attempts, scores, executabl
 
 ## Progress import adapters
 
-For another progress source, write a mapper returning `ImportPayload` from `src/shared/contracts.ts`. Validate it with `importSchema` from `src/server/catalogue/import.ts`. Follow `src/integrations/lists.ts` and [Migration](migration.md) for provenance, unknown fields and source identity.
+For another progress source, write a mapper returning `ImportPayload` from `src/shared/contracts.ts`. Validate it with `importSchema` from `src/server/catalogue/import.ts`. Follow `src/integrations/lists.ts` and the [list provenance notes](../src/integrations/manifests/README.md) for provenance, unknown fields and source identity.
 
 Use the authenticated `/api/import` endpoint and `applyAndVerify` helper rather than writing SQLite directly. Preserve source records, stable import IDs, and explicit unknowns. Set `dryRun: true` for a transactional server preview that rolls back. Source history imports have more authority than question packs: test replay, ambiguous records, and export/restore on disposable data.
 

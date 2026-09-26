@@ -12,7 +12,7 @@
 
 `createApp({ dbPath, token?, serveStatic?, clock? })` returns an awaited Fastify instance. `serveStatic: true` serves `dist/web`; a string is an optional internal/test static-root override. `clock` is a `() => Date`. `openDb(path)` returns the `better-sqlite3` connection; the caller owns closing it. The app closes its connection on `app.close()`.
 
-`src/server/core/index.ts` listens only on `127.0.0.1`, uses `PORT=4317` by default and stores the database under `DATA_DIR`, defaulting to `~/Library/Application Support/LeetcodeTutor-dev`. It never seeds study data.
+`src/server/core/index.ts` listens only on `127.0.0.1`, uses `PORT=4317` by default and stores the database under `DATA_DIR`, defaulting to the platform directory listed in the [README](../../README.md#your-workspace) (an existing macOS `LeetcodeTutor-dev` database is kept). It never seeds study data.
 
 The first boot creates a 0600 `api-token` in a 0700 data directory. It is never returned to the browser. Same-origin browser sessions use HttpOnly/SameSite=Strict cookies and per-session CSRF tokens; import and backup always require the local bearer credential. Requests validate loopback remote address, Host, actual listening port and exact Origin. Serve the built UI from this server for the production same-origin flow.
 
@@ -20,7 +20,7 @@ The first boot creates a 0600 `api-token` in a 0700 data directory. It is never 
 
 `db/schema.ts` is the whole schema. `openDb` creates it in a new database (`user_version` 0) and leaves an existing one alone; there are no migrations. A schema change must also alter existing databases, so add that step to `openDb` when one is needed.
 
-Tables are typed: `0005_relational_schema.sql` is the schema to read. Column names match the TypeScript fields, so `SELECT *` returns API-shaped rows; booleans are 0/1 and a few small lists (`leetcodeTopics`, `mistakeLabels`, settings `recommendations`) are JSON text. Values another table already holds are never copied: a problem's latest attempt, solve time, attempt count and review date, an attempt's problem, and a decision's topic name are joined or computed in the model files' queries. CHECK constraints, foreign keys, unique names/slugs/days and a partial unique index (one active or paused attempt) hold the rules. `learning_insights` stays one JSON column per record, validated by `learningRecordSchema`; imported source rows keep their original `raw` JSON. Scores are absolute decimal values (at most two decimal places), never accumulated deltas.
+Tables are typed: `db/schema.ts` is the schema to read. Column names match the TypeScript fields, so `SELECT *` returns API-shaped rows; booleans are 0/1 and a few small lists (`leetcodeTopics`, `mistakeLabels`, settings `recommendations`) are JSON text. Values another table already holds are never copied: a problem's latest attempt, solve time, attempt count and review date, an attempt's problem, and a decision's topic name are joined or computed in the model files' queries. CHECK constraints, foreign keys, unique names/slugs/days and a partial unique index (one active or paused attempt) hold the rules. `learning_insights` stays one JSON column per record, validated by `learningRecordSchema`; imported source rows keep their original `raw` JSON. Scores are absolute decimal values (at most two decimal places), never accumulated deltas.
 
 Queries use `one`/`maybe`/`many`/`run` and `insert`/`update` from `db/db.ts`. Several lists are shown in the order rows were written, so those queries order by `rowid`.
 

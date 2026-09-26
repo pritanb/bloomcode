@@ -34,5 +34,3 @@ Run a relevant file with `npm test -- tests/web/attemptQueue.test.ts` (or its co
 The full screen × viewport × theme matrix, font/colour/layout assertions, repeated mocked UI workflows, overlapping reviewer probes, CLI mock duplicates and redundant startup/visual scripts were deleted—not merely skipped or hidden behind a default filter. Git history retains them if a specific regression ever warrants bringing a case back.
 
 Do not rebuild the removed matrices. Add a small regression only when it protects a critical function or a demonstrated data-loss/incorrect-record bug. Do not require independent review agents for ordinary cosmetic or test-maintenance changes. Broader security review is reserved for meaningful changes to authentication, data exposure or destructive operations.
-
-Older release/design verification reports describe historical coverage; this document governs the current workflow.

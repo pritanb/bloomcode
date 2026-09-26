@@ -54,9 +54,3 @@ The desktop app owns its local server. Closing the window or choosing Quit stops
 If an older browser server is still running, stop it before opening the desktop app. The app reports an occupied workspace or port instead of terminating another process. See [Operations](operations.md) for stopping an existing server.
 
 The AI tutor can run through the signed-in Codex CLI with no other app open: choose **Settings → AI tutor → Codex**. Existing MCP clients can still connect to the desktop server using the same workspace and port. The desktop package does not configure a tutor client or provide a standalone MCP installer. The [optional tutor setup](tutor-integration.md) for MCP clients still uses Node.js and the adapter built from this repository. Normal practice and saving need neither.
-
-The earlier Swift launcher depended on a local project and Node installation. Electron replaces that launcher; its old build command is not needed for the self-contained app.
-
-## Verification
-
-The packaged Apple silicon app was run from outside the checkout with disposable data. Checks covered first-run setup, code copying, draft autosave and reload, attempt completion, quit/reopen persistence, graceful server shutdown, and native JSON export. The exported records were restored into a separate empty workspace and every table matched. Startup ownership/crash recovery tests, the production server smoke check, lint and typecheck also passed. Public download installation and the GitHub build workflow still need verification once released.

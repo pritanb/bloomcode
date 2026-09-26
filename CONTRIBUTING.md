@@ -1,6 +1,6 @@
 # Contributing
 
-Use Node.js 22.23 or later and `npm ci`. The project license is still undecided; resolve that before contributing substantial code intended for redistribution.
+Use Node.js 22.23 or later and `npm ci`. Contributions are accepted under the project's [MIT License](LICENSE).
 
 For development, run `npm run dev` and `npm run dev:web` in separate terminals. Set `DATA_DIR` to an absolute disposable directory in both your app and integration environment. Development commands do not load `.env` automatically. Never use a real study database for QA: even reading question details can record exposure.
 
