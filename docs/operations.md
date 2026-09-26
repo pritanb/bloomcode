@@ -82,4 +82,4 @@ Every tag has a notebook page; `kind` does not restrict notebook access or assig
 
 ## Schema
 
-`src/server/db/schema.ts` is the whole schema. `openDb` creates it in a new database and leaves an existing one alone; there are no migrations. The one exception converts a `user_version` 6 database once, at first start: its `learning_insights` JSON records move into the typed insight tables in a single transaction, and the database becomes version 7.
+`src/server/db/schema.ts` is the whole schema. `openDb` creates it in a new database and leaves an existing one alone; there are no migrations.

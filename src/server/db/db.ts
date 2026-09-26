@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { missing } from './errors.js';
-import { INSIGHTS_TO_TABLES, SCHEMA } from './schema.js';
+import { SCHEMA } from './schema.js';
 
 export type Db = Database.Database;
 type Param = string | number | bigint | null | Buffer;
@@ -36,18 +36,9 @@ export function openDb(path: string): Db {
   db.pragma('busy_timeout = 5000');
   db.pragma('foreign_keys = ON');
   // A non-zero user_version marks a database whose tables already exist.
-  const version = db.pragma('user_version', { simple: true });
-  if (!version)
+  if (!db.pragma('user_version', { simple: true }))
     db.transaction(() => {
       db.exec(SCHEMA);
-      db.pragma('user_version = 7');
-    })();
-  // One-off: version 6 kept learning insights as JSON records. Remove once converted.
-  if (version === 6)
-    db.transaction(() => {
-      db.exec(INSIGHTS_TO_TABLES);
-      if ((db.pragma('foreign_key_check') as unknown[]).length)
-        throw Error('Insight conversion broke a reference');
       db.pragma('user_version = 7');
     })();
   db.prepare(

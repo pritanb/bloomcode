@@ -1,64 +1,3 @@
-/** Learning-insights tables: the Codex tutor's jobs, observations, dismissals and reports. */
-export const INSIGHT_TABLES = `
-CREATE TABLE insight_jobs (
-  id TEXT PRIMARY KEY,
-  attemptId TEXT REFERENCES attempts (id),
-  fingerprint TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'done', 'failed')),
-  claimId TEXT,
-  claimedAt INTEGER NOT NULL DEFAULT 0,
-  error TEXT,
-  model TEXT,
-  durationMs INTEGER NOT NULL DEFAULT 0,
-  limitation TEXT NOT NULL DEFAULT '',
-  evidenceIds TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(evidenceIds)),
-  questionIds TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(questionIds)),
-  CHECK ((attemptId IS NULL) = (id = 'report-job'))
-);
-CREATE TABLE insight_observations (
-  id TEXT PRIMARY KEY,
-  attemptId TEXT NOT NULL REFERENCES attempts (id),
-  fingerprint TEXT NOT NULL,
-  summary TEXT NOT NULL,
-  polarity TEXT NOT NULL CHECK (polarity IN ('difficulty', 'strength')),
-  evidenceType TEXT NOT NULL CHECK (evidenceType IN ('learner_reported', 'code_inferred', 'outcome_observed')),
-  sourceField TEXT NOT NULL CHECK (sourceField IN ('code', 'notes', 'takeaway', 'mistakeLabels', 'outcome', 'help', 'confidence')),
-  excerpt TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
-  analysisVersion TEXT NOT NULL,
-  model TEXT
-);
-CREATE INDEX insight_observations_attempt ON insight_observations (attemptId, fingerprint);
-CREATE TABLE insight_corrections (
-  observationId TEXT PRIMARY KEY REFERENCES insight_observations (id),
-  reason TEXT NOT NULL,
-  createdAt TEXT NOT NULL
-);
-CREATE TABLE insight_reports (
-  id TEXT PRIMARY KEY,
-  findings TEXT NOT NULL CHECK (json_valid(findings)),
-  topicPriorities TEXT CHECK (topicPriorities IS NULL OR json_valid(topicPriorities)),
-  limitation TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
-  fingerprint TEXT NOT NULL,
-  total INTEGER NOT NULL,
-  analyzed INTEGER NOT NULL,
-  evidenceIds TEXT NOT NULL CHECK (json_valid(evidenceIds)),
-  model TEXT,
-  analysisVersion TEXT NOT NULL,
-  durationMs INTEGER NOT NULL
-);
-CREATE TABLE topic_analysis (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  enabled INTEGER NOT NULL,
-  fingerprint TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('idle', 'pending', 'running', 'done', 'failed')),
-  claimId TEXT,
-  claimedAt INTEGER NOT NULL,
-  error TEXT,
-  report TEXT CHECK (report IS NULL OR json_valid(report))
-);
-`;
 /** The whole schema, created once in a new, empty database. */
 export const SCHEMA = `
 CREATE TABLE settings (
@@ -226,34 +165,62 @@ CREATE TABLE import_records (
 
 CREATE TABLE idempotency (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response TEXT NOT NULL);
 CREATE TABLE insight_embeddings (id TEXT PRIMARY KEY NOT NULL, fingerprint TEXT NOT NULL, model TEXT NOT NULL, vector TEXT NOT NULL);
-${INSIGHT_TABLES}`;
-
-/** Converts a user_version 6 database, whose insights were JSON records in learning_insights. */
-export const INSIGHTS_TO_TABLES = `
-ALTER TABLE settings ADD COLUMN insightsEnabled INTEGER NOT NULL DEFAULT 0;
-UPDATE settings SET insightsEnabled = coalesce((SELECT data ->> 'enabled' FROM learning_insights WHERE id = 'state'), 0);
-${INSIGHT_TABLES}
-INSERT INTO insight_jobs
-SELECT data ->> 'id', data ->> 'attemptId', data ->> 'fingerprint', data ->> 'status', data ->> 'claimId',
-  data ->> 'claimedAt', data ->> 'error', data ->> 'model', data ->> 'durationMs', data ->> 'limitation',
-  data -> 'evidenceIds', data -> 'questionIds'
-FROM learning_insights WHERE data ->> 'kind' = 'job' ORDER BY rowid;
-INSERT INTO insight_observations
-SELECT data ->> 'id', data ->> 'attemptId', data ->> 'fingerprint', data ->> 'summary', data ->> 'polarity',
-  data ->> 'evidenceType', data ->> 'sourceField', data ->> 'excerpt', data ->> 'createdAt',
-  data ->> 'analysisVersion', data ->> 'model'
-FROM learning_insights WHERE data ->> 'kind' = 'observation' ORDER BY rowid;
-INSERT INTO insight_corrections
-SELECT data ->> 'observationId', data ->> 'reason', data ->> 'createdAt'
-FROM learning_insights WHERE data ->> 'kind' = 'correction' ORDER BY rowid;
-INSERT INTO insight_reports
-SELECT data ->> 'id', data -> 'findings', data -> 'topicPriorities', data ->> 'limitation', data ->> 'createdAt',
-  data ->> 'fingerprint', data ->> 'total', data ->> 'analyzed', data -> 'evidenceIds', data ->> 'model',
-  data ->> 'analysisVersion', data ->> 'durationMs'
-FROM learning_insights WHERE data ->> 'kind' = 'report' ORDER BY rowid;
-INSERT INTO topic_analysis
-SELECT 1, data ->> 'enabled', data ->> 'fingerprint', data ->> 'status', data ->> 'claimId', data ->> 'claimedAt',
-  data ->> 'error', nullif(data -> 'report', 'null')
-FROM learning_insights WHERE data ->> 'kind' = 'topic_analysis';
-DROP TABLE learning_insights;
+CREATE TABLE insight_jobs (
+  id TEXT PRIMARY KEY,
+  attemptId TEXT REFERENCES attempts (id),
+  fingerprint TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'done', 'failed')),
+  claimId TEXT,
+  claimedAt INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  model TEXT,
+  durationMs INTEGER NOT NULL DEFAULT 0,
+  limitation TEXT NOT NULL DEFAULT '',
+  evidenceIds TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(evidenceIds)),
+  questionIds TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(questionIds)),
+  CHECK ((attemptId IS NULL) = (id = 'report-job'))
+);
+CREATE TABLE insight_observations (
+  id TEXT PRIMARY KEY,
+  attemptId TEXT NOT NULL REFERENCES attempts (id),
+  fingerprint TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  polarity TEXT NOT NULL CHECK (polarity IN ('difficulty', 'strength')),
+  evidenceType TEXT NOT NULL CHECK (evidenceType IN ('learner_reported', 'code_inferred', 'outcome_observed')),
+  sourceField TEXT NOT NULL CHECK (sourceField IN ('code', 'notes', 'takeaway', 'mistakeLabels', 'outcome', 'help', 'confidence')),
+  excerpt TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  analysisVersion TEXT NOT NULL,
+  model TEXT
+);
+CREATE INDEX insight_observations_attempt ON insight_observations (attemptId, fingerprint);
+CREATE TABLE insight_corrections (
+  observationId TEXT PRIMARY KEY REFERENCES insight_observations (id),
+  reason TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
+CREATE TABLE insight_reports (
+  id TEXT PRIMARY KEY,
+  findings TEXT NOT NULL CHECK (json_valid(findings)),
+  topicPriorities TEXT CHECK (topicPriorities IS NULL OR json_valid(topicPriorities)),
+  limitation TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  total INTEGER NOT NULL,
+  analyzed INTEGER NOT NULL,
+  evidenceIds TEXT NOT NULL CHECK (json_valid(evidenceIds)),
+  model TEXT,
+  analysisVersion TEXT NOT NULL,
+  durationMs INTEGER NOT NULL
+);
+CREATE TABLE topic_analysis (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL,
+  fingerprint TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('idle', 'pending', 'running', 'done', 'failed')),
+  claimId TEXT,
+  claimedAt INTEGER NOT NULL,
+  error TEXT,
+  report TEXT CHECK (report IS NULL OR json_valid(report))
+);
 `;
