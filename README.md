@@ -21,7 +21,7 @@ Your practice history is stored on your computer. Practice tracking and review s
 
 ## Get started
 
-**[Download experimental preview — Apple silicon Mac](https://github.com/pritanb/leetcode-tutor/releases/tag/v0.1.0)**
+**[Download experimental preview — Apple silicon Mac](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0)**
 
 The preview is still distributed as **LeetCode Tutor.app**. Unzip the download, move it to Applications, and open it. Choose your timezone, daily target and a starter list. Node.js is not needed for the desktop app.
 
