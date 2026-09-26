@@ -10,10 +10,9 @@ backfill is batched; reports refresh after every ten analyzed attempts and when 
 queue drains. **Pause analysis** retains the last report. **Retry analysis** retries
 failed jobs or a failed model download.
 
-Automatic analysis uses the existing MCP client and requires sampling support and
-`TUTOR_AUTO_REVIEW` not set to `0`. Immediate attempt reviews take priority. With no
-client connected, pending analysis remains durable and resumes later. Restart the
-MCP adapter after upgrading to load its new tools; client configuration is unchanged.
+Automatic analysis runs through the app's Codex worker (**Settings → AI tutor**).
+Immediate attempt reviews take priority. With the tutor off or paused, pending
+analysis remains durable and resumes later.
 
 ## Pipeline
 
@@ -61,7 +60,7 @@ snapshots. `insight_embeddings` is a rebuildable cache. Job claims expire after 
 minutes; stale fingerprints and superseded claims cannot commit results. Processing
 is sequential with bounded context and no automatic retry loop for failed model
 responses. Source fingerprints, model identity when returned, analysis/prompt
-version, timings, retrieved IDs and errors support diagnosis. Raw sampling traces
+version, timings, retrieved IDs and errors support diagnosis. Raw model traces
 are not written to log files.
 
 Portable snapshot format 4 adds learning records. Formats 1–3 still restore. Running
@@ -76,9 +75,10 @@ alone does not mark questions exposed.
 
 Authenticated browser endpoints under `/api/insights` provide status, enable/pause,
 retry and dismissal. Bearer-only endpoints provide claim, retrieve, complete and fail.
-New MCP tools are `get_learning_insights`, `claim_learning_analysis`,
-`retrieve_learning_evidence`, and `complete_learning_analysis`. Claims include a
-JSON result schema. Analysis tools have no score or schedule mutation capability.
+The MCP tools `get_learning_insights` and `retrieve_learning_evidence` let a chat
+tutor read the report and search observations. Only the app's Codex worker claims
+analysis; claims include a JSON result schema. Analysis has no score or schedule
+mutation capability.
 
 ## Evaluation
 
@@ -116,9 +116,9 @@ For human report review, record each finding alongside its cited attempts and ju
 
 Keep accepted and rejected cases, the model/prompt version, and reviewer decisions.
 Backend tests cover fabricated citations, invalid quotes, recurrence gates, correction
-suppression, stale claims, restore, and disclosure protections. A real MCP protocol
-test uses a deterministic sampling client to verify orchestration and review priority;
-it verifies plumbing, not the quality of an external tutor model.
+suppression, stale claims, restore, and disclosure protections. A test runs the
+app's Codex worker against a deterministic stand-in executable to verify orchestration
+and review priority; it verifies plumbing, not the quality of the model.
 
 `npm run demo` includes a clearly labeled synthetic learning report with inspectable
 sources and correction controls. It uses its own disposable database and no AI calls
@@ -138,12 +138,12 @@ libraries are explicitly unpacked from ASAR for desktop loading.
 
 New reports use three presentation fields: Habit (`title`, at most 6 whitespace-separated words), Next time (`action`, at most 25 words), and Why (`explanation`, at most 35 words). The prompt requires one concrete action starting with a verb and familiar language. Evidence references and uncertainty remain available in the detail panel. Length and reference validation are enforced; plain language and usefulness still require qualitative evaluation.
 
-The adapter makes at most one correction request for malformed JSON, schema violations, or rejected evidence. It includes the validation errors and shares a 210-second budget across both sampling calls, within the four-minute claim lease. Timeout, disconnect, and stale-claim failures do not trigger a correction call. Failed correction retains the previous report and exposes retry. Legacy report snapshots remain valid on restore; new submissions must satisfy the concise contract. Report-format versioning refreshes synthesis without re-extracting attempts or rebuilding embeddings.
+The worker makes at most one correction request for malformed JSON, schema violations, or rejected evidence. It includes the validation errors and shares one time budget across both model calls. Timeout, disconnect, and stale-claim failures do not trigger a correction call. Failed correction retains the previous report and exposes retry. Legacy report snapshots remain valid on restore; new submissions must satisfy the concise contract. Report-format versioning refreshes synthesis without re-extracting attempts or rebuilding embeddings.
 
 ### Topic priorities
 
-“Where to focus” is independent of Learning Insights. One sampling request includes all topics, saved scores, the 4/5 readiness target, and the last 28 days of completed attempts and score movements (up to 20 of each per topic). The AI weighs personal readiness against typical FAANG coding interview relevance and selects three topics in priority order. With fewer than three topics, it selects those available. Reasons over the word limit are rejected along with the whole selection.
+“Where to focus” is independent of Learning Insights. One model request includes all topics, saved scores, the 4/5 readiness target, and the last 28 days of completed attempts and score movements (up to 20 of each per topic). The AI weighs personal readiness against typical FAANG coding interview relevance and selects three topics in priority order. With fewer than three topics, it selects those available. Reasons over the word limit are rejected along with the whole selection.
 
-The card shows each selected topic with a one-sentence reason (at most 30 words) grounded in the supplied scores and attempts. Selections saved before reasons existed, or from an older adapter, show links only until the next refresh. It refreshes seven days after the last successful analysis, when the app and a sampling-capable tutor are connected. The previous selection stays visible while refreshing or disconnected. **Refresh** requests an immediate update. Score changes do not trigger extra requests. Failed generations keep the last selection and can be retried manually; there is no automatic model correction request.
+The card shows each selected topic with a one-sentence reason (at most 30 words) grounded in the supplied scores and attempts. Selections saved before reasons existed, show links only until the next refresh. It refreshes seven days after the last successful analysis, while the app runs with Codex selected. The previous selection stays visible while refreshing or while the tutor is off. **Refresh** requests an immediate update. Score changes do not trigger extra requests. Failed generations keep the last selection and can be retried manually; there is no automatic model correction request.
 
 Topic analysis has separate enable/retry endpoints, job state and saved report. It does not require learning reports or embeddings and never changes scores or study schedules. Older reports remain importable and are replaced on the next topic analysis.

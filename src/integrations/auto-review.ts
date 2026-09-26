@@ -1,12 +1,11 @@
 import { analyzeTopicsNext } from './topic-analysis.js';
 import { analyzeNext } from './learning-insights.js';
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Attempt, Topic } from '../shared/contracts.js';
-import { ApiError, type LocalApi } from './local-api.js';
-import { samplingGenerate, type Api, type Generate } from './generate.js';
+import { ApiError } from './local-api.js';
+import type { Api, Generate } from './generate.js';
 
-// Writes the tutor report for attempts submitted in the web app. The model is
-// supplied by the caller: the MCP client via sampling, or the app's Codex worker.
+// Writes the tutor report for attempts submitted in the web app, using the
+// model supplied by the app's Codex worker.
 type Context = { attempt: Attempt; history: Attempt[]; topics: Topic[] };
 const POLL_MS = 3000;
 export const reviewSystemPrompt = `You are a supportive LeetCode interview tutor reviewing one finished practice attempt.
@@ -79,52 +78,31 @@ export async function reviewNext(api: Api, generate: Generate): Promise<boolean>
   }
   return true;
 }
-/** Poll for queued tutor work until stopped. Returns a stop function. */
+/** Poll for queued tutor work, one job at a time, until stopped. Returns a stop function. */
 export function startTutorLoop(
   api: Api,
   generate: Generate,
-  options: {
-    reportBudgetMs?: number;
-    sequential?: boolean;
-    ready?: () => boolean | Promise<boolean>;
-  } = {},
+  options: { reportBudgetMs?: number; ready?: () => boolean | Promise<boolean> } = {},
 ): () => void {
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
-  let topicTimer: NodeJS.Timeout | undefined;
   const ready = options.ready ?? (() => true);
   const tick = async () => {
     let found = false;
     try {
-      if (await ready()) {
+      if (await ready())
         found =
           (await reviewNext(api, generate)) ||
-          (await analyzeNext(api, generate, options.reportBudgetMs));
-        // A single runner (Codex) takes topic work in the same queue, one job at a time.
-        if (!found && options.sequential) found = await analyzeTopicsNext(api, generate);
-      }
+          (await analyzeNext(api, generate, options.reportBudgetMs)) ||
+          (await analyzeTopicsNext(api, generate));
     } catch {
       /* app not running yet; keep polling */
     }
     if (!stopped) timer = setTimeout(() => void tick(), found ? 0 : POLL_MS);
   };
-  const topicTick = async () => {
-    try {
-      await analyzeTopicsNext(api, generate);
-    } catch {
-      /* Independent topic requests retry on the next poll. */
-    }
-    if (!stopped) topicTimer = setTimeout(() => void topicTick(), POLL_MS);
-  };
   void tick();
-  if (!options.sequential) void topicTick();
   return () => {
     stopped = true;
     clearTimeout(timer);
-    clearTimeout(topicTimer);
   };
-}
-/** MCP sampling: the connected client (Hermes) runs the model. */
-export function startAutoReviews(server: Server, api: LocalApi): () => void {
-  return startTutorLoop(api, samplingGenerate(server));
 }

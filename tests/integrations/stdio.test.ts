@@ -49,8 +49,6 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
     await client.connect(transport);
     const tools = await client.listTools();
     expect(tools.tools.map((t) => t.name).sort()).toEqual([
-      'claim_learning_analysis',
-      'complete_learning_analysis',
       'finish_attempt',
       'get_attempt_context',
       'get_learning_insights',
@@ -103,8 +101,7 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
         })
       ).isError,
     ).not.toBe(true);
-    const toolRequests = () => requests.filter((r) => r.path !== '/api/mcp/heartbeat');
-    expect(toolRequests().map((r) => r.path)).toEqual([
+    expect(requests.map((r) => r.path)).toEqual([
       '/api/problems?search=tree&tags=t1%2Ct2&tagMode=all&pageSize=10',
       '/api/attempts/a1/context',
       '/api/attempts/a1/reviews',
@@ -112,12 +109,12 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
       '/api/reviews/r1',
       '/api/reviews',
     ]);
-    expect(toolRequests()[2]?.key).toBe('review-1');
-    const count = toolRequests().length;
+    expect(requests[2]?.key).toBe('review-1');
+    const count = requests.length;
     expect(
       (await client.callTool({ name: 'search_questions', arguments: { pageSize: 10001 } })).isError,
     ).toBe(true);
-    expect(toolRequests()).toHaveLength(count);
+    expect(requests).toHaveLength(count);
   } finally {
     await client.close();
     await new Promise<void>((r) => server.close(() => r()));

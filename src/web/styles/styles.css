@@ -557,30 +557,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.connection-toast {
-  position: fixed;
-  z-index: 200;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  width: min(28rem, calc(100vw - 3rem));
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: var(--card);
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgb(0 0 0 / 0.15);
-}
-.connection-toast > .icon {
-  flex-shrink: 0;
-  margin-top: 0.25rem;
-}
-.connection-toast p {
-  margin: 0.5rem 0 0;
-}
-
 /* Visual polish: depth, clearer hierarchy and a recognisable identity. */
 :root {
   --surface-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 12px -4px rgb(16 24 40 / 0.08);

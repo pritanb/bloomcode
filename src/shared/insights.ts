@@ -6,7 +6,6 @@ export {
   TOPIC_PRIORITY_RULES,
 } from './topic-analysis.js';
 export type { TopicPriority } from './topic-analysis.js';
-import type { McpConnectionStatus } from './mcp-connection.js';
 import type { TutorRunnerStatus } from './tutor.js';
 import { z } from 'zod';
 export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
@@ -114,7 +113,6 @@ export interface InsightReport {
   durationMs: number;
 }
 export interface InsightStatus {
-  connection?: McpConnectionStatus;
   runner?: TutorRunnerStatus;
   enabled: boolean;
   hidden: boolean;

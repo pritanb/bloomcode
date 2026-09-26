@@ -3,6 +3,8 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../../src/server/core/app.js';
+import { openDb } from '../../src/server/db/db.js';
+import { Store } from '../../src/server/db/store.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { CodexError, findCodex, runCodex } from '../../src/server/tutor/codex.js';
 import { defaultTutorSettings } from '../../src/shared/tutor.js';
@@ -12,12 +14,21 @@ import type { Attempt, AutoReviewStatus } from '../../src/shared/contracts.js';
 const FAKE = `#!/usr/bin/env node
 const fs=require('node:fs');const args=process.argv.slice(2);let stdin='';
 process.stdin.on('data',c=>stdin+=c).on('end',()=>{
-  if(process.env.FAKE_CODEX_LOG)fs.writeFileSync(process.env.FAKE_CODEX_LOG,JSON.stringify({args,stdin,cwd:process.cwd()}));
+  if(process.env.FAKE_CODEX_LOG&&process.env.FAKE_CODEX_MODE!=='pipeline')fs.writeFileSync(process.env.FAKE_CODEX_LOG,JSON.stringify({args,stdin,cwd:process.cwd()}));
   const mode=process.env.FAKE_CODEX_MODE||'ok';
   if(mode==='hang')return setInterval(()=>{},1000);
   if(mode==='unauth'){console.log(JSON.stringify({type:'turn.failed',error:{message:'unexpected status 401 Unauthorized: Missing bearer'}}));process.exit(1);}
   if(mode==='usage'){console.log(JSON.stringify({type:'turn.failed',error:{message:"You've hit your usage limit. Try again later."}}));process.exit(1);}
-  fs.writeFileSync(args[args.indexOf('-o')+1],process.env.FAKE_CODEX_REPLY||'Summary:\\nFake review.');
+  let reply=process.env.FAKE_CODEX_REPLY||'Summary:\\nFake review.';
+  if(mode==='pipeline'){
+    const data=stdin.slice(stdin.indexOf('<data>')+7,stdin.lastIndexOf('</data>'));
+    const phase=stdin.includes('Select the three topics')?'topics':stdin.includes('ONE completed')?'extract':stdin.includes('learning report')?'report':'review';
+    fs.appendFileSync(process.env.FAKE_CODEX_LOG,phase+'\\n');
+    if(phase==='topics')reply=JSON.stringify({topics:[{topicNumber:1,reason:'Arrays is below the 4/5 target.'}]});
+    if(phase==='extract')reply=JSON.stringify({observations:[{summary:'The learner reports forgetting an empty input.',polarity:'difficulty',evidenceType:'learner_reported',sourceField:'notes',excerpt:'Forgot empty input.'}],limitation:'Self-reported; no test execution.'});
+    if(phase==='report')reply=JSON.stringify({findings:[{title:'Check boundary cases',kind:'single_problem',explanation:'This attempt reports forgetting an empty input.',action:'Check whether empty input is permitted before submitting.',evidenceIds:[JSON.parse(data).context.evidence[0].id],caveat:'One self-report is not a recurring pattern.',suggestions:[]}],limitation:'One attempt analyzed.'});
+  }
+  fs.writeFileSync(args[args.indexOf('-o')+1],reply);
   console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:1,output_tokens:1}}));
 });
 `;
@@ -90,7 +101,7 @@ test('classifies sign-in, usage-limit, timeout and missing-install failures', as
   ).rejects.toBeInstanceOf(CodexError);
 });
 
-test('with Codex selected, the app writes queued reviews itself and the MCP adapter gets no work', async () => {
+test('with Codex selected, the app writes queued reviews itself', async () => {
   const data = await mkdtemp(join(tmpdir(), 'lc-codex-app-'));
   await writeFile(
     join(data, 'tutor-settings.json'),
@@ -136,3 +147,84 @@ test('with Codex selected, the app writes queued reviews itself and the MCP adap
     'Summary:\nFake review.',
   );
 });
+
+test('the Codex worker writes the immediate review before the learning report and topic picks', async () => {
+  process.env.FAKE_CODEX_MODE = 'pipeline';
+  process.env.FAKE_CODEX_LOG = join(dir, 'phases.log');
+  const data = await mkdtemp(join(tmpdir(), 'lc-codex-pipeline-'));
+  await writeFile(
+    join(data, 'tutor-settings.json'),
+    JSON.stringify({ ...defaultTutorSettings, provider: 'codex', codexPath: fake }),
+  );
+  const dbPath = join(data, 'leetcode.sqlite');
+  const seed = openDb(dbPath);
+  new Store(seed.sqlite).put('topics', {
+    id: 'arrays',
+    name: 'Arrays',
+    score: 2,
+    version: 1,
+    notes: '',
+    lastReviewed: null,
+    provisional: true,
+    lastMovement: null,
+  });
+  seed.sqlite.close();
+  const app = await createApp({
+    dbPath,
+    embed: async (texts) =>
+      texts.map(() => Array.from({ length: 384 }, (_, i) => (i === 0 ? 1 : 0))),
+  });
+  const url = await app.listen({ port: 0, host: '127.0.0.1' });
+  cleanups.push(async () => {
+    await app.close();
+    await rm(data, { recursive: true, force: true });
+  });
+  const api = new LocalApi({ dataDir: data, baseUrl: url });
+  const p = (await api.request('POST', '/api/problems', {
+    title: 'Boundary',
+    url: 'https://leetcode.com/problems/boundary/',
+  })) as { id: string };
+  const a = (await api.request('POST', '/api/attempts', {
+    problemId: p.id,
+    context: 'targeted',
+  })) as Attempt;
+  await api.request(
+    'POST',
+    `/api/attempts/${a.id}/finish`,
+    {
+      version: a.version,
+      outcome: 'solved',
+      help: 'none',
+      activeSeconds: 60,
+      code: 'return []',
+      notes: 'Forgot empty input.',
+      requestReview: true,
+    },
+    `finish-${a.id}`,
+  );
+  await api.request('POST', '/api/insights/enable', { enabled: true });
+  await api.request('POST', '/api/topics/analysis/enable', { enabled: true });
+  let report: unknown;
+  let topics: { report: unknown } | undefined;
+  for (let i = 0; i < 200 && !(report && topics?.report); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    report = ((await api.request('GET', '/api/insights')) as { report: unknown }).report;
+    topics = (await api.request('GET', '/api/topics/analysis')) as { report: unknown };
+  }
+  expect(report).toMatchObject({
+    model: defaultTutorSettings.model,
+    analyzed: 1,
+    findings: [{ kind: 'single_problem' }],
+  });
+  expect(topics?.report).toMatchObject({
+    topicIds: ['arrays'],
+    reasons: ['Arrays is below the 4/5 target.'],
+  });
+  expect(((await api.request('GET', `/api/attempts/${a.id}`)) as Attempt).feedback).toBe(
+    'Summary:\nFake review.',
+  );
+  const phases = (await readFile(process.env.FAKE_CODEX_LOG, 'utf8')).trim().split('\n');
+  expect(phases[0]).toBe('review');
+  expect(phases.indexOf('extract')).toBeLessThan(phases.indexOf('report'));
+  expect(phases).toContain('topics');
+}, 30000);

@@ -1,6 +1,6 @@
-// Who generates tutor text: a Codex CLI child process run by the app, the MCP
-// client via sampling (Hermes), or nobody.
-export type TutorProvider = 'codex' | 'mcp-sampling' | 'off';
+// Who generates tutor text: a Codex CLI child process run by the app, or nobody.
+// Off until chosen in Settings, because Codex spends the learner's ChatGPT plan.
+export type TutorProvider = 'codex' | 'off';
 export type TutorEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type TutorJobKind = 'review' | 'extraction' | 'report' | 'topics';
 export type CodexErrorKind =
@@ -21,7 +21,7 @@ export interface TutorSettings {
   effort: Record<TutorJobKind, TutorEffort>;
 }
 export const defaultTutorSettings: TutorSettings = {
-  provider: 'mcp-sampling',
+  provider: 'off',
   codexPath: null,
   model: 'gpt-6-luna',
   effort: { review: 'high', extraction: 'high', report: 'xhigh', topics: 'high' },

@@ -46,33 +46,10 @@ export function analysisStatus(data: InsightStatus) {
     return { title: 'Automatic analysis is off', detail: 'Saved reports are kept.', busy: false };
   const problem = tutorProblem(data.runner);
   if (problem) return { ...problem, busy: false, blocked: true };
-  // MCP heartbeat states only describe the sampling provider.
-  const mcp = !data.runner || data.runner.provider === 'mcp-sampling';
-  if (mcp && data.connection?.state === 'disconnected')
-    return {
-      title: 'MCP tutor disconnected',
-      detail:
-        'No heartbeat received for 45 seconds. Reconnect LeetCode Tutor in your tutor app. Saved work is kept; pending analysis resumes when it reconnects.',
-      busy: false,
-    };
-  if (mcp && data.connection?.state === 'connected' && !data.connection.sampling)
-    return {
-      title: 'Tutor connected · sampling unavailable',
-      detail: 'Enable sampling in your tutor app so it can generate AI reports.',
-      busy: false,
-    };
-  if (mcp && data.connection?.state === 'connected' && !data.connection.automaticReviews)
-    return {
-      title: 'Tutor connected · background analysis disabled',
-      detail: 'Enable automatic reviews in the MCP adapter, then reconnect it to resume reports.',
-      busy: false,
-    };
   if (data.worker?.timedOut)
     return {
       title: 'Tutor response timed out',
-      detail: mcp
-        ? 'No result arrived before the request expired. The next tutor check-in will retry. If this persists, reconnect your tutor with sampling enabled.'
-        : 'No result arrived before the request expired. It will be retried automatically.',
+      detail: 'No result arrived before the request expired. It will be retried automatically.',
       busy: false,
     };
   if (data.reportStatus === 'generating' || data.worker?.activeKind === 'report')
@@ -98,10 +75,9 @@ export function analysisStatus(data: InsightStatus) {
   if (data.reportStatus === 'ready' && data.pending === 0)
     return {
       title: 'Report up to date',
-      detail:
-        data.connection?.state === 'connected' || data.tutorConnected
-          ? 'Tutor checked in recently. New evidence will be analyzed automatically.'
-          : 'No work is waiting. The tutor has not checked in recently; this does not invalidate your saved report.',
+      detail: data.tutorConnected
+        ? 'Tutor checked in recently. New evidence will be analyzed automatically.'
+        : 'No work is waiting. The tutor has not checked in recently; this does not invalidate your saved report.',
       busy: false,
     };
   if (data.total === 0)
@@ -115,13 +91,6 @@ export function analysisStatus(data: InsightStatus) {
       title: 'Preparing local search…',
       detail: 'The app is preparing saved evidence for the tutor.',
       busy: true,
-    };
-  if (mcp && data.connection?.state !== 'connected' && !data.tutorConnected)
-    return {
-      title: 'Waiting for tutor check-in',
-      detail:
-        'No recent analysis check-in and no active request. Your tutor may be busy reviewing an attempt. If this persists, reconnect it and confirm sampling is enabled.',
-      busy: false,
     };
   return {
     title: 'Analysis queued',

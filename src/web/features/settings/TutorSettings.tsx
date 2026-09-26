@@ -74,7 +74,6 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
             }
           >
             <SelectOption value="codex">Codex (your ChatGPT plan)</SelectOption>
-            <SelectOption value="mcp-sampling">Connected MCP client (Hermes)</SelectOption>
             <SelectOption value="off">Off</SelectOption>
           </SelectField>
         </Field>

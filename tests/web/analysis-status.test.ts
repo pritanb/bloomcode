@@ -17,29 +17,10 @@ const base = {
   observations: [],
   suggestions: [],
 } satisfies InsightStatus;
-it('does not report a lost connection just because generation exceeds the old 30 second check-in window', () => {
+it('keeps showing an unexpired generation request as in progress', () => {
   expect(analysisStatus(base)).toMatchObject({ title: 'Generating report…', busy: true });
-  expect(
-    analysisStatus({
-      ...base,
-      connection: { state: 'connected', lastSeenAt: null, sampling: true, automaticReviews: true },
-    }).title,
-  ).toBe('Generating report…');
 });
-it('a confirmed missing heartbeat overrides an unexpired generation request', () => {
-  expect(
-    analysisStatus({
-      ...base,
-      connection: {
-        state: 'disconnected',
-        lastSeenAt: null,
-        sampling: false,
-        automaticReviews: false,
-      },
-    }),
-  ).toMatchObject({ title: 'MCP tutor disconnected', busy: false });
-});
-it('explains request expiry and separates connection from sampling support', () => {
+it('explains request expiry', () => {
   expect(
     analysisStatus({
       ...base,
@@ -53,10 +34,4 @@ it('explains request expiry and separates connection from sampling support', () 
       },
     }).title,
   ).toBe('Tutor response timed out');
-  expect(
-    analysisStatus({
-      ...base,
-      connection: { state: 'connected', lastSeenAt: null, sampling: false, automaticReviews: true },
-    }).title,
-  ).toBe('Tutor connected · sampling unavailable');
 });

@@ -6,9 +6,8 @@ import type { AttemptRecord } from './attempt-model.js';
 import { ApiError, conflict } from '../db/errors.js';
 import type { Store } from '../db/store.js';
 
-// Queue of finished attempts waiting for a tutor-written report. The active
-// tutor provider (the app's Codex worker, or the MCP adapter via sampling)
-// claims each one, then saves it through the normal review endpoint.
+// Queue of finished attempts waiting for a tutor-written report. The app's
+// Codex worker claims each one, then saves it through the normal review endpoint.
 // The queue is deliberately in memory: it is transient work, not study data,
 // and a restart only means the learner asks for the report again.
 const LEASE_MS = 4 * 60_000; // a claim older than this is handed out again
@@ -71,12 +70,7 @@ const bearerOnly = (req: FastifyRequest) => {
   if (!req.headers.authorization)
     throw new ApiError(403, 'BEARER_REQUIRED', 'Only the tutor adapter may claim reviews');
 };
-export function registerAutoReview(
-  app: FastifyInstance,
-  s: Store,
-  queue: AutoReviewQueue,
-  mayClaim: (req: FastifyRequest) => boolean = () => true,
-) {
+export function registerAutoReview(app: FastifyInstance, s: Store, queue: AutoReviewQueue) {
   app.get<{ Params: { id: string } }>('/api/attempts/:id/auto-review', (req) =>
     queue.status(s.get<AttemptRecord>('attempts', req.params.id)),
   );
@@ -88,7 +82,7 @@ export function registerAutoReview(
   });
   app.post('/api/auto-reviews/claim', (req) => {
     bearerOnly(req);
-    return { job: mayClaim(req) ? queue.claim(s) : null };
+    return { job: queue.claim(s) };
   });
   app.post<{ Params: { id: string } }>('/api/auto-reviews/:id/fail', (req) => {
     bearerOnly(req);

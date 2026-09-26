@@ -12,12 +12,7 @@ export function AnalysisStatus({ data }: { data: InsightStatus }) {
         </span>
       </div>
     );
-  const mcp = !data.runner || data.runner.provider === 'mcp-sampling';
-  if (
-    (mcp && data.connection?.state === 'disconnected') ||
-    (data.reportStatus === 'ready' && data.pending === 0)
-  )
-    return null;
+  if (data.reportStatus === 'ready' && data.pending === 0) return null;
   const failed =
     data.worker?.timedOut ||
     data.reportStatus === 'failed' ||

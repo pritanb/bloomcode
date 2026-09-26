@@ -17,7 +17,7 @@ import { CodexError, codexPrompt, codexVersion, findCodex, runCodex } from './co
 const effort = z.enum(TUTOR_EFFORTS as [string, ...string[]]);
 export const tutorSettingsSchema = z
   .object({
-    provider: z.enum(['codex', 'mcp-sampling', 'off']),
+    provider: z.enum(['codex', 'off']),
     // The server executes this path, so accept only an absolute path to a `codex` executable.
     codexPath: z
       .string()
@@ -67,6 +67,9 @@ export class TutorSettingsFile {
     } catch {
       /* defaults */
     }
+    // The retired MCP sampling provider loads as off, keeping the Codex choices.
+    if ((saved as { provider?: string })?.provider === 'mcp-sampling')
+      saved = { ...(saved as object), provider: 'off' };
     const parsed = tutorSettingsSchema.safeParse({
       ...defaultTutorSettings,
       ...((saved as object) ?? {}),
@@ -105,7 +108,6 @@ export class CodexWorker {
   start() {
     this.stopLoop ??= startTutorLoop(this.api, this.generate, {
       reportBudgetMs: CODEX_REPORT_BUDGET_MS,
-      sequential: true,
       ready: () => this.ready(),
     });
   }

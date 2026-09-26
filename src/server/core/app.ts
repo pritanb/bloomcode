@@ -222,7 +222,7 @@ export async function createApp(options: AppOptions) {
   const tutor = registerTutor(app, options.dbPath, token, clock);
   const reviews = new AutoReviewQueue(clock);
   registerCloseout(app, store, clock, reviews);
-  registerAutoReview(app, store, reviews, tutor.mayClaim);
+  registerAutoReview(app, store, reviews);
   registerImport(app, store, clock);
   registerTopics(app, store);
   registerScoring(app, store, clock);

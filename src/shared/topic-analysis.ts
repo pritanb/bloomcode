@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { TutorRunnerStatus } from './tutor.js';
 import type { Topic } from './contracts.js';
-import type { McpConnectionStatus } from './mcp-connection.js';
 const id = z.string().min(1).max(200);
 export const topicPriorityInput = z
   .object({
@@ -58,7 +57,6 @@ export interface TopicAnalysisStatus {
   report: TopicAnalysisRecord['report'];
   stale: boolean;
   status: TopicAnalysisRecord['status'];
-  connection?: McpConnectionStatus;
   runner?: TutorRunnerStatus;
 }
 

@@ -1,5 +1,4 @@
 import { DesktopTitleBar, isDesktopMac } from './DesktopTitleBar';
-import { McpNotifications } from './McpNotifications';
 import { SetupGate } from '../features/settings/Welcome';
 import { lazy, Suspense, useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
@@ -55,7 +54,6 @@ export function App() {
           />
         )}
       >
-        <McpNotifications />
         <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed((value) => !value)} />
       </SetupGate>
     </div>

@@ -79,7 +79,7 @@ Export your records from Settings, or run `npm run backup` while the app is runn
 
 - [Question packs and extensions](docs/extensions.md) — add your own lists or integrations.
 - [Learning Insights](docs/learning-insights.md) — local semantic retrieval, evidence-backed learning patterns, and optional practice suggestions.
-- [Optional AI tutor](docs/tutor-integration.md) — connect an MCP client using the separate Node.js adapter; automatic reports require sampling support.
+- [Optional AI tutor](docs/tutor-integration.md) — automatic reports through the Codex CLI, plus MCP tools for chatting with a tutor about your study data.
 - [Sheet migration record](docs/migration.md) — how the original spreadsheet history was imported.
 - [Contributing](CONTRIBUTING.md) · [Testing](docs/testing.md) · [UI design](docs/design-system.md).
 

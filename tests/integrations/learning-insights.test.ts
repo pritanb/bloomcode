@@ -1,9 +1,8 @@
 import { expect, it, vi } from 'vitest';
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ApiError, type LocalApi } from '../../src/integrations/local-api.js';
 import { selectFocusTopics } from '../../src/integrations/topic-analysis.js';
 import { analyzeNext } from '../../src/integrations/learning-insights.js';
-import { samplingGenerate } from '../../src/integrations/generate.js';
+import type { GenerateRequest } from '../../src/integrations/generate.js';
 import { conciseReportResult, reportResult } from '../../src/shared/insights.js';
 const finding = {
   title: 'Check your search bounds',
@@ -27,18 +26,14 @@ function harness(outputs: unknown[], failure?: ApiError) {
     if (path.endsWith('/complete') && failure) throw failure;
     return { ok: true };
   });
-  const createMessage = vi.fn(async () => ({
+  const generate = vi.fn(async (_request: GenerateRequest) => ({
     model: 'test',
-    content: { type: 'text', text: JSON.stringify(outputs.shift()) },
+    text: JSON.stringify(outputs.shift()),
   }));
   return {
     request,
-    createMessage,
-    run: () =>
-      analyzeNext(
-        { request } as unknown as LocalApi,
-        samplingGenerate({ createMessage } as unknown as Server),
-      ),
+    generate,
+    run: () => analyzeNext({ request } as unknown as LocalApi, generate),
   };
 }
 it('enforces writing limits without breaking legacy saved reports', () => {
@@ -62,26 +57,24 @@ it('corrects invalid output once and sends specific errors back to the tutor', a
     valid,
   ]);
   await h.run();
-  expect(h.createMessage).toHaveBeenCalledTimes(2);
-  expect(JSON.stringify(h.createMessage.mock.calls[1])).toContain(
-    'Habit must contain at most 6 words',
-  );
+  expect(h.generate).toHaveBeenCalledTimes(2);
+  expect(JSON.stringify(h.generate.mock.calls[1])).toContain('Habit must contain at most 6 words');
   expect(h.request.mock.calls.filter((c) => c[1].endsWith('/complete'))).toHaveLength(1);
 });
 it('stops after one failed correction and does not save invalid reports', async () => {
   const h = harness([{}, {}]);
   await h.run();
-  expect(h.createMessage).toHaveBeenCalledTimes(2);
+  expect(h.generate).toHaveBeenCalledTimes(2);
   expect(h.request.mock.calls.some((c) => c[1].endsWith('/complete'))).toBe(false);
   expect(h.request.mock.calls.some((c) => c[1].endsWith('/fail'))).toBe(true);
 });
 it('corrects invalid citations but does not retry stale claims', async () => {
   const evidence = harness([valid, valid], new ApiError('EVIDENCE', 'Unknown evidence ID', 400));
   await evidence.run();
-  expect(evidence.createMessage).toHaveBeenCalledTimes(2);
+  expect(evidence.generate).toHaveBeenCalledTimes(2);
   const stale = harness([valid], new ApiError('CONFLICT', 'Evidence changed', 409));
   await stale.run();
-  expect(stale.createMessage).toHaveBeenCalledTimes(1);
+  expect(stale.generate).toHaveBeenCalledTimes(1);
 });
 
 it('selects exactly three topics from all 18 in one request, preserving AI order', async () => {
@@ -98,14 +91,16 @@ it('selects exactly three topics from all 18 in one request, preserving AI order
     topicNumber,
     reason: `Topic ${topicNumber - 1} is below the 4/5 target.`,
   }));
-  const createMessage = vi.fn(async () => ({
-    content: { type: 'text', text: JSON.stringify({ topics: picks }) },
+  const generate = vi.fn(async (_request: GenerateRequest) => ({
+    model: null,
+    text: JSON.stringify({ topics: picks }),
   }));
-  expect(
-    await selectFocusTopics(samplingGenerate({ createMessage } as unknown as Server), topics),
-  ).toEqual({ topicIds: ['t7', 't1', 't14'], reasons: picks.map((p) => p.reason) });
-  expect(createMessage).toHaveBeenCalledTimes(1);
-  expect(JSON.stringify(createMessage.mock.calls)).toContain('Topic 17');
+  expect(await selectFocusTopics(generate, topics)).toEqual({
+    topicIds: ['t7', 't1', 't14'],
+    reasons: picks.map((p) => p.reason),
+  });
+  expect(generate).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(generate.mock.calls)).toContain('Topic 17');
 });
 it('rejects incomplete, duplicate, unknown or over-long selections without additional AI requests', async () => {
   const topics = Array.from({ length: 4 }, (_, i) => ({
@@ -126,12 +121,8 @@ it('rejects incomplete, duplicate, unknown or over-long selections without addit
         reason: topicNumber === 3 ? long : 'Below target.',
       })),
     ])) {
-    const createMessage = vi.fn(async () => ({
-      content: { type: 'text', text: JSON.stringify({ topics: picks }) },
-    }));
-    await expect(
-      selectFocusTopics(samplingGenerate({ createMessage } as unknown as Server), topics),
-    ).rejects.toThrow();
-    expect(createMessage).toHaveBeenCalledTimes(1);
+    const generate = vi.fn(async () => ({ model: null, text: JSON.stringify({ topics: picks }) }));
+    await expect(selectFocusTopics(generate, topics)).rejects.toThrow();
+    expect(generate).toHaveBeenCalledTimes(1);
   }
 });

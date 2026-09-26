@@ -1,13 +1,12 @@
 # Design: Codex CLI tutor runner (draft)
 
-Status: implemented on 2026-09-25. Differences from the draft:
+Status: implemented on 2026-09-25. The `mcp-sampling` provider was removed on 2026-09-26: Codex and Off are the only providers, new workspaces start Off, and a saved `mcp-sampling` setting loads as Off. Differences from the draft:
 
 - Settings live in `tutor-settings.json` beside the database, not in the settings table. The export/restore schema validates settings strictly.
 - The worker polls every 3 s through in-process `app.inject` calls and does not wake on enqueue.
 - `--output-schema` is not used. The existing prompts and validators, plus the single correction retry, cover structured output.
 - Tools are disabled with `--disable` feature flags, and Codex's base instructions are replaced with `model_instructions_file`. Measured overhead is about 8.4k input tokens per call.
 - The ChatGPT.app bundled CLI is preferred. The standalone 0.147 CLI rejected `gpt-6-luna` for ChatGPT accounts.
-- Every workspace, new or existing, defaults to `mcp-sampling` until switched in Settings.
 - A real run on disposable data produced a tutor report in about 20 s, extraction plus an xhigh learning report in about 32 s, and topic picks.
 
 ## Problem
@@ -186,4 +185,4 @@ This follows `docs/testing.md`, so only critical paths are tested. It uses a fak
 - Can `codex exec` disable shell and tool use entirely, beyond a read-only sandbox?
 - Does `--output-schema` enforce the schema server-side (strict), or is it only a hint? Our validators run either way.
 - Does Codex offer a machine-readable usage-limit reset time, or must it be parsed from text?
-- Should the MCP adapter's sampling loop be removed once Codex is proven, or kept until Hermes drops sampling?
+- ~~Should the MCP adapter's sampling loop be removed once Codex is proven?~~ Removed on 2026-09-26.

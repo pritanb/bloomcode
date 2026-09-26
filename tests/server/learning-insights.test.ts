@@ -427,39 +427,3 @@ it('serves topic analysis as a static route rather than looking up an analysis t
   expect(response.statusCode).toBe(200);
   expect(response.json()).toMatchObject({ topics: [], report: null, enabled: false });
 });
-
-it('tracks MCP heartbeats independently of analysis and rejects browser heartbeat spoofing', async () => {
-  let now = Date.now();
-  await app.close();
-  app = await createApp({ dbPath: ':memory:', token: 'test', embed, clock: () => new Date(now) });
-  const heartbeat = {
-    id: 'f0bf9ea5-6274-4ff9-834c-6819398209cc',
-    sampling: true,
-    automaticReviews: true,
-  };
-  expect((await call('GET', '/api/mcp/status')).json().state).toBe('unknown');
-  expect((await call('POST', '/api/mcp/heartbeat', heartbeat)).statusCode).toBe(200);
-  now += 31_000;
-  expect((await call('GET', '/api/mcp/status')).json().state).toBe('connected');
-  now += 15_000;
-  expect((await call('GET', '/api/mcp/status')).json().state).toBe('disconnected');
-  await call('POST', '/api/mcp/heartbeat', heartbeat);
-  expect((await call('GET', '/api/topics/analysis')).json().connection).toMatchObject({
-    state: 'connected',
-    sampling: true,
-  });
-  const session = await app.inject({ method: 'GET', url: '/api/session' });
-  expect(
-    (
-      await app.inject({
-        method: 'POST',
-        url: '/api/mcp/heartbeat',
-        headers: {
-          cookie: session.headers['set-cookie'] as string,
-          'x-csrf-token': session.json().csrfToken,
-        },
-        payload: heartbeat,
-      })
-    ).statusCode,
-  ).toBe(403);
-});

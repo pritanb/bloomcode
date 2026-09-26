@@ -8,7 +8,6 @@ import { ApiError } from '../db/errors.js';
 import { LocalEmbeddings, type Embed } from './embeddings.js';
 import { extractionResult, conciseReportResult } from '../../shared/insights.js';
 import { TopicAnalysis } from '../topics/topic-analysis.js';
-import { McpConnection } from '../mcp/mcp-connection.js';
 import { Insights } from './service.js';
 import type { TutorControl } from '../tutor/routes.js';
 const claim = z.object({ id: z.string().min(1).max(200), claimId: z.string().min(1).max(200) });
@@ -44,27 +43,14 @@ export function registerInsights(
     insights.stop();
     await local.close();
   });
-  const connection = new McpConnection(clock);
-  app.get('/api/mcp/status', () => ({ ...connection.status(), provider: tutor.provider() }));
-  app.post('/api/mcp/heartbeat', (req) => {
-    bearer(req);
-    const b = z
-      .object({ id: z.string().uuid(), sampling: z.boolean(), automaticReviews: z.boolean() })
-      .strict()
-      .parse(req.body);
-    connection.heartbeat(b.id, b.sampling, b.automaticReviews);
-    return { ok: true };
-  });
   app.get('/api/insights', () => ({
     ...insights.status(),
-    connection: connection.status(),
     runner: tutor.status(),
   }));
   const topics = new TopicAnalysis(s, clock);
   topics.recover();
   app.get('/api/topics/analysis', () => ({
     ...topics.status(),
-    connection: connection.status(),
     runner: tutor.status(),
   }));
   app.post('/api/topics/analysis/enable', (req) =>
@@ -76,7 +62,7 @@ export function registerInsights(
   });
   app.post('/api/topics/analysis/claim', (req) => {
     bearer(req);
-    return { work: tutor.mayClaim(req) ? topics.claim() : null };
+    return { work: topics.claim() };
   });
   app.post('/api/topics/analysis/complete', (req) => {
     bearer(req);
@@ -123,7 +109,7 @@ export function registerInsights(
   });
   app.post('/api/insights/claim', (req) => {
     bearer(req);
-    const work = tutor.mayClaim(req) ? insights.claim() : null;
+    const work = insights.claim();
     return {
       work: work
         ? {

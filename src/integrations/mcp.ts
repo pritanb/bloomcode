@@ -4,8 +4,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { pathToFileURL } from 'node:url';
 import { LocalApi, ApiError } from './local-api.js';
-import { startMcpHeartbeat } from './mcp-heartbeat.js';
-import { startAutoReviews } from './auto-review.js';
 const id = z
   .string()
   .min(1)
@@ -21,16 +19,9 @@ const date = z.iso.date();
 const action = z.enum(['recommended', 'manual', 'none']);
 const schemas = {
   get_learning_insights: z.strictObject({}),
-  claim_learning_analysis: z.strictObject({}),
   retrieve_learning_evidence: z.strictObject({
     query: z.string().trim().min(1).max(800),
     limit: z.number().int().min(1).max(20).optional(),
-  }),
-  complete_learning_analysis: z.strictObject({
-    id,
-    claimId: id,
-    result: z.unknown(),
-    model: z.string().max(300).nullable().optional(),
   }),
   get_today: z.strictObject({ date: date.optional() }),
   search_questions: z.strictObject({
@@ -103,12 +94,8 @@ const schemas = {
 const descriptions: Record<keyof typeof schemas, string> = {
   get_learning_insights:
     'Read the current learning report and coverage. Hidden during mixed assessments.',
-  claim_learning_analysis:
-    'Claim one pending learning analysis with bounded context. Use evidence only, never change scores. Complete with the returned claim ID.',
   retrieve_learning_evidence:
     'Retrieve at most 20 current learning observations using local semantic and keyword search. Hidden during mixed assessments.',
-  complete_learning_analysis:
-    'Submit structured extraction or report JSON for a current claim. Source excerpts, citations and suggestion IDs are validated. Does not change scores or schedules.',
   get_today:
     'Get or resume the stable daily plan; does not start an attempt. No hidden pattern context.',
   search_questions:
@@ -143,20 +130,11 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
     if (name === 'get_learning_insights') {
       schemas.get_learning_insights.parse(args);
       result = await api.request('GET', '/api/insights');
-    } else if (name === 'claim_learning_analysis') {
-      schemas.claim_learning_analysis.parse(args);
-      result = await api.request('POST', '/api/insights/claim', {});
     } else if (name === 'retrieve_learning_evidence')
       result = await api.request(
         'POST',
         '/api/insights/retrieve',
         schemas.retrieve_learning_evidence.parse(args),
-      );
-    else if (name === 'complete_learning_analysis')
-      result = await api.request(
-        'POST',
-        '/api/insights/complete',
-        schemas.complete_learning_analysis.parse(args),
       );
     else if (name === 'get_today')
       result = await api.request('POST', '/api/daily-plan/ensure', schemas.get_today.parse(args));
@@ -263,19 +241,6 @@ export async function startMcp() {
   server.setRequestHandler(CallToolRequestSchema, async (request) =>
     callTool(api, request.params.name, request.params.arguments ?? {}),
   );
-  // Reports for web submissions need the client's model; only clients that
-  // offer sampling and have not disabled background reviews get the background reviewer.
-  let stop: (() => void) | undefined;
-  let stopHeartbeat: (() => void) | undefined;
-  server.oninitialized = () => {
-    stopHeartbeat ??= startMcpHeartbeat(server, api);
-    if (process.env.TUTOR_AUTO_REVIEW !== '0' && server.getClientCapabilities()?.sampling)
-      stop ??= startAutoReviews(server, api);
-  };
-  server.onclose = () => {
-    stop?.();
-    stopHeartbeat?.();
-  };
   await server.connect(new StdioServerTransport());
   return server;
 }
