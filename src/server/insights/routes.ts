@@ -32,6 +32,8 @@ export function registerInsights(
     join(dbPath === ':memory:' ? tmpdir() : dirname(dbPath), 'embedding-models'),
   );
   const insights = new Insights(s, clock, embed ?? local.embed);
+  insights.tutorActive = tutor.active;
+  insights.onEmbeddingsReady = tutor.wake;
   const timer = setInterval(() => void insights.tick(), 3000);
   timer.unref();
   // Recover interrupted leases without touching saved study records.

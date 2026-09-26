@@ -71,6 +71,9 @@ export class Insights {
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
   error: string | null = null;
   tutorSeenAt = -Infinity;
+  tutorActive = () => false;
+  /** A learning report can only be claimed once local search is ready. */
+  onEmbeddingsReady = () => {};
   private busy = false;
   private stopped = false;
   constructor(
@@ -224,6 +227,7 @@ export class Insights {
       );
       this.embeddingStatus = 'ready';
       this.error = null;
+      this.onEmbeddingsReady();
     } catch (error) {
       if (!this.stopped) {
         this.embeddingStatus = 'failed';
@@ -650,7 +654,7 @@ export class Insights {
       ...coverage,
       pending: jobs.filter((j) => j.status === 'pending' || j.status === 'running').length,
       failed: jobs.filter((j) => j.status === 'failed').length,
-      tutorConnected: this.clock().getTime() - this.tutorSeenAt < 30000,
+      tutorConnected: this.tutorActive(),
       embeddingStatus: this.embeddingStatus,
       error: hidden ? null : (this.error ?? jobs.find((j) => j.status === 'failed')?.error ?? null),
       report: hidden ? null : visible,

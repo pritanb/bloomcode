@@ -76,8 +76,8 @@ export function analysisStatus(data: InsightStatus) {
     return {
       title: 'Report up to date',
       detail: data.tutorConnected
-        ? 'Tutor checked in recently. New evidence will be analyzed automatically.'
-        : 'No work is waiting. The tutor has not checked in recently; this does not invalidate your saved report.',
+        ? 'New evidence will be analyzed automatically.'
+        : 'The AI tutor is off or paused. Your saved report is kept.',
       busy: false,
     };
   if (data.total === 0)
@@ -94,7 +94,7 @@ export function analysisStatus(data: InsightStatus) {
     };
   return {
     title: 'Analysis queued',
-    detail: `${data.pending} jobs waiting or in progress. The tutor checked in recently.`,
+    detail: `${data.pending} jobs waiting or in progress.`,
     busy: false,
   };
 }

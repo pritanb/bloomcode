@@ -220,7 +220,7 @@ export async function createApp(options: AppOptions) {
   registerCatalogue(app, store, clock);
   registerAttempts(app, store, clock);
   const tutor = registerTutor(app, options.dbPath, token, clock);
-  const reviews = new AutoReviewQueue(clock);
+  const reviews = new AutoReviewQueue(clock, tutor.active);
   registerCloseout(app, store, clock, reviews);
   registerAutoReview(app, store, reviews);
   registerImport(app, store, clock);

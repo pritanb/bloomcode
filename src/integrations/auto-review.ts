@@ -7,7 +7,6 @@ import type { Api, Generate } from './generate.js';
 // Writes the tutor report for attempts submitted in the web app, using the
 // model supplied by the app's Codex worker.
 type Context = { attempt: Attempt; history: Attempt[]; topics: Topic[] };
-const POLL_MS = 3000;
 export const reviewSystemPrompt = `You are a supportive LeetCode interview tutor reviewing one finished practice attempt.
 Write a short report the learner reads straight after submitting. Plain text only: no Markdown headings, bold, tables or code fences.
 Use exactly these labelled sections, each 1-4 short lines:
@@ -78,31 +77,15 @@ export async function reviewNext(api: Api, generate: Generate): Promise<boolean>
   }
   return true;
 }
-/** Poll for queued tutor work, one job at a time, until stopped. Returns a stop function. */
-export function startTutorLoop(
+/** Run the next queued tutor job, attempt reports first. Returns whether one was found. */
+export async function runNextJob(
   api: Api,
   generate: Generate,
-  options: { reportBudgetMs?: number; ready?: () => boolean | Promise<boolean> } = {},
-): () => void {
-  let stopped = false;
-  let timer: NodeJS.Timeout | undefined;
-  const ready = options.ready ?? (() => true);
-  const tick = async () => {
-    let found = false;
-    try {
-      if (await ready())
-        found =
-          (await reviewNext(api, generate)) ||
-          (await analyzeNext(api, generate, options.reportBudgetMs)) ||
-          (await analyzeTopicsNext(api, generate));
-    } catch {
-      /* app not running yet; keep polling */
-    }
-    if (!stopped) timer = setTimeout(() => void tick(), found ? 0 : POLL_MS);
-  };
-  void tick();
-  return () => {
-    stopped = true;
-    clearTimeout(timer);
-  };
+  reportBudgetMs?: number,
+): Promise<boolean> {
+  return (
+    (await reviewNext(api, generate)) ||
+    (await analyzeNext(api, generate, reportBudgetMs)) ||
+    (await analyzeTopicsNext(api, generate))
+  );
 }

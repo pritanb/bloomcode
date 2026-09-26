@@ -11,7 +11,6 @@ import type { Store } from '../db/store.js';
 // The queue is deliberately in memory: it is transient work, not study data,
 // and a restart only means the learner asks for the report again.
 const LEASE_MS = 4 * 60_000; // a claim older than this is handed out again
-const TUTOR_SEEN_MS = 30_000; // a tutor that polled this recently counts as connected
 type Job = {
   status: 'pending' | 'generating' | 'failed';
   claimId: string | null;
@@ -20,8 +19,10 @@ type Job = {
 };
 export class AutoReviewQueue {
   private jobs = new Map<string, Job>();
-  private tutorSeenAt = -Infinity;
-  constructor(private clock: () => Date) {}
+  constructor(
+    private clock: () => Date,
+    private tutorActive: () => boolean = () => false,
+  ) {}
   request(attemptId: string) {
     // A replayed finish or a double-click must not restart a report in progress.
     const job = this.jobs.get(attemptId);
@@ -29,7 +30,7 @@ export class AutoReviewQueue {
     this.jobs.set(attemptId, { status: 'pending', claimId: null, claimedAt: 0, error: null });
   }
   status(a: AttemptRecord): AutoReviewStatus {
-    const tutorConnected = this.clock().getTime() - this.tutorSeenAt < TUTOR_SEEN_MS;
+    const tutorConnected = this.tutorActive();
     if (a.feedback) {
       this.jobs.delete(a.id);
       return { status: 'done', error: null, tutorConnected };
@@ -39,7 +40,6 @@ export class AutoReviewQueue {
   }
   claim(s: Store): { attemptId: string; claimId: string } | null {
     const now = this.clock().getTime();
-    this.tutorSeenAt = now;
     for (const [attemptId, job] of this.jobs) {
       const stale = job.status === 'generating' && now - job.claimedAt > LEASE_MS;
       if (job.status !== 'pending' && !stale) continue;

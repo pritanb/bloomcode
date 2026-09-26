@@ -32,7 +32,7 @@ export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: (
           ? 'Your tutor is writing a report on this attempt…'
           : status.data?.tutorConnected
             ? 'Queued for your tutor…'
-            : 'Your attempt is saved. Choose Codex under AI tutor in Settings for automatic reports. You can keep practising without a report.'}
+            : 'Your attempt is saved. The AI tutor is off or paused (Settings → AI tutor), so no report is being written yet. You can keep practising without one.'}
       </p>
     );
   return (

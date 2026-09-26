@@ -60,7 +60,6 @@ test('a web submission queues a report that one claim generates, and a failure c
   expect(await status()).toMatchObject({
     status: 'failed',
     error: 'Codex timed out',
-    tutorConnected: true,
   });
   expect(await reviewNext(api, async () => ({ text: 'never asked', model: null }))).toBe(false); // failed jobs wait for the learner
   await api.request('POST', `/api/attempts/${attemptId}/auto-review`, {});

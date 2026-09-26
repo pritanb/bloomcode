@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { z } from 'zod';
-import { startTutorLoop } from '../../integrations/auto-review.js';
+import { runNextJob } from '../../integrations/auto-review.js';
 import type { Api, Generate } from '../../integrations/generate.js';
 import {
   defaultTutorSettings,
@@ -92,8 +92,12 @@ export class TutorSettingsFile {
   }
 }
 
+// Idle until woken: the app calls wake() after anything that can create work.
 export class CodexWorker {
-  private stopLoop: (() => void) | undefined;
+  private stopped = true;
+  private running = false;
+  private again = false;
+  private resumeTimer: NodeJS.Timeout | undefined;
   private abort = new AbortController();
   private activeKind: TutorJobKind | null = null;
   private pausedUntil = 0;
@@ -106,16 +110,43 @@ export class CodexWorker {
     private clock: () => Date,
   ) {}
   start() {
-    this.stopLoop ??= startTutorLoop(this.api, this.generate, {
-      reportBudgetMs: CODEX_REPORT_BUDGET_MS,
-      ready: () => this.ready(),
-    });
+    this.stopped = false;
+    this.wake(); // work left queued before a restart
   }
   stop() {
-    this.stopLoop?.();
-    this.stopLoop = undefined;
+    this.stopped = true;
+    clearTimeout(this.resumeTimer);
     this.abort.abort();
     this.abort = new AbortController();
+  }
+  /** Run queued jobs until none is left. A wake during a run triggers one more pass. */
+  wake() {
+    if (this.stopped) return;
+    if (this.running) this.again = true;
+    else void this.drain();
+  }
+  private async drain() {
+    this.running = true;
+    try {
+      do {
+        this.again = false;
+        try {
+          while (
+            !this.stopped &&
+            (await this.ready()) &&
+            (await runNextJob(this.api, this.generate, CODEX_REPORT_BUDGET_MS))
+          );
+        } catch {
+          /* The job stays queued for the next wake. */
+        }
+      } while (this.again && !this.stopped);
+    } finally {
+      this.running = false;
+    }
+  }
+  /** Codex is selected and not paused, so queued work will be written. */
+  active() {
+    return this.settings.get().provider === 'codex' && this.clock().getTime() >= this.pausedUntil;
   }
   /** Settings changed or a test succeeded: forget pauses so work resumes now. */
   reset() {
@@ -142,7 +173,11 @@ export class CodexWorker {
   private fail(error: CodexError) {
     this.lastError = { kind: error.kind, message: error.message, at: this.clock().toISOString() };
     const pause = PAUSE_MS[error.kind];
-    if (pause) this.pausedUntil = this.clock().getTime() + pause;
+    if (!pause) return;
+    this.pausedUntil = this.clock().getTime() + pause;
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = setTimeout(() => this.wake(), pause);
+    this.resumeTimer.unref();
   }
   private generate: Generate = async (request) => {
     const settings = this.settings.get();

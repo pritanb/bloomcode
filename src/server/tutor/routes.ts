@@ -5,8 +5,11 @@ import type { Api } from '../../integrations/generate.js';
 import type { TutorSettings } from '../../shared/tutor.js';
 import { CodexWorker, TutorSettingsFile, tutorSettingsSchema } from './worker.js';
 
+const WORKER_HEADER = 'x-tutor-worker';
 export interface TutorControl {
   status(): ReturnType<CodexWorker['status']>;
+  active(): boolean;
+  wake(): void;
 }
 
 // The worker calls the app's own routes in-process, with the same bearer
@@ -20,6 +23,7 @@ function injectApi(app: FastifyInstance, token: string): Api {
         payload: body === undefined ? undefined : JSON.stringify(body),
         headers: {
           authorization: `Bearer ${token}`,
+          [WORKER_HEADER]: '1',
           ...(body === undefined ? {} : { 'content-type': 'application/json' }),
           ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
         },
@@ -61,6 +65,15 @@ export function registerTutor(
   app.addHook('onClose', async () => {
     worker.stop();
   });
+  // Any write can create tutor work, so wake the worker after each one it did not make itself.
+  app.addHook('onResponse', async (req, reply) => {
+    if (
+      !['GET', 'HEAD'].includes(req.method) &&
+      reply.statusCode < 400 &&
+      !req.headers[WORKER_HEADER]
+    )
+      worker.wake();
+  });
   app.get('/api/tutor', () => ({ settings: settings.get(), status: worker.status() }));
   app.post('/api/tutor/settings', (req) => {
     const saved = settings.save(tutorSettingsSchema.parse(req.body) as TutorSettings);
@@ -70,5 +83,9 @@ export function registerTutor(
   app.post('/api/tutor/test', (req) =>
     worker.test(tutorSettingsSchema.parse(req.body) as TutorSettings),
   );
-  return { status: () => worker.status() };
+  return {
+    status: () => worker.status(),
+    active: () => worker.active(),
+    wake: () => worker.wake(),
+  };
 }
