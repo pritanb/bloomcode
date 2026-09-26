@@ -232,7 +232,7 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
 export async function startMcp() {
   const api = new LocalApi();
   const server = new Server(
-    { name: 'leetcode-tutor', version: '0.1.0' },
+    { name: 'bloomcode', version: '0.1.0' },
     { capabilities: { tools: {} } },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolDefinitions }));

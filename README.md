@@ -74,11 +74,11 @@ See the [backend notes](src/server/README.md) for architecture details.
 
 Data is stored outside the repository:
 
-- **macOS:** `~/Library/Application Support/LeetCodeTutor/`
-- **Linux:** `~/.local/share/leetcode-tutor/` (or under `XDG_DATA_HOME`)
-- **Windows:** `%LOCALAPPDATA%\LeetCodeTutor\`
+- **macOS:** `~/Library/Application Support/BloomCode/`
+- **Linux:** `~/.local/share/bloomcode/` (or under `XDG_DATA_HOME`)
+- **Windows:** `%LOCALAPPDATA%\BloomCode\`
 
-Existing macOS databases in `LeetcodeTutor-dev` keep their location. Copy [.env.example](.env.example) to `.env` to choose a different data directory or port. The app and integrations must use matching settings.
+Existing workspaces from before the BloomCode rename (`LeetCodeTutor`, `leetcode-tutor` or macOS `LeetcodeTutor-dev`) keep their location. Copy [.env.example](.env.example) to `.env` to choose a different data directory or port. The app and integrations must use matching settings.
 
 The app backs up once a day at startup; run `npm run backup` while it is running for an extra copy. Keep credentials, exports and backups private. See [Operations](docs/operations.md) before updating or restoring.
 

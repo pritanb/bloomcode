@@ -2,14 +2,23 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Electron main uses CommonJS. */
 const { app, BrowserWindow, Menu, dialog, shell, utilityProcess, ipcMain } = require('electron');
 const { join } = require('node:path');
+const { existsSync } = require('node:fs');
 const { pathToFileURL } = require('node:url');
 
 app.setName('BloomCode');
-// Preserve the existing Chromium profile and single-instance lock across the rename.
-app.setPath('userData', join(app.getPath('appData'), 'LeetCode Tutor'));
 // Test runs must not share Chromium state or the real app's single-instance lock.
 if (process.env.DESKTOP_TEST_DATA_DIR)
   app.setPath('userData', join(process.env.DESKTOP_TEST_DATA_DIR, 'desktop-profile'));
+else {
+  // Keep an existing pre-rename Chromium profile and single-instance lock in place; never move
+  // it. New installations keep the profile in its own subfolder, apart from the study files.
+  const legacyProfile = join(app.getPath('appData'), 'LeetCode Tutor');
+  const profile = join(app.getPath('appData'), 'BloomCode', 'desktop-profile');
+  app.setPath(
+    'userData',
+    existsSync(legacyProfile) && !existsSync(profile) ? legacyProfile : profile,
+  );
+}
 let window;
 let worker;
 let address;

@@ -12,7 +12,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw Error('DEMO_PORT must be between 1 and 65535.');
 if (!existsSync(new URL('../dist/web/index.html', import.meta.url)))
   throw Error('Run npm run build before starting the demo.');
-const directory = mkdtempSync(join(tmpdir(), 'leetcode-tutor-demo-'));
+const directory = mkdtempSync(join(tmpdir(), 'bloomcode-demo-'));
 const token = randomBytes(32).toString('hex');
 let seedTime;
 let app;

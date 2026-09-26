@@ -37,13 +37,13 @@ The test override isolates both study records and the Electron profile. Close th
 
 ## Build on GitHub
 
-After the workflow is on the repository's default branch, open **Actions → Build desktop app → Run workflow**. Download the `leetcode-tutor-macos-arm64` artifact from the completed run, extract it, then unzip the app archive inside.
+After the workflow is on the repository's default branch, open **Actions → Build desktop app → Run workflow**. Download the `bloomcode-macos-arm64` artifact from the completed run, extract it, then unzip the app archive inside.
 
 This manual workflow builds on an Apple silicon macOS runner and keeps the archive for 14 days. It does not publish a GitHub release or sign/notarize the app. A signed public release requires a separately configured Apple Developer identity and notarization credentials.
 
 ## Workspace and updates
 
-Study records stay outside the application in `~/Library/Application Support/LeetCodeTutor/`. Existing databases in `LeetcodeTutor-dev` keep their original location. Replacing the application does not replace this data. Export your records from Settings before updating; see [Operations](operations.md) for backup and restore details.
+Study records stay outside the application in `~/Library/Application Support/BloomCode/`. Existing `LeetCodeTutor` and `LeetcodeTutor-dev` workspaces keep their original location. Replacing the application does not replace this data. Export your records from Settings before updating; see [Operations](operations.md) for backup and restore details.
 
 The packaged app does not read a project's `.env` file. It uses the standard workspace and port `4317`, unless `DATA_DIR` or `PORT` are supplied in its launch environment. If your browser setup uses a custom workspace, use matching settings before switching to desktop.
 

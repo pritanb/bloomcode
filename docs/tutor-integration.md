@@ -7,9 +7,9 @@ A typical MCP client configuration looks like this (replace paths with your own 
 ```json
 {
   "mcpServers": {
-    "leetcode-tutor": {
+    "bloomcode": {
       "command": "node",
-      "args": ["/absolute/path/to/leetcode-tutor/dist/server/mcp.js"],
+      "args": ["/absolute/path/to/bloomcode/dist/server/mcp.js"],
       "env": {
         "DATA_DIR": "/absolute/path/to/your/workspace",
         "PORT": "4317"

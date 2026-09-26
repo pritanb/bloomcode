@@ -6,13 +6,13 @@ See [README](../README.md#your-workspace) for platform defaults and legacy-direc
 
 The app is the desktop app: open BloomCode, or run `npm run electron:dev` from source (see [Desktop](desktop.md)). It starts its own backend on `127.0.0.1:4317` and stops it on quit. Only one server may use a data directory at a time; a second one refuses to start.
 
-| Setting/file               | Value or purpose                                                                              |
-| -------------------------- | --------------------------------------------------------------------------------------------- |
-| `DATA_DIR`                 | Platform default from the README; an existing macOS `LeetcodeTutor-dev` database is preserved |
-| `PORT`                     | `4317`; loopback only                                                                         |
-| `DATA_DIR/leetcode.sqlite` | Live database; keep its WAL files with it                                                     |
-| `DATA_DIR/api-token`       | Local bearer credential; never paste it in chat/config/logs                                   |
-| `DATA_DIR/server-locks/`   | Marks the server that has the workspace open                                                  |
+| Setting/file               | Value or purpose                                                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `DATA_DIR`                 | Platform default from the README; existing pre-rename workspaces (including macOS `LeetcodeTutor-dev`) are preserved |
+| `PORT`                     | `4317`; loopback only                                                                                                |
+| `DATA_DIR/leetcode.sqlite` | Live database; keep its WAL files with it                                                                            |
+| `DATA_DIR/api-token`       | Local bearer credential; never paste it in chat/config/logs                                                          |
+| `DATA_DIR/server-locks/`   | Marks the server that has the workspace open                                                                         |
 
 For development without Electron, `npm run dev` runs the backend from source and `npm run dev:web` runs Vite. Set `DATA_DIR` to a scratch directory so they never open your real workspace. Do not disable auth or bind publicly.
 
@@ -21,7 +21,7 @@ For development without Electron, `npm run dev` runs the backend from source and
 The adapter uses the MCP SDK over stdio and forwards only named HTTP operations. Start the app first, then have an explicitly approved MCP client launch:
 
 ```sh
-node /absolute/path/to/leetcode-tutor/dist/server/mcp.js
+node /absolute/path/to/bloomcode/dist/server/mcp.js
 ```
 
 For development: `npm run mcp`. The client must supply the same `DATA_DIR` and `PORT` if defaults changed. Use an absolute Node executable if the client has a restricted PATH. Do **not** include the token in the MCP configuration; the adapter reads `api-token` locally. Stdout is reserved for the MCP protocol. Registration/cutover in Hermes remains a separate approval; these scripts do not perform it.

@@ -7,7 +7,7 @@ module.exports = {
   packagerConfig: {
     name: 'BloomCode',
     executableName: 'BloomCode',
-    appBundleId: 'io.github.pritanb.leetcode-tutor',
+    appBundleId: 'io.github.pritanb.bloomcode',
     appCategoryType: 'public.app-category.education',
     icon: path.join(__dirname, 'assets/icon.icns'),
     // Native embedding dependencies load sibling shared libraries outside ASAR.

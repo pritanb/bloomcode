@@ -1,4 +1,4 @@
-# Extending LeetCode Tutor
+# Extending BloomCode
 
 The initial extension surface is data and local APIs. There is no runtime plugin loader or execution of code supplied by a question pack. The app currently supports original LeetCode problem URLs; adding other exercise providers requires a separate identity/schema change.
 

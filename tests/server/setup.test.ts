@@ -3,7 +3,8 @@ import { createApp } from '../../src/server/core/app.js';
 import { mapQuestionPack } from '../../src/integrations/question-pack.js';
 import { resolveDataDir } from '../../scripts/runtime.mjs';
 import { join, resolve } from 'node:path';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { openDb, run } from '../../src/server/db/db.js';
 import { readTables } from '../tables.js';
@@ -13,24 +14,52 @@ it('keeps explicit and legacy workspace paths while giving new installations pla
   expect(resolveDataDir({ env: { DATA_DIR: './private/test' }, home })).toBe(
     resolve('private/test'),
   );
-  const legacy = join(home, 'Library', 'Application Support', 'LeetcodeTutor-dev');
+  const support = join(home, 'Library', 'Application Support');
+  const only = (target: string) => (path: string) => path === target;
+  const legacy = join(support, 'LeetcodeTutor-dev');
   expect(
     resolveDataDir({
       env: {},
       platform: 'darwin',
       home,
-      exists: (path) => path === join(legacy, 'leetcode.sqlite'),
+      exists: only(join(legacy, 'leetcode.sqlite')),
     }),
   ).toBe(legacy);
-  expect(resolveDataDir({ env: {}, platform: 'darwin', home, exists: () => false })).toBe(
-    join(home, 'Library', 'Application Support', 'LeetCodeTutor'),
+  const darwin = { env: {}, platform: 'darwin', home };
+  expect(resolveDataDir({ ...darwin, exists: only(join(support, 'LeetCodeTutor')) })).toBe(
+    join(support, 'LeetCodeTutor'),
   );
-  expect(resolveDataDir({ env: { XDG_DATA_HOME: '/data' }, platform: 'linux', home })).toBe(
+  expect(resolveDataDir({ ...darwin, exists: () => false })).toBe(join(support, 'BloomCode'));
+  const linux = { env: { XDG_DATA_HOME: '/data' }, platform: 'linux', home };
+  expect(resolveDataDir({ ...linux, exists: () => false })).toBe('/data/bloomcode');
+  expect(resolveDataDir({ ...linux, exists: only('/data/leetcode-tutor') })).toBe(
     '/data/leetcode-tutor',
   );
-  expect(resolveDataDir({ env: { LOCALAPPDATA: '/local' }, platform: 'win32', home })).toBe(
+  const windows = { env: { LOCALAPPDATA: '/local' }, platform: 'win32', home };
+  expect(resolveDataDir({ ...windows, exists: () => false })).toBe('/local/BloomCode');
+  expect(resolveDataDir({ ...windows, exists: only('/local/LeetCodeTutor') })).toBe(
     '/local/LeetCodeTutor',
   );
+});
+
+it('keeps using a pre-rename workspace in place until a BloomCode database exists', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'bloomcode-paths-'));
+  try {
+    const support = join(home, 'Library', 'Application Support');
+    const legacy = join(support, 'LeetCodeTutor');
+    const current = join(support, 'BloomCode');
+    await mkdir(legacy, { recursive: true });
+    await writeFile(join(legacy, 'leetcode.sqlite'), 'legacy');
+    // A desktop profile folder alone must not divert the app to an empty workspace.
+    await mkdir(join(current, 'desktop-profile'), { recursive: true });
+    expect(resolveDataDir({ env: {}, platform: 'darwin', home })).toBe(legacy);
+    expect(await readFile(join(legacy, 'leetcode.sqlite'), 'utf8')).toBe('legacy');
+    expect(existsSync(join(current, 'leetcode.sqlite'))).toBe(false);
+    await writeFile(join(current, 'leetcode.sqlite'), '');
+    expect(resolveDataDir({ env: {}, platform: 'darwin', home })).toBe(current);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
 it('authenticates setup and imports exactly the selected starter list', async () => {

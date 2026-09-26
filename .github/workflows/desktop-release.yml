@@ -22,7 +22,7 @@ jobs:
       - name: Upload unsigned app archive
         uses: actions/upload-artifact@v4
         with:
-          name: leetcode-tutor-macos-arm64
+          name: bloomcode-macos-arm64
           path: dist/electron/make/zip/darwin/arm64/*.zip
           if-no-files-found: error
           retention-days: 14
