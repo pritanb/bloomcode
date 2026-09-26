@@ -127,10 +127,6 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
                 ))}
               </SelectField>
             </Field>
-            <p className="settings-help">
-              A list is a hard limit, including reviews and swaps. A short list makes a shorter
-              plan.
-            </p>
             <Field label="Order">
               <SelectField
                 value={recommendations.strategy}
