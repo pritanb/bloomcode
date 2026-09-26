@@ -22,7 +22,6 @@ export const topicReason = z
     (r) => r.split(/\s+/).length <= TOPIC_REASON_MAX_WORDS,
     `Reason must contain at most ${TOPIC_REASON_MAX_WORDS} words`,
   );
-export const TOPIC_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 export const TOPIC_PRIORITY_RULES = `Include topicPriorities: one entry per supplied topic (topicId, importance high|medium|low, reason, action). Estimate importance for general coding interviews, not a particular employer; label it as a judgment, never invent frequency statistics. Explain interview relevance and the gap from the planning target of 4/5. Scores are saved evidence, not a probability of passing. Null scores mean unassessed, never zero ability. Provisional scores require confirmation. A score of 4 or more needs maintenance, not remediation. Give one concrete next practice action per topic, without revealing problem solutions. Use only supplied topic IDs. Do not change scores or schedules.`;
 
 export const topicAnalysisRecordSchema = z
@@ -55,7 +54,6 @@ export interface TopicAnalysisStatus {
   hidden: boolean;
   topics: AnalysisTopic[];
   report: TopicAnalysisRecord['report'];
-  stale: boolean;
   status: TopicAnalysisRecord['status'];
   runner?: TutorRunnerStatus;
 }

@@ -7,7 +7,7 @@ import { learningRecordSchema } from '../../src/shared/insights.js';
 import { restoreLearningReferences } from '../../src/server/insights/restore.js';
 import type { Topic } from '../../src/shared/contracts.js';
 
-it('generates topics without attempts, embeddings or Learning Insights, preserving scores and independent refresh', () => {
+it('generates topics without attempts, embeddings or Learning Insights, preserving scores and refreshing only on request', () => {
   const db = openDb(':memory:'),
     s = new Store(db.sqlite),
     clock = () => new Date(now);
@@ -40,7 +40,6 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     topics.complete(work.job.claimId!, [priority], ['Arrays is 2/5, below the 4/5 target.']);
     expect(topics.status()).toMatchObject({
       status: 'done',
-      stale: false,
       report: { topicIds: [priority], reasons: ['Arrays is 2/5, below the 4/5 target.'] },
     });
     expect(s.get('topics', 'arrays')).toEqual(topic);
@@ -64,14 +63,13 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     expect(topics.status().status).toBe('done');
     s.put('topics', { ...topic, score: 3 });
     expect(learning.corpusFingerprint()).toBe(originalLearningFingerprint);
-    expect(topics.status()).toMatchObject({ status: 'done', stale: false });
+    expect(topics.status()).toMatchObject({ status: 'done' });
     expect(topics.claim()).toBeNull();
-    now += 7 * 24 * 60 * 60 * 1000;
-    expect(topics.status()).toMatchObject({
-      status: 'pending',
-      stale: true,
-      report: { topicIds: [priority] },
-    });
+    now += 30 * 24 * 60 * 60 * 1000; // time alone never triggers a refresh
+    expect(topics.status()).toMatchObject({ status: 'done', report: { topicIds: [priority] } });
+    expect(topics.claim()).toBeNull();
+    topics.retry();
+    expect(topics.status().status).toBe('pending');
     const next = topics.claim()!;
     topics.fail(next.job.claimId!, 'Topic failure');
     expect(learning.jobs()[0].error).toBe('Learning failure');

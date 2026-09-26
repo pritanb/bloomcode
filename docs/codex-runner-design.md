@@ -3,7 +3,7 @@
 Status: implemented on 2026-09-25. The `mcp-sampling` provider was removed on 2026-09-26: Codex and Off are the only providers, new workspaces start Off, and a saved `mcp-sampling` setting loads as Off. Differences from the draft:
 
 - Settings live in `tutor-settings.json` beside the database, not in the settings table. The export/restore schema validates settings strictly.
-- The worker calls the app's routes in-process through `app.inject`. Since 2026-09-26 it does not poll: it wakes after any successful write request it did not make, at startup, when local search becomes ready, and when a Codex pause ends, then runs jobs until none is left. A weekly topic refresh that falls due waits for the next wake.
+- The worker calls the app's routes in-process through `app.inject`. Since 2026-09-26 it does not poll: it wakes after any successful write request it did not make, at startup, when local search becomes ready, and when a Codex pause ends, then runs jobs until none is left. "Where to focus" no longer refreshes weekly; it runs only when requested.
 - `--output-schema` is not used. The existing prompts and validators, plus the single correction retry, cover structured output.
 - Tools are disabled with `--disable` feature flags, and Codex's base instructions are replaced with `model_instructions_file`. Measured overhead is about 8.4k input tokens per call.
 - The ChatGPT.app bundled CLI is preferred. The standalone 0.147 CLI rejected `gpt-6-luna` for ChatGPT accounts.

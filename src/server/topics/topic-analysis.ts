@@ -5,7 +5,6 @@ import type { AttemptRecord } from '../attempts/attempt-model.js';
 import { assertMetadataVisible } from '../catalogue/problem-model.js';
 import { conflict, ApiError } from '../db/errors.js';
 import {
-  TOPIC_REFRESH_MS,
   topicReason,
   type TopicAnalysisContext,
   type TopicAnalysisRecord,
@@ -72,11 +71,8 @@ export class TopicAnalysis {
       };
     });
   }
-  due(r: TopicAnalysisRecord) {
-    return (
-      !r.report?.topicIds ||
-      this.clock().getTime() - Date.parse(r.report.createdAt) >= TOPIC_REFRESH_MS
-    );
+  private expired(r: TopicAnalysisRecord) {
+    return r.status === 'running' && this.clock().getTime() - r.claimedAt >= 240_000;
   }
   fingerprint() {
     return createHash('sha256')
@@ -123,11 +119,9 @@ export class TopicAnalysis {
     assertMetadataVisible(this.s);
     const r = this.record(),
       fingerprint = this.fingerprint();
+    // Runs only when the learner asks (Generate or Refresh), never on a schedule.
     if (!r.enabled || !this.topics().length) return null;
-    if (r.status === 'running' && this.clock().getTime() - r.claimedAt < 240_000) return null;
-    if (r.status === 'failed' && this.clock().getTime() - r.claimedAt < TOPIC_REFRESH_MS)
-      return null;
-    if (r.status === 'done' && !this.due(r)) return null;
+    if (r.status !== 'pending' && !this.expired(r)) return null;
     const job = this.put({
       ...r,
       fingerprint,
@@ -191,18 +185,12 @@ export class TopicAnalysis {
     const hidden = this.s
       .all<AttemptRecord>('attempts')
       .some((a) => a.context === 'mixed' && a.status !== 'completed');
-    const status = !r.enabled
-      ? 'idle'
-      : (r.status === 'done' && this.due(r)) ||
-          (r.status === 'running' && this.clock().getTime() - r.claimedAt >= 240_000)
-        ? 'pending'
-        : r.status;
+    const status = !r.enabled ? 'idle' : this.expired(r) ? 'pending' : r.status;
     return {
       enabled: r.enabled,
       hidden,
       topics: this.topics(),
       report: hidden ? null : r.report,
-      stale: !!r.report && this.due(r),
       status,
     };
   }
