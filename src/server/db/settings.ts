@@ -31,3 +31,10 @@ export function readSettings(db: Db): Settings {
 export function writeSettings(db: Db, fields: Partial<Settings>) {
   update(db, 'settings', 1, fields);
 }
+/** Whether learning-insights analysis is switched on; kept out of the Settings API. */
+export const insightsEnabled = (db: Db) =>
+  !!one<{ enabled: number }>(db, 'SELECT insightsEnabled AS enabled FROM settings WHERE id = 1')
+    .enabled;
+export function setInsightsEnabled(db: Db, enabled: boolean) {
+  update(db, 'settings', 1, { insightsEnabled: enabled });
+}

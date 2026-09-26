@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { type Db, many, transaction } from '../db/db.js';
-import { learningRecords, putLearningRecord } from '../insights/records.js';
+import { type Db, many, maybe, transaction, upsert } from '../db/db.js';
 import type { ScoreDecision } from '../../shared/contracts.js';
 import { attempts } from '../attempts/attempt-model.js';
 import { assertMetadataVisible, hiddenAssessment } from '../catalogue/problem-model.js';
@@ -14,6 +13,11 @@ import {
 } from '../../shared/topic-analysis.js';
 import { z } from 'zod';
 
+type Row = Omit<TopicAnalysisRecord, 'enabled' | 'report'> & {
+  id: number;
+  enabled: number;
+  report: string | null;
+};
 export class TopicAnalysis {
   constructor(
     private db: Db,
@@ -86,10 +90,9 @@ export class TopicAnalysis {
       .digest('hex');
   }
   record(): TopicAnalysisRecord {
-    return (
-      learningRecords<TopicAnalysisRecord>(this.db, 'topic_analysis')[0] ?? {
-        id: 'topic-analysis',
-        kind: 'topic_analysis',
+    const r = maybe<Row>(this.db, 'SELECT * FROM topic_analysis');
+    if (!r)
+      return {
         enabled: false,
         fingerprint: '',
         status: 'idle',
@@ -97,11 +100,13 @@ export class TopicAnalysis {
         claimedAt: 0,
         error: null,
         report: null,
-      }
-    );
+      };
+    const { id: _id, enabled, report, ...rest } = r;
+    return { enabled: !!enabled, ...rest, report: report && JSON.parse(report) };
   }
   put(r: TopicAnalysisRecord) {
-    return putLearningRecord(this.db, r);
+    upsert(this.db, 'topic_analysis', { id: 1, ...r });
+    return r;
   }
   enable(enabled: boolean) {
     assertMetadataVisible(this.db);

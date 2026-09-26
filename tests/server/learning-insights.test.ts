@@ -7,8 +7,8 @@ import type { ApiError } from '../../src/server/db/errors.js';
 import { createApp } from '../../src/server/core/app.js';
 import type { Attempt } from '../../src/shared/contracts.js';
 import { Insights } from '../../src/server/insights/service.js';
-import { insert, openDb, run } from '../../src/server/db/db.js';
-import { learningRecords } from '../../src/server/insights/records.js';
+import { insert, many, openDb, run } from '../../src/server/db/db.js';
+import { setInsightsEnabled } from '../../src/server/db/settings.js';
 import { readTables } from '../tables.js';
 import { addProblem } from '../../src/server/catalogue/problem-model.js';
 import type { ObservationInput } from '../../src/shared/insights.js';
@@ -56,6 +56,8 @@ const observation: ObservationInput = {
   sourceField: 'notes',
   excerpt: 'I forgot to check an empty input.',
 };
+const observationRows = () =>
+  many<{ id: string }>(app.tutorJobs.db, 'SELECT id FROM insight_observations');
 // The Codex worker's side of the queue, called in-process; returns an HTTP-style status.
 const claim = () => app.tutorJobs.insights.claim();
 const extraction = (work: { context: unknown }) =>
@@ -89,7 +91,7 @@ it('validates evidence, deduplicates completed jobs, rejects stale claims and pr
   ).toBe(400);
   expect(complete(work, { observations: [observation], limitation: '' })).toBe(200);
   expect(complete(work, { observations: [observation], limitation: '' })).toBe(200);
-  expect(learningRecords(app.tutorJobs.db, 'observation')).toHaveLength(1);
+  expect(observationRows()).toHaveLength(1);
   const after = readTables(app.tutorJobs.db);
   for (const table of [
     'attempts',
@@ -118,7 +120,7 @@ it('keeps corrections and hands a running job out again after a restart', async 
   await call('POST', '/api/insights/enable', { enabled: true });
   const work = claim()!;
   complete(work, { observations: [observation], limitation: '' });
-  const [o] = learningRecords<{ id: string }>(app.tutorJobs.db, 'observation');
+  const [o] = observationRows();
   expect(
     (
       await call('POST', `/api/insights/observations/${o.id}/dismiss`, {
@@ -139,7 +141,7 @@ it('keeps corrections and hands a running job out again after a restart', async 
   expect(recovered.job.claimId).not.toBe(pending.job.claimId);
   expect(extraction(recovered).corrections[0].reason).toContain('hypothetical');
   complete(recovered, { observations: [observation], limitation: '' });
-  expect(learningRecords(app.tutorJobs.db, 'observation')).toHaveLength(1);
+  expect(observationRows()).toHaveLength(1);
   rmSync(dir, { recursive: true, force: true });
 });
 it('protects mixed assessment data and requires bearer authentication for evidence search', async () => {
@@ -237,7 +239,7 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
         activeSeconds: 60,
       });
     }
-    service.put({ id: 'state', kind: 'state', enabled: true });
+    setInsightsEnabled(db, true);
     for (let i = 0; i < 2; i++) {
       const work = service.claim()!;
       service.complete(

@@ -33,7 +33,8 @@ const studyTables = [
   'topics',
   'daily_plans',
   'import_batches',
-  'learning_insights',
+  'insight_jobs',
+  'topic_analysis',
 ];
 export function registerSetup(app: FastifyInstance, db: Db, clock: () => Date, demo = false) {
   const empty = () => studyTables.every((table) => !maybe(db, `SELECT 1 FROM ${table} LIMIT 1`));

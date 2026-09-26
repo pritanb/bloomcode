@@ -2,7 +2,7 @@ import { TopicAnalysis } from '../topics/topic-analysis.js';
 import { randomUUID } from 'node:crypto';
 import { type Db, insert, maybe } from '../db/db.js';
 import { Insights, fingerprint } from './service.js';
-import { ANALYSIS_VERSION, type Observation } from '../../shared/insights.js';
+import { ANALYSIS_VERSION } from '../../shared/insights.js';
 /** Synthetic fixture only. Never invoked for a personal workspace. */
 export function seedInsightDemo(db: Db) {
   if (!maybe(db, 'SELECT 1 FROM topics'))
@@ -53,13 +53,10 @@ export function seedInsightDemo(db: Db) {
     .filter((a) => a.notes.includes('I forgot to check an empty input.'))
     .slice(0, 2);
   if (attempts.length < 2) return;
-  service.put({ id: 'state', kind: 'state', enabled: false });
   const observations = attempts.map((a) =>
-    service.put<Observation>({
+    insert(db, 'insight_observations', {
       id: randomUUID(),
-      kind: 'observation',
       attemptId: a.id,
-      problemId: a.problemId,
       fingerprint: fingerprint(a),
       summary: 'The reflection reports overlooking an empty input.',
       polarity: 'difficulty',
@@ -71,9 +68,8 @@ export function seedInsightDemo(db: Db) {
       model: 'synthetic-demo',
     }),
   );
-  service.put({
+  insert(db, 'insight_reports', {
     id: randomUUID(),
-    kind: 'report',
     createdAt: new Date().toISOString(),
     fingerprint: service.corpusFingerprint(),
     analyzed: 2,

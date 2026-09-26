@@ -1,4 +1,4 @@
-import { topicPriorityInput, topicAnalysisRecordSchema } from './topic-analysis.js';
+import { topicPriorityInput } from './topic-analysis.js';
 import type { TopicPriority } from './topic-analysis.js';
 export {
   topicPriorityInput,
@@ -135,65 +135,28 @@ export interface InsightStatus {
   observations: (Observation & { problemTitle: string; studyDate: string; topics: string[] })[];
   suggestions: { id: string; title: string }[];
 }
-export const learningRecordSchema = z.discriminatedUnion('kind', [
-  topicAnalysisRecordSchema,
-  z.object({ kind: z.literal('state'), id: z.literal('state'), enabled: z.boolean() }).strict(),
-  observationInput
-    .extend({
-      kind: z.literal('observation'),
-      id,
-      attemptId: id,
-      problemId: id,
-      fingerprint: id,
-      createdAt: z.iso.datetime(),
-      analysisVersion: id,
-      model: z.string().max(300).nullable(),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('correction'),
-      id,
-      observationId: id,
-      attemptId: id,
-      summary: text,
-      sourceField: observationInput.shape.sourceField,
-      excerpt: text,
-      reason: text,
-      createdAt: z.iso.datetime(),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('job'),
-      id,
-      attemptId: id.nullable(),
-      fingerprint: id,
-      status: z.enum(['pending', 'running', 'done', 'failed']),
-      claimId: id.nullable(),
-      claimedAt: z.number(),
-      error: z.string().max(1000).nullable(),
-      model: z.string().max(300).nullable(),
-      durationMs: z.number().nonnegative(),
-      limitation: z.string().max(1000),
-      evidenceIds: z.array(id).max(100),
-      questionIds: z.array(id).max(30),
-    })
-    .strict(),
-  reportResult
-    .extend({
-      kind: z.literal('report'),
-      id,
-      fingerprint: id,
-      createdAt: z.iso.datetime(),
-      analyzed: z.number().int().nonnegative(),
-      total: z.number().int().nonnegative(),
-      evidenceIds: z.array(id).max(100),
-      model: z.string().max(300).nullable(),
-      analysisVersion: id,
-      durationMs: z.number().nonnegative(),
-    })
-    .strict(),
-]);
-export type LearningRecord = z.infer<typeof learningRecordSchema>;
-export type InsightJob = Extract<LearningRecord, { kind: 'job' }>;
+export interface Correction {
+  id: string;
+  kind: 'correction';
+  observationId: string;
+  attemptId: string;
+  summary: string;
+  sourceField: ObservationInput['sourceField'];
+  excerpt: string;
+  reason: string;
+  createdAt: string;
+}
+export interface InsightJob {
+  id: string;
+  attemptId: string | null;
+  fingerprint: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  claimId: string | null;
+  claimedAt: number;
+  error: string | null;
+  model: string | null;
+  durationMs: number;
+  limitation: string;
+  evidenceIds: string[];
+  questionIds: string[];
+}

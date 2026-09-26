@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { Db } from '../db/db.js';
 import { assertMetadataVisible } from '../catalogue/problem-model.js';
 import { ApiError } from '../db/errors.js';
+import { setInsightsEnabled } from '../db/settings.js';
 import { LocalEmbeddings, type Embed } from './embeddings.js';
 import { TopicAnalysis } from '../topics/topic-analysis.js';
 import { Insights } from './service.js';
@@ -22,9 +23,7 @@ export function createInsights(
   );
   const insights = new Insights(db, clock, embed ?? local.embed);
   // Recover interrupted leases without touching saved study records.
-  for (const job of insights.jobs())
-    if (job.status === 'running')
-      insights.put({ ...job, status: 'pending', claimId: null, claimedAt: 0 });
+  insights.requeue('running');
   void insights.refresh();
   // Writes (including the tutor's saved analysis) can add attempts or observations to process.
   app.addHook('onResponse', async (req, reply) => {
@@ -74,16 +73,14 @@ export function registerInsights(
   app.post('/api/insights/enable', (req) => {
     assertMetadataVisible(db);
     const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(req.body);
-    insights.put({ id: 'state', kind: 'state', enabled });
+    setInsightsEnabled(db, enabled);
     insights.reconcile();
     return status();
   });
   app.post('/api/insights/retry', (req) => {
     assertMetadataVisible(db);
     z.object({}).strict().parse(req.body);
-    for (const job of insights.jobs())
-      if (job.status === 'failed')
-        insights.put({ ...job, status: 'pending', claimId: null, error: null });
+    insights.requeue('failed');
     insights.embeddingStatus = 'idle';
     insights.error = null;
     return { ok: true };

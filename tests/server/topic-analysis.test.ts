@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { insert, one, openDb, run } from '../../src/server/db/db.js';
+import { setInsightsEnabled } from '../../src/server/db/settings.js';
 import { TopicAnalysis } from '../../src/server/topics/topic-analysis.js';
 import { Insights } from '../../src/server/insights/service.js';
-import { learningRecordSchema } from '../../src/shared/insights.js';
 
 it('generates topics without attempts, embeddings or Learning Insights, preserving scores and refreshing only on request', () => {
   const db = openDb(':memory:'),
@@ -39,21 +39,12 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     });
     expect(one(db, "SELECT * FROM topics WHERE id = 'arrays'")).toEqual(topic);
     expect(learning.latestReport()).toBeNull();
-    learning.put({ id: 'state', kind: 'state', enabled: true });
-    learning.put({
+    setInsightsEnabled(db, true);
+    insert(db, 'insight_jobs', {
       id: 'report-job',
-      kind: 'job',
-      attemptId: null,
       fingerprint: learning.corpusFingerprint(),
       status: 'failed',
-      claimId: null,
-      claimedAt: 0,
       error: 'Learning failure',
-      model: null,
-      durationMs: 0,
-      limitation: '',
-      evidenceIds: [],
-      questionIds: [],
     });
     expect(topics.status().status).toBe('done');
     run(db, "UPDATE topics SET score = 3 WHERE id = 'arrays'");
@@ -72,7 +63,7 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     topics.retry();
     expect(learning.jobs()[0].status).toBe('failed');
     const running = topics.claim()!;
-    expect(learningRecordSchema.parse(topics.record()).kind).toBe('topic_analysis');
+    expect(topics.record().status).toBe('running');
     topics.recover(); // what startup does for a run interrupted by a restart
     expect(topics.record()).toMatchObject({ status: 'pending', claimId: null });
     expect(topics.claim()!.job.claimId).not.toBe(running.job.claimId);

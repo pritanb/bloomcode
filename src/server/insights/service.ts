@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { type Db, many, maybe, transaction } from '../db/db.js';
+import { type Db, insert, many, maybe, one, run, transaction, update } from '../db/db.js';
+import { insightsEnabled } from '../db/settings.js';
 import { type AttemptRecord, attempts, getAttempt, NEWEST } from '../attempts/attempt-model.js';
-import { learningRecord, learningRecords, putLearningRecord } from './records.js';
 import {
   ANALYSIS_VERSION,
   REPORT_VERSION,
@@ -10,9 +10,9 @@ import {
   EMBEDDING_REVISION,
   extractionResult,
   conciseReportResult,
+  type Correction,
   type InsightJob,
   type InsightReport,
-  type LearningRecord,
   type Observation,
   type InsightStatus,
 } from '../../shared/insights.js';
@@ -53,20 +53,39 @@ export const fingerprint = (a: AttemptRecord) =>
 const modelKey = `${EMBEDDING_MODEL}@${EMBEDDING_REVISION}:q8:mean`;
 // Reports may take two long calls (Codex at high effort), so they get a longer lease.
 export const leaseMs = (job: { attemptId: string | null }) => (job.attemptId ? 240_000 : 600_000);
-const freshJob = (id: string, attemptId: string | null, fingerprint: string): InsightJob => ({
+// Rows read back in the shape (and key order) the API, reports and fingerprints have always used.
+const OBSERVATIONS = `SELECT o.id, 'observation' AS kind, o.summary, o.polarity, o.evidenceType,
+    o.sourceField, o.excerpt, o.attemptId, a.problemId, o.fingerprint, o.createdAt,
+    o.analysisVersion, o.model
+  FROM insight_observations o JOIN attempts a ON a.id = o.attemptId`;
+const CORRECTIONS = `SELECT 'correction-' || c.observationId AS id, 'correction' AS kind, c.observationId,
+    o.attemptId, o.summary, o.sourceField, o.excerpt, c.reason, c.createdAt
+  FROM insight_corrections c JOIN insight_observations o ON o.id = c.observationId`;
+/** Pairs of (attempt ID, fingerprint) passed as JSON: the current version of each completed attempt. */
+const CURRENT = '(SELECT value ->> 0, value ->> 1 FROM json_each(?))';
+type JobRow = Omit<InsightJob, 'evidenceIds' | 'questionIds'> & {
+  evidenceIds: string;
+  questionIds: string;
+};
+const jobView = (j: JobRow): InsightJob => ({
+  ...j,
+  evidenceIds: JSON.parse(j.evidenceIds) as string[],
+  questionIds: JSON.parse(j.questionIds) as string[],
+});
+type ReportRow = Omit<InsightReport, 'kind' | 'findings' | 'topicPriorities' | 'evidenceIds'> & {
+  findings: string;
+  topicPriorities: string | null;
+  evidenceIds: string;
+};
+const reportView = ({ id, findings, topicPriorities, ...r }: ReportRow): InsightReport => ({
   id,
-  kind: 'job',
-  attemptId,
-  fingerprint,
-  status: 'pending',
-  claimId: null,
-  claimedAt: 0,
-  error: null,
-  model: null,
-  durationMs: 0,
-  limitation: '',
-  evidenceIds: [],
-  questionIds: [],
+  kind: 'report',
+  findings: JSON.parse(findings) as InsightReport['findings'],
+  ...(topicPriorities
+    ? { topicPriorities: JSON.parse(topicPriorities) as InsightReport['topicPriorities'] }
+    : {}),
+  ...r,
+  evidenceIds: JSON.parse(r.evidenceIds) as string[],
 });
 export class Insights {
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
@@ -82,59 +101,79 @@ export class Insights {
     readonly clock: () => Date,
     readonly embed: Embed,
   ) {}
-  records() {
-    return learningRecords<LearningRecord>(this.db);
-  }
-  put<T extends LearningRecord>(record: T): T {
-    return putLearningRecord(this.db, record);
-  }
   enabled() {
-    return this.records().some((r) => r.kind === 'state' && r.enabled);
+    return insightsEnabled(this.db);
   }
   attempts() {
     return attempts(this.db, `WHERE a.status = 'completed' ${NEWEST}`);
   }
+  /** Each completed attempt's [ID, fingerprint], newest first; passed to CURRENT as JSON. */
+  current() {
+    return this.attempts().map((a) => [a.id, fingerprint(a)]);
+  }
   jobs() {
-    return this.records().filter((r): r is InsightJob => r.kind === 'job');
+    return many<JobRow>(this.db, 'SELECT * FROM insight_jobs ORDER BY rowid').map(jobView);
   }
-  corrections() {
-    return this.records().filter((r) => r.kind === 'correction');
+  job(id: string) {
+    const j = maybe<JobRow>(this.db, 'SELECT * FROM insight_jobs WHERE id = ?', id);
+    return j && jobView(j);
   }
-  observations() {
-    const versions = new Map(this.attempts().map((a) => [a.id, fingerprint(a)]));
-    const corrections = this.corrections();
-    return this.records().filter(
-      (r): r is Observation =>
-        r.kind === 'observation' &&
-        versions.get(r.attemptId) === r.fingerprint &&
-        !corrections.some(
-          (c) =>
-            c.attemptId === r.attemptId &&
-            c.sourceField === r.sourceField &&
-            c.excerpt === r.excerpt,
-        ),
+  /** Queue fresh work for [id, attemptId, fingerprint] jobs, unless the job already has that fingerprint. */
+  private queue(jobs: [string, string | null, string][]) {
+    run(
+      this.db,
+      `INSERT INTO insight_jobs (id, attemptId, fingerprint)
+       SELECT value ->> 0, value ->> 1, value ->> 2 FROM json_each(?) WHERE true
+       ON CONFLICT (id) DO UPDATE SET fingerprint = excluded.fingerprint, status = 'pending',
+         claimId = NULL, claimedAt = 0, error = NULL, model = NULL, durationMs = 0, limitation = '',
+         evidenceIds = '[]', questionIds = '[]'
+       WHERE fingerprint != excluded.fingerprint`,
+      JSON.stringify(jobs),
+    );
+  }
+  /** Hand interrupted claims out again (at startup) or retry failed jobs. */
+  requeue(status: 'running' | 'failed') {
+    run(
+      this.db,
+      "UPDATE insight_jobs SET status = 'pending', claimId = NULL, claimedAt = 0, error = NULL WHERE status = ?",
+      status,
+    );
+  }
+  corrections(attemptId?: string) {
+    return many<Correction>(
+      this.db,
+      `${CORRECTIONS} ${attemptId ? 'WHERE o.attemptId = ?' : ''} ORDER BY c.rowid`,
+      ...(attemptId ? [attemptId] : []),
+    );
+  }
+  /** Observations of each attempt's current version that the learner has not dismissed. */
+  observations(id?: string) {
+    return many<Observation>(
+      this.db,
+      `${OBSERVATIONS}
+       WHERE (o.attemptId, o.fingerprint) IN ${CURRENT} ${id ? 'AND o.id = ?' : ''}
+         AND NOT EXISTS (
+           SELECT 1 FROM insight_corrections c JOIN insight_observations d ON d.id = c.observationId
+           WHERE d.attemptId = o.attemptId AND d.sourceField = o.sourceField AND d.excerpt = o.excerpt)
+       ORDER BY o.rowid`,
+      JSON.stringify(this.current()),
+      ...(id ? [id] : []),
     );
   }
   reconcile() {
     if (!this.enabled()) return;
-    const jobs = new Map(this.jobs().map((j) => [j.id, j]));
-    for (const a of this.attempts()) {
-      const id = `attempt-${a.id}`,
-        fp = fingerprint(a),
-        old = jobs.get(id);
-      if (!old || old.fingerprint !== fp) this.put(freshJob(id, a.id, fp));
-    }
+    this.queue(this.attempts().map((a) => [`attempt-${a.id}`, a.id, fingerprint(a)]));
   }
   coverage() {
-    const attempts = this.attempts(),
-      jobs = this.jobs();
+    const current = this.current();
     return {
-      total: attempts.length,
-      analyzed: attempts.filter((a) =>
-        jobs.some(
-          (j) => j.attemptId === a.id && j.status === 'done' && j.fingerprint === fingerprint(a),
-        ),
-      ).length,
+      total: current.length,
+      analyzed: one<{ n: number }>(
+        this.db,
+        `SELECT count(*) AS n FROM insight_jobs
+         WHERE status = 'done' AND (attemptId, fingerprint) IN ${CURRENT}`,
+        JSON.stringify(current),
+      ).n,
     };
   }
   catalogue() {
@@ -177,12 +216,11 @@ export class Insights {
     });
   }
   latestReport() {
-    return (
-      this.records()
-        .filter((r): r is InsightReport => r.kind === 'report')
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0] ??
-      null
+    const r = maybe<ReportRow>(
+      this.db,
+      'SELECT * FROM insight_reports ORDER BY createdAt DESC, id DESC LIMIT 1',
     );
+    return r ? reportView(r) : null;
   }
   /** Queue new attempts and embed new observations until none is left. Runs at
    * startup and after each write; a call during a run triggers one more pass. */
@@ -347,33 +385,30 @@ export class Insights {
         evidence: attempts.get(o.attemptId)!.evidence,
       })),
       questions,
-      limitations: this.jobs()
-        .filter((j) => j.status === 'done' && j.limitation)
-        .slice(0, 20)
-        .map((j) => ({ attemptId: j.attemptId, limitation: j.limitation })),
+      limitations: many<{ attemptId: string | null; limitation: string }>(
+        this.db,
+        `SELECT attemptId, limitation FROM insight_jobs
+         WHERE status = 'done' AND limitation != '' ORDER BY rowid LIMIT 20`,
+      ),
     };
   }
   claim() {
     assertMetadataVisible(this.db);
     if (!this.enabled()) return null;
     this.reconcile();
-    const reportJob = this.jobs().find((j) => j.id === 'report-job');
-    if (reportJob?.status === 'running' && reportJob.fingerprint !== this.corpusFingerprint())
-      this.put(freshJob('report-job', null, this.corpusFingerprint()));
+    const fp = this.corpusFingerprint();
+    // A report running on evidence that has since changed starts again.
+    if (this.job('report-job')?.status === 'running') this.queue([['report-job', null, fp]]);
     const now = this.clock().getTime(),
       jobs = this.jobs();
     if (jobs.some((j) => j.status === 'running' && now - j.claimedAt < leaseMs(j))) return null;
-    const attempts = this.attempts(),
-      pending = jobs
-        .filter((j) => j.attemptId && (j.status === 'pending' || j.status === 'running'))
-        .sort(
-          (a, b) =>
-            attempts.findIndex((x) => x.id === a.attemptId) -
-            attempts.findIndex((x) => x.id === b.attemptId),
-        );
+    const pending = many<JobRow>(
+      this.db,
+      `SELECT j.* FROM insight_jobs j JOIN attempts a ON a.id = j.attemptId
+       WHERE j.status IN ('pending', 'running') ${NEWEST}`,
+    ).map(jobView);
     const coverage = this.coverage(),
-      report = this.latestReport(),
-      fp = this.corpusFingerprint();
+      report = this.latestReport();
     const oldReportJob = jobs.find((j) => j.id === 'report-job');
     const vectors = this.vectors();
     const allEmbedded = this.observations().every((o) => vectors.has(o.id));
@@ -384,15 +419,15 @@ export class Insights {
       allEmbedded &&
       (!pending.length || coverage.analyzed - (report?.analyzed ?? 0) >= 10);
     let job: InsightJob | undefined;
-    if (shouldReport && !(oldReportJob?.fingerprint === fp && oldReportJob.status === 'failed'))
-      job = oldReportJob?.fingerprint === fp ? oldReportJob : freshJob('report-job', null, fp);
-    else job = pending[0];
+    if (shouldReport && !(oldReportJob?.fingerprint === fp && oldReportJob.status === 'failed')) {
+      this.queue([['report-job', null, fp]]);
+      job = this.job('report-job');
+    } else job = pending[0];
     if (!job) return null;
     const context = job.attemptId ? this.extractionContext(job.attemptId) : this.reportContext();
     const reportContext = context as ReturnType<Insights['reportContext']>;
-    job = this.put({
-      ...job,
-      status: 'running',
+    const claim = {
+      status: 'running' as const,
       claimId: randomUUID(),
       claimedAt: now,
       error: null,
@@ -402,8 +437,9 @@ export class Insights {
             questionIds: reportContext.questions.map((q) => q.id),
           }
         : {}),
-    });
-    return { job, context };
+    };
+    update(this.db, 'insight_jobs', job.id, claim);
+    return { job: { ...job, ...claim }, context };
   }
   extractionContext(attemptId: string) {
     const a = getAttempt(this.db, attemptId);
@@ -420,14 +456,14 @@ export class Insights {
       feedback: a.feedback?.slice(0, 4000) ?? null,
       activeSeconds: a.activeSeconds,
       truncated: a.code.length > 30000 || a.notes.length > 10000,
-      corrections: this.corrections().filter((c) => c.attemptId === a.id),
+      corrections: this.corrections(a.id),
     };
   }
   currentJob(id: string, claimId: string) {
     assertMetadataVisible(this.db);
-    const job = learningRecord<InsightJob>(this.db, id);
+    const job = this.job(id);
     if (!job) throw missing();
-    if (job.kind !== 'job' || job.claimId !== claimId || !this.enabled())
+    if (job.claimId !== claimId || !this.enabled())
       throw conflict('This analysis claim is no longer current');
     const fp = job.attemptId
       ? fingerprint(getAttempt(this.db, job.attemptId))
@@ -440,6 +476,7 @@ export class Insights {
     return transaction(this.db, () => {
       const job = this.currentJob(id, claimId);
       if (job.status === 'done') return { ok: true };
+      let limitation = job.limitation;
       if (job.attemptId) {
         const data = extractionResult.parse(result),
           a = getAttempt(this.db, job.attemptId),
@@ -461,27 +498,25 @@ export class Insights {
                 : 'outcome_observed';
           if (o.evidenceType !== expected)
             throw new ApiError(400, 'EVIDENCE', 'Evidence type does not match its source');
-          const correction = this.corrections().some(
-            (c) =>
-              c.attemptId === a.id && c.sourceField === o.sourceField && c.excerpt === o.excerpt,
+          const id = hash([a.id, job.fingerprint, o]);
+          const dismissed = context.corrections.some(
+            (c) => c.sourceField === o.sourceField && c.excerpt === o.excerpt,
           );
-          if (!correction)
-            this.put({
-              id: hash([a.id, job.fingerprint, o]),
-              kind: 'observation',
-              ...o,
+          if (!dismissed && !maybe(this.db, 'SELECT 1 FROM insight_observations WHERE id = ?', id))
+            insert(this.db, 'insight_observations', {
+              id,
               attemptId: a.id,
-              problemId: a.problemId,
               fingerprint: job.fingerprint,
+              ...o,
               createdAt: this.clock().toISOString(),
               analysisVersion: ANALYSIS_VERSION,
               model,
             });
         }
-        job.limitation =
+        limitation = (
           (context.truncated ? 'Source was truncated to the analysis context limit. ' : '') +
-          data.limitation;
-        job.limitation = job.limitation.slice(0, 1000);
+          data.limitation
+        ).slice(0, 1000);
       } else {
         const data = conciseReportResult.parse(result),
           observations = new Map(this.observations().map((o) => [o.id, o]));
@@ -536,9 +571,8 @@ export class Insights {
               );
           }
         }
-        this.put({
+        insert(this.db, 'insight_reports', {
           id: randomUUID(),
-          kind: 'report',
           ...data,
           createdAt: this.clock().toISOString(),
           fingerprint: job.fingerprint,
@@ -549,11 +583,11 @@ export class Insights {
           durationMs: Math.max(0, this.clock().getTime() - job.claimedAt),
         });
       }
-      this.put({
-        ...job,
+      update(this.db, 'insight_jobs', job.id, {
         status: 'done',
         model,
         durationMs: Math.max(0, this.clock().getTime() - job.claimedAt),
+        limitation,
       });
       return { ok: true };
     });
@@ -561,8 +595,7 @@ export class Insights {
   fail(id: string, claimId: string, error: string) {
     const job = this.currentJob(id, claimId);
     if (job.status !== 'done')
-      this.put({
-        ...job,
+      update(this.db, 'insight_jobs', job.id, {
         status: 'failed',
         error,
         durationMs: Math.max(0, this.clock().getTime() - job.claimedAt),
@@ -570,16 +603,10 @@ export class Insights {
   }
   dismiss(id: string, reason: string) {
     assertMetadataVisible(this.db);
-    const o = this.observations().find((o) => o.id === id);
-    if (!o) throw conflict('Observation is already dismissed or outdated');
-    this.put({
-      id: `correction-${id}`,
-      kind: 'correction',
+    if (!this.observations(id).length)
+      throw conflict('Observation is already dismissed or outdated');
+    insert(this.db, 'insight_corrections', {
       observationId: id,
-      attemptId: o.attemptId,
-      summary: o.summary,
-      sourceField: o.sourceField,
-      excerpt: o.excerpt,
       reason,
       createdAt: this.clock().toISOString(),
     });
