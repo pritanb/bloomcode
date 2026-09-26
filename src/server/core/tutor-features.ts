@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Store } from '../db/store.js';
+import type { Db } from '../db/db.js';
 import { bearerMatches } from './auth.js';
 import { createInsights, registerInsights } from '../insights/routes.js';
 import type { Embed } from '../insights/embeddings.js';
@@ -24,20 +24,20 @@ declare module 'fastify' {
 export function registerTutorFeatures(
   app: FastifyInstance,
   {
-    store,
+    db,
     clock,
     token,
     dbPath,
     embed,
-  }: { store: Store; clock: () => Date; token: string; dbPath: string; embed?: Embed },
+  }: { db: Db; clock: () => Date; token: string; dbPath: string; embed?: Embed },
 ) {
-  const { insights, topics } = createInsights(app, store, clock, dbPath, embed);
+  const { insights, topics } = createInsights(app, db, clock, dbPath, embed);
   const reviews = new AutoReviewQueue();
-  const jobs: TutorJobs = { s: store, clock, reviews, insights, topics };
+  const jobs: TutorJobs = { db, clock, reviews, insights, topics };
   const tutor = registerTutor(app, dbPath, clock, jobs);
   insights.onEmbeddingsReady = tutor.wake;
   app.decorate('tutorJobs', jobs);
-  registerCloseout(app, store, clock, reviews);
-  registerAutoReview(app, store, reviews, tutor.active);
-  registerInsights(app, store, insights, topics, (header) => bearerMatches(header, token), tutor);
+  registerCloseout(app, db, clock, reviews);
+  registerAutoReview(app, db, reviews, tutor.active);
+  registerInsights(app, db, insights, topics, (header) => bearerMatches(header, token), tutor);
 }

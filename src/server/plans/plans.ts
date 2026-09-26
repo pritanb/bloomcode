@@ -8,59 +8,61 @@ import { activityDays } from '../topics/study-tools.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type {
-  PlanItem,
-  Problem,
-  ReviewTarget,
-  Settings,
-  Topic,
-  ScoreDecision,
-} from '../../shared/contracts.js';
-import { Store } from '../db/store.js';
-import { date, problemView } from '../catalogue/problem-model.js';
+import type { PlanItem, Problem, ReviewTarget } from '../../shared/contracts.js';
+import { type Db, insert, maybe, run, transaction, update } from '../db/db.js';
+import { readSettings } from '../db/settings.js';
+import { date, problemViews, problemView } from '../catalogue/problem-model.js';
 import {
-  type AttemptRecord,
+  activeAttempt,
+  attempts,
   attemptView,
-  newestAttempt,
+  NEWEST,
   studyDate,
 } from '../attempts/attempt-model.js';
 import { ApiError, conflict } from '../db/errors.js';
-import { topicView, decisionView } from '../topics/topic-model.js';
-import { updateTarget } from '../attempts/review-schedule.js';
-import { type PlanRecord, type ItemRecord, planView, bumpPlan } from './plan-model.js';
-function refresherCount(s: Store, items: ItemRecord[]) {
-  const ctx = recommendationContext(s);
+import { decisions, topicRows, topics } from '../topics/topic-model.js';
+import { reviewTargets, updateTarget } from '../attempts/review-schedule.js';
+import {
+  type PlanRecord,
+  type ItemRecord,
+  planView,
+  bumpPlan,
+  planItems,
+  getItem,
+  getPlan,
+  findPlan,
+} from './plan-model.js';
+function refresherCount(db: Db, items: ItemRecord[]) {
+  const ctx = recommendationContext(db);
   return items.filter(
     (i) =>
       i.status !== 'skipped' &&
       (i.recommendationKind
         ? i.recommendationKind === 'refresher'
-        : i.problemId && ctx.complete(s.get<Problem>('problems', i.problemId))),
+        : ctx.complete(problemView(db, i.problemId))),
   ).length;
 }
-function candidates(s: Store, day: string, exclude = new Set<string>()): Problem[] {
-  const reviews = s.all<ReviewTarget>('review_targets'),
-    topics = s.all<Topic>('topics');
+/** Problems in the order they should be offered: due reviews, weakest topic, least recent. */
+function candidates(db: Db, day: string, exclude = new Set<string>()): Problem[] {
+  const reviews = reviewTargets(db),
+    scores = topicRows(db);
   const due = (p: Problem) =>
     reviews.find((t) => t.problemId === p.id && t.effectiveDate && t.effectiveDate <= day);
   const weakness = (p: Problem) =>
     Math.min(
       5,
-      ...problemView(s, p).tags.map(
-        (tag) => topics.find((t) => t.name.toLowerCase() === tag.name.toLowerCase())?.score ?? 5,
+      ...p.tags.map(
+        (tag) => scores.find((t) => t.name.toLowerCase() === tag.name.toLowerCase())?.score ?? 5,
       ),
     );
-  return s
-    .all<Problem>('problems')
-    .filter(
-      (p) =>
-        !exclude.has(p.id) &&
-        !reviews.some(
-          (t) =>
-            t.problemId === p.id &&
-            (t.action === 'none' || (t.effectiveDate !== null && t.effectiveDate > day)),
-        ),
-    )
+  const waiting = (p: Problem) =>
+    reviews.some(
+      (t: ReviewTarget) =>
+        t.problemId === p.id &&
+        (t.action === 'none' || (t.effectiveDate !== null && t.effectiveDate > day)),
+    );
+  return problemViews(db)
+    .filter((p) => !exclude.has(p.id) && !waiting(p))
     .sort(
       (a, b) =>
         Number(!!due(b)) - Number(!!due(a)) ||
@@ -71,23 +73,22 @@ function candidates(s: Store, day: string, exclude = new Set<string>()): Problem
     );
 }
 function newItem(
-  s: Store,
+  db: Db,
   plan: PlanRecord,
   p: Problem,
   status: PlanItem['status'],
   minutes: number,
   position: number,
 ) {
-  const ctx = recommendationContext(s);
-  return s.put('plan_items', {
-    id: randomUUID(),
+  const ctx = recommendationContext(db);
+  const id = randomUUID();
+  insert(db, 'plan_items', {
+    id,
     planId: plan.id,
     position,
     problemId: p.id,
-    title: p.title,
-    url: p.url,
     status,
-    reason: recommendationReason(s, p, plan.date),
+    reason: recommendationReason(db, p, plan.date),
     recommendationKind: ctx.complete(p)
       ? 'refresher'
       : ctx.config.strategy === 'topic'
@@ -95,17 +96,20 @@ function newItem(
         : 'balanced',
     suggestedMinutes: Math.max(1, minutes),
     attemptId: null,
-  } satisfies ItemRecord);
+  });
+  return id;
 }
-export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date) {
+const slotsFor = (s: ReturnType<typeof readSettings>) =>
+  s.questionsPerDay ?? s.primaryCount + s.optionalCount;
+export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
   app.get('/api/recommendations/options', (req) => {
     const q = z
       .object({ listId: z.string().optional(), startTopic: z.string().optional() })
       .strict()
       .parse(req.query);
-    const config = s.get<Settings & { id: string }>('settings', 'singleton').recommendations;
-    const base = recommendationContext(s).config;
-    return recommendationContext(s, {
+    const config = readSettings(db).recommendations;
+    const base = recommendationContext(db).config;
+    return recommendationContext(db, {
       ...base,
       ...config,
       ...(q.listId !== undefined
@@ -118,11 +122,11 @@ export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date)
       .object({ version: z.number().int().min(1), itemIds: z.array(z.string()).min(1) })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const plan = s.get<PlanRecord>('daily_plans', req.params.id);
+    return transaction(db, () => {
+      const plan = getPlan(db, req.params.id);
       if (plan.version !== b.version)
         throw conflict('The plan changed. Refresh before reordering.');
-      const items = s.all<ItemRecord>('plan_items').filter((i) => i.planId === plan.id);
+      const items = planItems(db, 'WHERE i.planId = ?', plan.id);
       if (
         b.itemIds.length !== items.length ||
         new Set(b.itemIds).size !== items.length ||
@@ -133,8 +137,7 @@ export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date)
       const live = ordered.some((i) => i.attemptId && !['completed', 'skipped'].includes(i.status));
       const next = ordered.find((i) => !['completed', 'skipped'].includes(i.status));
       ordered.forEach((item, position) =>
-        s.put('plan_items', {
-          ...item,
+        update(db, 'plan_items', item.id, {
           position,
           ...(!live && next
             ? {
@@ -148,8 +151,8 @@ export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date)
             : {}),
         }),
       );
-      bumpPlan(s, plan.id);
-      return planView(s, s.get('daily_plans', plan.id));
+      bumpPlan(db, plan.id);
+      return planView(db, getPlan(db, plan.id));
     });
   });
 
@@ -158,54 +161,51 @@ export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date)
       .object({ date: date.optional() })
       .strict()
       .parse(req.body ?? {});
-    return s.transaction(() => {
-      const settings = s.get<Settings & { id: string }>('settings', 'singleton'),
+    return transaction(db, () => {
+      const settings = readSettings(db),
         day = b.date ?? studyDate(clock(), settings.timezone),
-        active = s.all<AttemptRecord>('attempts').find((a) => a.status !== 'completed');
+        active = activeAttempt(db);
       if (active?.planItemId)
-        return planView(
-          s,
-          s.get('daily_plans', s.get<ItemRecord>('plan_items', active.planItemId).planId),
-        );
-      let plan = s
-        .all<PlanRecord>('daily_plans')
-        .find((p) => p.date === day && p.timezone === settings.timezone);
+        return planView(db, getPlan(db, getItem(db, active.planItemId).planId));
+      let plan = findPlan(db, day, settings.timezone);
       // Plans are generated here; version 1 with no items is the untouched empty state.
       if (
         plan &&
-        (plan.version !== 1 || s.all<ItemRecord>('plan_items').some((i) => i.planId === plan!.id))
+        (plan.version !== 1 || maybe(db, 'SELECT 1 FROM plan_items WHERE planId = ?', plan.id))
       )
-        return planView(s, plan);
+        return planView(db, plan);
       const refilling = !!plan;
-      plan ??= s.put('daily_plans', {
-        id: randomUUID(),
-        date: day,
-        timezone: settings.timezone,
-        version: 1,
-      });
-      const slots = settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount,
+      if (!plan)
+        plan = insert(db, 'daily_plans', {
+          id: randomUUID(),
+          date: day,
+          timezone: settings.timezone,
+          version: 1,
+        });
+      const slots = slotsFor(settings),
         minutes = Math.floor(settings.budgetMinutes / slots);
-      const retained = active ? [s.get<Problem>('problems', active.problemId)] : [];
+      const retained = active ? [problemView(db, active.problemId)] : [];
       const available = [
         ...retained,
         ...configuredCandidates(
-          s,
-          candidates(s, day, new Set(retained.map((p) => p.id))),
+          db,
+          candidates(db, day, new Set(retained.map((p) => p.id))),
           slots - retained.length,
-          retained.filter(recommendationContext(s).complete).length,
+          retained.filter(recommendationContext(db).complete).length,
         ),
       ];
-      if (refilling && available.length)
-        plan = s.put('daily_plans', { ...plan, version: plan.version + 1 });
+      if (refilling && available.length) {
+        bumpPlan(db, plan.id);
+        plan = getPlan(db, plan.id);
+      }
       for (const [i, p] of available.slice(0, slots).entries()) {
-        const item = newItem(s, plan, p, i === 0 ? 'active' : 'queued', minutes, i);
+        const item = newItem(db, plan, p, i === 0 ? 'active' : 'queued', minutes, i);
         if (i === 0 && active) {
-          active.planItemId = item.id;
-          s.put('attempts', active);
-          s.put('plan_items', { ...item, attemptId: active.id });
+          update(db, 'attempts', active.id, { planItemId: item });
+          update(db, 'plan_items', item, { attemptId: active.id });
         }
       }
-      return planView(s, plan);
+      return planView(db, plan);
     });
   });
   app.post<{ Params: { id: string } }>('/api/daily-plans/:id/rebuild', (req) => {
@@ -213,91 +213,78 @@ export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date)
       .object({ version: z.number().int().min(1) })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const plan = s.get<PlanRecord>('daily_plans', req.params.id),
-        settings = s.get<Settings & { id: string }>('settings', 'singleton');
+    return transaction(db, () => {
+      const plan = getPlan(db, req.params.id),
+        settings = readSettings(db);
       if (plan.version !== b.version)
         throw conflict('The plan changed. Refresh before rebuilding.');
-      const attempts = s.all<AttemptRecord>('attempts'),
-        active = attempts.find((a) => a.status !== 'completed');
+      const active = activeAttempt(db);
       const current = active?.planItemId
-        ? s.get<ItemRecord>('plan_items', active.planItemId).planId === plan.id
+        ? getItem(db, active.planItemId).planId === plan.id
         : plan.date === studyDate(clock(), settings.timezone) &&
           plan.timezone === settings.timezone;
       if (!current) throw conflict('Only the current plan can be rebuilt');
-      const items = s.all<ItemRecord>('plan_items').filter((i) => i.planId === plan.id);
+      const items = planItems(db, 'WHERE i.planId = ?', plan.id);
       const keep = items.filter(
         (i) =>
           i.attemptId ||
           ['completed', 'skipped'].includes(i.status) ||
-          attempts.some((a) => a.planItemId === i.id),
+          maybe(db, 'SELECT 1 FROM attempts WHERE planItemId = ?', i.id),
       );
-      const retained = keep
-        .filter((i) => i.status !== 'skipped' && i.problemId)
-        .map((i) => s.get<Problem>('problems', i.problemId!));
-      const slots = settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount;
+      const retained = keep.filter((i) => i.status !== 'skipped');
+      const slots = slotsFor(settings);
       const available = configuredCandidates(
-        s,
+        db,
         candidates(
-          s,
+          db,
           studyDate(clock(), settings.timezone),
-          new Set(keep.flatMap((i) => (i.problemId ? [i.problemId] : []))),
+          new Set(keep.map((i) => i.problemId)),
         ),
         Math.max(0, slots - retained.length),
-        refresherCount(s, keep),
+        refresherCount(db, keep),
       );
-      for (const item of items.filter((i) => !keep.includes(i))) s.remove('plan_items', item.id);
+      for (const item of items.filter((i) => !keep.includes(i)))
+        run(db, 'DELETE FROM plan_items WHERE id = ?', item.id);
       const position = Math.max(-1, ...keep.map((i) => i.position)) + 1;
       const hasActive = keep.some((i) => i.status === 'active');
       for (const [index, p] of available.entries())
         newItem(
-          s,
+          db,
           plan,
           p,
           !hasActive && index === 0 ? 'active' : 'queued',
           Math.floor(settings.budgetMinutes / slots),
           position + index,
         );
-      bumpPlan(s, plan.id);
-      return planView(s, s.get('daily_plans', plan.id));
+      bumpPlan(db, plan.id);
+      return planView(db, getPlan(db, plan.id));
     });
   });
   app.get('/api/dashboard', (req) =>
-    s.transaction(() => {
+    transaction(db, () => {
       const q = z.object({ date: date.optional() }).strict().parse(req.query),
-        settings = s.get<Settings & { id: string }>('settings', 'singleton'),
+        settings = readSettings(db),
         day = q.date ?? studyDate(clock(), settings.timezone),
-        active = s.all<AttemptRecord>('attempts').find((a) => a.status !== 'completed');
-      let plan = s
-        .all<PlanRecord>('daily_plans')
-        .find((p) => p.date === day && p.timezone === settings.timezone);
-      if (!q.date && active?.planItemId)
-        plan = s.get('daily_plans', s.get<ItemRecord>('plan_items', active.planItemId).planId);
-      const reflection =
-        active?.context === 'mixed'
-          ? undefined
-          : s
-              .all<AttemptRecord>('attempts')
-              .filter((a) => a.status === 'completed' && !!a.takeaway?.trim())
-              .sort(newestAttempt)[0];
+        active = activeAttempt(db);
+      let plan = findPlan(db, day, settings.timezone);
+      if (!q.date && active?.planItemId) plan = getPlan(db, getItem(db, active.planItemId).planId);
+      const hidden = active?.context === 'mixed';
+      const [reflection] = hidden
+        ? []
+        : attempts(
+            db,
+            `WHERE a.status = 'completed' AND trim(coalesce(a.takeaway, '')) != '' ${NEWEST} LIMIT 1`,
+          );
       return {
-        plan: plan ? planView(s, plan) : null,
-        topics: s.all<Topic>('topics').map((t) => topicView(s, t)),
-        movements: s
-          .all<ScoreDecision>('score_decisions')
-          .filter((d) => d.oldScore !== d.newScore)
-          .reverse()
-          .slice(0, 20)
-          .map(decisionView),
-        recentAttempts: s
-          .all<AttemptRecord>('attempts')
-          .filter((a) => a.status === 'completed')
-          .sort(newestAttempt)
-          .slice(0, 20)
-          .map((a) => reflectionSafeView(a, active?.context === 'mixed')),
+        plan: plan ? planView(db, plan) : null,
+        topics: topics(db),
+        movements: decisions(db, 'WHERE d.oldScore != d.newScore ORDER BY d.rowid DESC LIMIT 20'),
+        recentAttempts: attempts(db, `WHERE a.status = 'completed' ${NEWEST} LIMIT 20`).map((a) =>
+          reflectionSafeView(a, hidden),
+        ),
         activeAttempt: active ? attemptView(active) : null,
         settings,
-        activity: activityDays(s, day),
+        activity: activityDays(db, day),
         latestReflection: reflection
           ? { attemptId: reflection.id, takeaway: reflection.takeaway! }
           : null,
@@ -313,69 +300,69 @@ export function registerPlans(app: FastifyInstance, s: Store, clock: () => Date)
       })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const item = s.get<ItemRecord>('plan_items', req.params.id),
-        plan = s.get<PlanRecord>('daily_plans', item.planId);
+    return transaction(db, () => {
+      const item = getItem(db, req.params.id),
+        plan = getPlan(db, item.planId);
       if (item.attemptId || ['completed', 'skipped'].includes(item.status))
         throw conflict('Only unstarted assignments may be changed');
       if (b.action === 'snooze') {
         if (!b.until || b.until <= studyDate(clock(), plan.timezone))
           throw new ApiError(400, 'VALIDATION', 'Snooze requires a future date');
-        if (item.problemId)
-          updateTarget(s, item.problemId, null, 'snoozed', { action: 'snooze', date: b.until });
+        updateTarget(db, item.problemId, null, 'snoozed', { action: 'snooze', date: b.until });
       }
       if (b.action === 'swap') {
-        const items = s.all<ItemRecord>('plan_items').filter((i) => i.planId === plan.id),
+        const items = planItems(db, 'WHERE i.planId = ?', plan.id),
           replacement = configuredCandidates(
-            s,
-            candidates(
-              s,
-              plan.date,
-              new Set(items.map((i) => i.problemId).filter((id): id is string => !!id)),
-            ),
+            db,
+            candidates(db, plan.date, new Set(items.map((i) => i.problemId))),
             1,
             refresherCount(
-              s,
+              db,
               items.filter((i) => i.id !== item.id),
             ),
           )[0];
         if (!replacement)
           throw conflict('No alternative candidate available within your recommendation settings');
-        newItem(s, plan, replacement, item.status, item.suggestedMinutes, items.length);
+        newItem(db, plan, replacement, item.status, item.suggestedMinutes, items.length);
       }
-      s.put('plan_items', { ...item, status: 'skipped', reason: b.reason ?? b.action });
+      update(db, 'plan_items', item.id, { status: 'skipped', reason: b.reason ?? b.action });
       if (item.status === 'active') {
-        const next = s
-          .all<ItemRecord>('plan_items')
-          .filter((i) => i.planId === plan.id && ['queued', 'optional'].includes(i.status))
-          .sort((a, b) => a.position - b.position)[0];
-        if (next) s.put('plan_items', { ...next, status: 'active' });
+        const next = maybe<{ id: string }>(
+          db,
+          `SELECT id FROM plan_items WHERE planId = ? AND status IN ('queued', 'optional') ORDER BY position, rowid LIMIT 1`,
+          plan.id,
+        );
+        if (next) update(db, 'plan_items', next.id, { status: 'active' });
       }
-      bumpPlan(s, plan.id);
-      return planView(s, s.get('daily_plans', plan.id));
+      bumpPlan(db, plan.id);
+      return planView(db, getPlan(db, plan.id));
     });
   });
   app.post<{ Params: { id: string } }>('/api/plan-items/:id/activate', (req) => {
     z.object({})
       .strict()
       .parse(req.body ?? {});
-    return s.transaction(() => {
-      const item = s.get<ItemRecord>('plan_items', req.params.id);
+    return transaction(db, () => {
+      const item = getItem(db, req.params.id);
       if (['completed', 'skipped'].includes(item.status))
         throw conflict('Assignment is no longer available');
       if (
-        s
-          .all<AttemptRecord>('attempts')
-          .some((a) => a.status !== 'completed' && a.planItemId !== item.id)
+        maybe(
+          db,
+          "SELECT 1 FROM attempts WHERE status != 'completed' AND (planItemId IS NULL OR planItemId != ?)",
+          item.id,
+        )
       )
         throw conflict('Finish the active attempt first');
-      for (const other of s
-        .all<ItemRecord>('plan_items')
-        .filter((i) => i.planId === item.planId && i.status === 'active' && i.id !== item.id))
-        s.put('plan_items', { ...other, status: 'queued' });
-      s.put('plan_items', { ...item, status: 'active' });
-      bumpPlan(s, item.planId);
-      return planView(s, s.get('daily_plans', item.planId));
+      run(
+        db,
+        `UPDATE plan_items SET status = 'queued' WHERE planId = ? AND status = 'active' AND id != ?`,
+        item.planId,
+        item.id,
+      );
+      update(db, 'plan_items', item.id, { status: 'active' });
+      bumpPlan(db, item.planId);
+      return planView(db, getPlan(db, item.planId));
     });
   });
 }

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { readTables } from '../tables.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -35,13 +36,13 @@ const batch = (): ImportPayload => ({
   movements: [],
   records: [],
 });
-const tables = async () => (await request('GET', '/api/export')).json().tables;
+const tables = async () => readTables(app.tutorJobs.db);
 async function importUnexposed() {
   expect((await request('POST', '/api/import', batch())).statusCode).toBe(200);
   const plan = await request('POST', '/api/daily-plan/ensure', {});
   expect(plan.statusCode).toBe(200);
   const problemId: string = plan.json().items[0].problemId;
-  expect((await tables()).problems[0]).toMatchObject({ id: problemId, exposed: false });
+  expect((await tables()).problems[0]).toMatchObject({ id: problemId, exposed: 0 });
   return problemId;
 }
 beforeEach(async () => {
@@ -61,20 +62,13 @@ async function expectDurableDisclosure(problem: Problem) {
     lists: [expect.objectContaining({ name: 'Array practice' })],
   });
   const before = await tables();
-  expect(before.problems.find((p: Problem) => p.id === problem.id)?.exposed).toBe(true);
-  expect(before.audit_events).toEqual([
-    expect.objectContaining({
-      action: 'disclose_problem',
-      problemId: problem.id,
-      recordedAt: clock().toISOString(),
-    }),
-  ]);
-  for (const table of ['attempts', 'answer_versions', 'score_decisions', 'attempt_topics'])
+  expect(before.problems.find((p) => p.id === problem.id)?.exposed).toBe(1);
+  for (const table of ['attempts', 'score_decisions', 'attempt_topics'])
     expect(before[table]).toEqual([]);
   expect(before.topics[0].score).toBe(3);
-  // Returning the same metadata again must not duplicate disclosure evidence.
+  // Returning the same metadata again changes nothing.
   expect((await request('PATCH', `/api/problems/${problem.id}`, {})).statusCode).toBe(200);
-  expect((await tables()).audit_events).toEqual(before.audit_events);
+  expect((await tables()).problems).toEqual(before.problems);
   await app.close();
   app = await createApp({ dbPath: join(dir, 'test.sqlite'), token, clock });
   const started = await request('POST', '/api/attempts', {

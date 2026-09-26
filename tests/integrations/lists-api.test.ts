@@ -7,7 +7,8 @@ import { execFile } from 'node:child_process';
 import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { mapVerifiedLists, PINNED_REVISION } from '../../src/integrations/lists.js';
-import type { ProblemList, ProblemPage, Snapshot } from '../../src/shared/contracts.js';
+import type { ProblemList, ProblemPage } from '../../src/shared/contracts.js';
+import { readTables } from '../tables.js';
 
 const exec = promisify(execFile);
 // End-to-end verification of the unchanged CLI and canonical API, using only an
@@ -35,12 +36,11 @@ test('real list CLI exposes all three verified filters and retries without creat
         verifiedSourceRecords: 400,
         blockers: [],
       });
-      const ingestion = (await api.request('GET', '/api/export')) as Snapshot;
+      const ingestion = readTables(app.tutorJobs.db);
       expect(
-        ingestion.tables.problems.every(
-          (p) => !p.legacyCompleted && p.attemptCount === 0 && p.exposed === replay > 0,
-        ),
+        ingestion.problems!.every((p) => !p.legacyCompleted && p.exposed === (replay > 0 ? 1 : 0)),
       ).toBe(true);
+      expect(ingestion.attempts).toEqual([]);
       const lists = (await api.request('GET', '/api/lists')) as ProblemList[];
       expect(lists).toHaveLength(3);
       for (const definition of expected.lists) {
@@ -73,16 +73,16 @@ test('real list CLI exposes all three verified filters and retries without creat
       expect(
         ((await api.request('GET', '/api/problems?status=completed')) as ProblemPage).total,
       ).toBe(0);
-      const snapshot = (await api.request('GET', '/api/export')) as Snapshot;
-      expect(snapshot.tables.problems).toHaveLength(250);
-      expect(snapshot.tables.import_batches).toHaveLength(1);
-      expect(snapshot.tables.import_records).toHaveLength(400);
-      expect(snapshot.tables.list_memberships).toHaveLength(475);
-      expect(snapshot.tables.tags.length).toBeGreaterThan(0);
+      const tables = readTables(app.tutorJobs.db);
+      expect(tables.problems).toHaveLength(250);
+      expect(tables.import_batches).toHaveLength(1);
+      expect(tables.import_records).toHaveLength(400);
+      expect(tables.list_memberships).toHaveLength(475);
+      expect(tables.tags!.length).toBeGreaterThan(0);
 
-      expect(await api.request('GET', '/api/patterns')).toHaveLength(snapshot.tables.tags.length);
-      expect(snapshot.tables.attempts).toEqual([]);
-      expect(snapshot.tables.score_decisions).toEqual([]);
+      expect(await api.request('GET', '/api/patterns')).toHaveLength(tables.tags!.length);
+      expect(tables.attempts).toEqual([]);
+      expect(tables.score_decisions).toEqual([]);
     }
   } finally {
     await app.close();

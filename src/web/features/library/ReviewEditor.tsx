@@ -48,8 +48,7 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
         </Button>
       </div>
       <p className="small muted">
-        Recommended: {review.recommendedDate ? dateLabel(review.recommendedDate) : 'Not scheduled'}.{' '}
-        {review.constraint ?? ''}
+        Recommended: {review.recommendedDate ? dateLabel(review.recommendedDate) : 'Not scheduled'}.
       </p>
       <ErrorNotice error={save.error} />
       {save.error instanceof ApiError && save.error.status === 409 && (

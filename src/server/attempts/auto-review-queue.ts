@@ -1,6 +1,6 @@
 import type { AutoReviewStatus } from '../../shared/contracts.js';
-import type { AttemptRecord } from './attempt-model.js';
-import type { Store } from '../db/store.js';
+import { type AttemptRecord, attempts } from './attempt-model.js';
+import type { Db } from '../db/db.js';
 
 // Finished attempts waiting for a tutor-written report; the Codex worker takes
 // them one at a time. Deliberately in memory: it is transient work, not study
@@ -23,17 +23,11 @@ export class AutoReviewQueue {
     return { status: job?.status ?? 'none', error: job?.error ?? null };
   }
   /** The next attempt still needing a report, now marked as generating. */
-  take(s: Store): AttemptRecord | null {
+  take(db: Db): AttemptRecord | null {
     for (const [attemptId, job] of this.jobs) {
       if (job.status !== 'pending') continue;
-      let a: AttemptRecord;
-      try {
-        a = s.get<AttemptRecord>('attempts', attemptId);
-      } catch {
-        this.jobs.delete(attemptId);
-        continue;
-      }
-      if (a.feedback) {
+      const [a] = attempts(db, 'WHERE a.id = ?', attemptId);
+      if (!a || a.feedback) {
         this.jobs.delete(attemptId);
         continue;
       }

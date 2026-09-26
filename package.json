@@ -43,7 +43,6 @@
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
-    "drizzle-orm": "^0.45.2",
     "fastify": "^5.12.4",
     "lucide-react": "^1.46.0",
     "radix-ui": "^1.6.7",

@@ -1,48 +1,77 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { createApp } from '../../src/server/core/app.js';
 import type { ProblemList } from '../../src/shared/contracts.js';
 
+const migrations = new URL('../../migrations/', import.meta.url).pathname;
+/** A database as the Sheet-era app left it: migrations 0000-0002 and JSON rows. */
+function sheetEraDatabase(dbPath: string) {
+  const db = new Database(dbPath);
+  for (const file of ['0000_initial.sql', '0001_patterns.sql', '0002_learning_insights.sql'])
+    db.exec(readFileSync(join(migrations, file), 'utf8'));
+  db.pragma('user_version = 3');
+  const row = (table: string, id: string, data: object, columns: Record<string, string> = {}) =>
+    db
+      .prepare(
+        `INSERT INTO ${table} (id, data${Object.keys(columns)
+          .map((c) => `, ${c}`)
+          .join('')}) VALUES (?, ?${Object.keys(columns)
+          .map(() => ', ?')
+          .join('')})`,
+      )
+      .run(id, JSON.stringify({ id, ...data }), ...Object.values(columns));
+  row('settings', 'singleton', {
+    timezone: 'UTC',
+    budgetMinutes: 40,
+    primaryCount: 1,
+    optionalCount: 1,
+    lastBackupAt: null,
+    dataMode: 'isolated-pilot',
+  });
+  row('problems', 'p', {
+    slug: 'two-sum',
+    title: 'Two Sum',
+    url: 'https://leetcode.com/problems/two-sum/',
+    difficulty: 'Easy',
+    notes: '',
+    legacyCompleted: false,
+    exposed: false,
+  });
+  const names = ['Sheet: Tutor Tracker', 'Sheet: Microsoft Top Questions', 'Keep me'];
+  names.forEach((name, i) => {
+    row('lists', `l${i}`, { name, sourceUrl: null, sourceVersion: null });
+    row(
+      'list_memberships',
+      `p:l${i}`,
+      { problemId: 'p', listId: `l${i}` },
+      { problem_id: 'p', list_id: `l${i}` },
+    );
+  });
+  db.close();
+}
+
 it('retires Sheet-only lists and settings once, after saving a copy of the database', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'lc-sheet-retirement-'));
   const dbPath = join(dir, 'leetcode.sqlite');
+  sheetEraDatabase(dbPath);
   const headers = { authorization: 'Bearer test' };
   let app = await createApp({ dbPath, token: 'test' });
   try {
-    const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) =>
-      app.inject({ method, url, headers, ...(payload ? { payload } : {}) });
-    const problem = (
-      await call('POST', '/api/problems', {
-        title: 'Two Sum',
-        url: 'https://leetcode.com/problems/two-sum/',
-      })
-    ).json();
-    const lists: ProblemList[] = [];
-    for (const name of ['Sheet: Tutor Tracker', 'Sheet: Microsoft Top Questions', 'Keep me'])
-      lists.push((await call('POST', '/api/lists', { name })).json());
-    await call('PATCH', `/api/problems/${problem.id}`, { listIds: lists.map((l) => l.id) });
-    await app.close();
-    // Put the database back to how the Sheet era left it, before the cleanup migration.
-    const old = new Database(dbPath);
-    old.exec(`UPDATE settings SET data = json_set(data, '$.dataMode', 'isolated-pilot')`);
-    old.prepare('DELETE FROM __drizzle_migrations WHERE created_at >= ?').run(1789516800003);
-    old.close();
-
-    app = await createApp({ dbPath, token: 'test' });
-    expect(((await call('GET', '/api/lists')).json() as ProblemList[]).map((l) => l.name)).toEqual([
+    const call = (url: string) => app.inject({ url, headers });
+    expect(((await call('/api/lists')).json() as ProblemList[]).map((l) => l.name)).toEqual([
       'Microsoft Top Questions',
       'Keep me',
     ]);
     expect(
-      (await call('GET', `/api/problems/${problem.id}`))
+      (await call('/api/problems/p'))
         .json()
         .problem.lists.map((l: ProblemList) => l.name)
         .sort(),
     ).toEqual(['Keep me', 'Microsoft Top Questions']);
-    expect((await call('GET', '/api/settings')).json()).not.toHaveProperty('dataMode');
+    expect((await call('/api/settings')).json()).not.toHaveProperty('dataMode');
     // The copy taken before migrating still holds the retired list.
     const [copy] = readdirSync(join(dir, 'backups')).filter((f) =>
       f.startsWith('before-migration-'),

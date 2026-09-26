@@ -1,7 +1,7 @@
 // Review scheduling: when a problem should come back, and the stored review target.
 import { randomUUID } from 'node:crypto';
-import type { Problem, ReviewTarget } from '../../shared/contracts.js';
-import type { Store } from '../db/store.js';
+import type { ReviewTarget } from '../../shared/contracts.js';
+import { type Db, insert, many, update } from '../db/db.js';
 import { ApiError } from '../db/errors.js';
 import type { AttemptRecord } from './attempt-model.js';
 export function addDays(day: string, days: number): string {
@@ -26,27 +26,30 @@ export function recommendation(
           : 'mixed',
   };
 }
+/** Review targets with their problem's title. `where` may refer to the target as `r`. */
+export function reviewTargets(db: Db, where = '', ...params: string[]): ReviewTarget[] {
+  return many<ReviewTarget>(
+    db,
+    `SELECT r.*, p.title AS problemTitle FROM review_targets r JOIN problems p ON p.id = r.problemId ${where} ORDER BY r.rowid`,
+    ...params,
+  );
+}
 export function updateTarget(
-  s: Store,
+  db: Db,
   problemId: string,
   recommendedDate: string | null,
   stage: string,
   choice?: { action: ReviewTarget['action']; date?: string | null },
 ): ReviewTarget {
-  const p = s.get<Problem>('problems', problemId),
-    prior = s
-      .all<ReviewTarget>('review_targets')
-      .find((t) => t.problemId === problemId && t.constraint === null);
-  const t: ReviewTarget = prior
+  const [prior] = reviewTargets(db, 'WHERE r.problemId = ?', problemId);
+  const t = prior
     ? { ...prior, version: prior.version + 1, recommendedDate, stage }
     : {
         id: randomUUID(),
         problemId,
-        problemTitle: p.title,
-        constraint: null,
         recommendedDate,
         effectiveDate: recommendedDate,
-        action: 'recommended',
+        action: 'recommended' as ReviewTarget['action'],
         version: 1,
         stage,
       };
@@ -56,7 +59,24 @@ export function updateTarget(
     t.action = choice.action;
     t.effectiveDate = choice.action === 'none' ? null : choice.date!;
   } else if (t.action === 'recommended') t.effectiveDate = recommendedDate;
-  s.put('review_targets', t);
-  s.put('problems', { ...p, nextReviewDate: t.effectiveDate });
-  return t;
+  const { id, recommendedDate: rec, effectiveDate, action, version, stage: st } = t;
+  if (prior)
+    update(db, 'review_targets', id, {
+      recommendedDate: rec,
+      effectiveDate,
+      action,
+      version,
+      stage: st,
+    });
+  else
+    insert(db, 'review_targets', {
+      id,
+      problemId,
+      recommendedDate: rec,
+      effectiveDate,
+      action,
+      version,
+      stage: st,
+    });
+  return reviewTargets(db, 'WHERE r.id = ?', id)[0]!;
 }

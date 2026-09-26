@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { readTables } from '../tables.js';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -6,12 +7,7 @@ import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import sheetListsImport from './fixtures/sheet-lists-import.json';
 import { mapVerifiedLists, PINNED_REVISION } from '../../src/integrations/lists.js';
-import type {
-  ImportPayload,
-  ProblemList,
-  ProblemPage,
-  Snapshot,
-} from '../../src/shared/contracts.js';
+import type { ImportPayload, ProblemList, ProblemPage } from '../../src/shared/contracts.js';
 
 test('projects verified slug memberships without rewriting stored history', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'lc-list-projection-'));
@@ -68,7 +64,7 @@ test('projects verified slug memberships without rewriting stored history', asyn
       attempts: [],
       records: [],
     });
-    const before = (await api.request('GET', '/api/export')) as Snapshot;
+    const before = readTables(app.tutorJobs.db);
     const lists = (await api.request('GET', '/api/lists')) as ProblemList[];
     expect(lists.map((l) => l.name).sort()).toEqual(
       [
@@ -83,7 +79,7 @@ test('projects verified slug memberships without rewriting stored history', asyn
       lists: { id: string; name: string }[];
     };
     expect(options.lists).toEqual(lists.map(({ id, name }) => ({ id, name })));
-    expect(((await api.request('GET', '/api/export')) as Snapshot).tables).toEqual(before.tables);
+    expect(readTables(app.tutorJobs.db)).toEqual(before);
     const page = (await api.request('GET', '/api/problems')) as ProblemPage;
     expect(page.total).toBe(3);
     const question = page.items.find((p) => p.slug === 'contains-duplicate')!;
@@ -106,13 +102,13 @@ test('projects verified slug memberships without rewriting stored history', asyn
       expect(filtered.total).toBe(expected.length);
       expect(filtered.items.map((p) => p.slug).sort()).toEqual(expected);
     }
-    expect(((await api.request('GET', '/api/export')) as Snapshot).tables).toEqual(before.tables);
+    expect(readTables(app.tutorJobs.db)).toEqual(before);
     // The editor sends displayed memberships back even for a notes-only save.
     // This must not persist memberships derived from the public manifests.
     await api.request('PATCH', `/api/problems/${question.id}`, {
       listIds: question.lists.map((l) => l.id),
     });
-    expect(((await api.request('GET', '/api/export')) as Snapshot).tables).toEqual(before.tables);
+    expect(readTables(app.tutorJobs.db)).toEqual(before);
   } finally {
     await app.close();
     await rm(dir, { recursive: true, force: true });

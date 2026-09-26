@@ -9,6 +9,7 @@ import { LocalApi } from '../../src/integrations/local-api.js';
 import sheetEvidenceImport from './fixtures/sheet-evidence-import.json';
 import type { ImportPayload } from '../../src/shared/contracts.js';
 import { applyAndVerify } from '../../src/integrations/import-client.js';
+import { readTables } from '../tables.js';
 const exec = promisify(execFile);
 test('real backend accepts mapped source records, idempotent replay and a complete CLI backup', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'lc-real-'));
@@ -29,13 +30,11 @@ test('real backend accepts mapped source records, idempotent replay and a comple
     expect(backup.verified).toBe(true);
     // Recovery is opening the backup file as the database.
     recovered = await createApp({ dbPath: backup.path, token: 'recovered' });
-    const restored = (
-      await recovered.inject({ url: '/api/export', headers: { authorization: 'Bearer recovered' } })
-    ).json() as { tables: Record<string, Record<string, unknown>[]> };
-    expect(restored.tables.attempts).toHaveLength(1);
-    expect(restored.tables.attempts![0]?.code).toBe('print(1)');
-    expect(restored.tables.topics![0]?.score).toBe(3.85);
-    expect(restored.tables.score_decisions).toHaveLength(1);
+    const restored = readTables(recovered.tutorJobs.db);
+    expect(restored.attempts).toHaveLength(1);
+    expect(restored.attempts![0]?.code).toBe('print(1)');
+    expect(restored.topics![0]?.score).toBe(3.85);
+    expect(restored.score_decisions).toHaveLength(1);
   } finally {
     await a.close();
     await recovered?.close();

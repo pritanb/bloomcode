@@ -1,19 +1,18 @@
 import { TopicAnalysis } from '../topics/topic-analysis.js';
 import { randomUUID } from 'node:crypto';
-import type { Topic } from '../../shared/contracts.js';
-import type { Store } from '../db/store.js';
+import { type Db, insert, maybe } from '../db/db.js';
 import { Insights, fingerprint } from './service.js';
 import { ANALYSIS_VERSION, type Observation } from '../../shared/insights.js';
 /** Synthetic fixture only. Never invoked for a personal workspace. */
-export function seedInsightDemo(store: Store) {
-  if (!store.all<Topic>('topics').length)
+export function seedInsightDemo(db: Db) {
+  if (!maybe(db, 'SELECT 1 FROM topics'))
     for (const [index, name] of [
       'Arrays',
       'Binary Search',
       'Dynamic Programming',
       'Trees',
     ].entries())
-      store.put('topics', {
+      insert(db, 'topics', {
         id: `demo-topic-${index}`,
         name,
         score: index === 3 ? null : index + 1,
@@ -21,9 +20,8 @@ export function seedInsightDemo(store: Store) {
         notes: 'Synthetic demo score.',
         lastReviewed: null,
         provisional: true,
-        lastMovement: null,
-      } satisfies Topic);
-  const topicAnalysis = new TopicAnalysis(store, () => new Date());
+      });
+  const topicAnalysis = new TopicAnalysis(db, () => new Date());
   topicAnalysis.put({
     ...topicAnalysis.record(),
     enabled: true,
@@ -46,7 +44,7 @@ export function seedInsightDemo(store: Store) {
     },
   });
   const service = new Insights(
-    store,
+    db,
     () => new Date(),
     async () => [],
   );

@@ -25,20 +25,19 @@ export async function createApp(options: AppOptions) {
   const token = options.token ?? tokenFor(options.dbPath);
 
   // 1. Open the database and bring stored data up to date.
-  const { db, store } = openStorage(app, options);
+  const db = openStorage(app, options);
   // 2. Local-only access, error format, web app and /health.
   await registerHttp(app, { token, clock, serveStatic: options.serveStatic });
   // 3. Study data: problems, attempts, scores, plans, backups.
   registerStudyRoutes(app, {
     db,
-    store,
     clock,
     dbPath: options.dbPath,
     demo: options.demo,
     dailyBackup: options.dailyBackup,
   });
   // 4. The Codex tutor and the insights it builds.
-  registerTutorFeatures(app, { store, clock, token, dbPath: options.dbPath, embed: options.embed });
+  registerTutorFeatures(app, { db, clock, token, dbPath: options.dbPath, embed: options.embed });
 
   return app;
 }

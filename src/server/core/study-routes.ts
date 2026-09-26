@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { Store } from '../db/store.js';
-import type { Db } from './storage.js';
+import type { Db } from '../db/db.js';
 import { registerSettings } from './settings.js';
 import { registerSetup } from '../catalogue/setup.js';
 import { registerCatalogue } from '../catalogue/catalogue.js';
@@ -17,28 +16,26 @@ export function registerStudyRoutes(
   app: FastifyInstance,
   {
     db,
-    store,
     clock,
     dbPath,
     demo,
     dailyBackup,
   }: {
     db: Db;
-    store: Store;
     clock: () => Date;
     dbPath: string;
     demo?: boolean;
     dailyBackup?: boolean;
   },
 ) {
-  registerSettings(app, db, store);
-  registerSetup(app, store, clock, demo);
-  registerCatalogue(app, store, clock);
-  registerImport(app, store, clock);
-  registerAttempts(app, store, clock);
-  registerTopics(app, store);
-  registerScoring(app, store, clock);
-  registerPlans(app, store, clock);
-  registerStudyTools(app, store, clock);
-  registerTransfer(app, store, clock, dbPath, dailyBackup);
+  registerSettings(app, db);
+  registerSetup(app, db, clock, demo);
+  registerCatalogue(app, db);
+  registerImport(app, db, clock);
+  registerAttempts(app, db, clock);
+  registerTopics(app, db);
+  registerScoring(app, db, clock);
+  registerPlans(app, db, clock);
+  registerStudyTools(app, db, clock);
+  registerTransfer(app, db, clock, dbPath, dailyBackup);
 }

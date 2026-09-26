@@ -1,23 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
-import type {
-  ImportPayload,
-  ImportReport,
-  ImportRecord,
-  Problem,
-  Tag,
-  ProblemList,
-  Topic,
-  ScoreDecision,
-} from '../../shared/contracts.js';
-import { Store } from '../db/store.js';
+import type { ImportPayload, ImportReport, ImportRecord } from '../../shared/contracts.js';
+import { type Db, insert, many, maybe, run, transaction, update } from '../db/db.js';
+import { newTagHue } from '../db/tag-colour.js';
 import { date, name, addProblem, assignLinks, problemUrl } from './problem-model.js';
 import { outcome, help, seconds } from '../attempts/attempt-model.js';
 import { updateTarget } from '../attempts/review-schedule.js';
 import { canonical } from '../db/idempotency.js';
 import { conflict } from '../db/errors.js';
-import type { AttemptRecord } from '../attempts/attempt-model.js';
 export const score = z
   .number()
   .min(1)
@@ -38,7 +29,7 @@ export const importSchema = z
           key,
           title: name,
           url: z.string(),
-          difficulty: z.string().nullable().optional(),
+          difficulty: z.enum(['Easy', 'Medium', 'Hard']).nullable().optional(),
           notes: z.string().optional(),
           legacyCompleted: z.boolean().optional(),
           exposed: z.boolean().optional(),
@@ -59,7 +50,14 @@ export const importSchema = z
           confidence: z.number().min(1).max(5).nullable().optional(),
           notes: z.string(),
           code: z.string().optional(),
-          evidence: z.string(),
+          evidence: z.enum([
+            'retention',
+            'near_transfer',
+            'unseen',
+            'mock',
+            'legacy',
+            'immediate_repair',
+          ]),
           nextReviewDate: date.nullable().optional(),
           topicNames: z.array(name).optional(),
         })
@@ -104,13 +102,9 @@ export const importSchema = z
     ),
   })
   .strict();
-interface Batch {
-  id: string;
-  fingerprint: string;
-  source: ImportPayload['source'];
-  appliedAt: string;
-}
-export function applyImport(s: Store, b: ImportPayload, clock: () => Date): ImportReport {
+const named = (db: Db, table: 'tags' | 'lists' | 'topics', value: string) =>
+  maybe<{ id: string }>(db, `SELECT id FROM ${table} WHERE lower(name) = lower(?)`, value)?.id;
+export function applyImport(db: Db, b: ImportPayload, clock: () => Date): ImportReport {
   const counts: Record<string, number> = {
       problems: 0,
       attempts: 0,
@@ -125,7 +119,11 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       // applied before then (such as the public lists) replaying as no-ops.
       .update(canonical({ ...b, planned: [], dryRun: false }))
       .digest('hex'),
-    prior = s.all<Batch>('import_batches').find((x) => x.id === b.importId);
+    prior = maybe<{ fingerprint: string }>(
+      db,
+      'SELECT fingerprint FROM import_batches WHERE id = ?',
+      b.importId,
+    );
   if (prior) {
     if (prior.fingerprint !== fingerprint)
       throw conflict('Import ID already used for different source data');
@@ -136,7 +134,7 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       unresolved,
     };
   }
-  s.put('import_batches', {
+  insert(db, 'import_batches', {
     id: b.importId,
     fingerprint,
     source: b.source,
@@ -166,52 +164,58 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       unresolvedRow(input.key, input, 'Unrecognised original LeetCode URL');
       continue;
     }
-    const before = s.all<Problem>('problems').length;
-    let p = addProblem(s, input);
-    p = s.put('problems', {
-      ...p,
+    const known = !!maybe(
+      db,
+      'SELECT 1 FROM problems WHERE slug = ?',
+      new URL(input.url).pathname.split('/')[2]!,
+    );
+    const p = addProblem(db, input);
+    if (!known) counts.problems!++;
+    update(db, 'problems', p.id, {
       difficulty: p.difficulty ?? input.difficulty ?? null,
       notes:
         input.notes?.trim() && !p.notes.includes(input.notes)
           ? [p.notes, input.notes].filter(Boolean).join('\n\n')
           : p.notes,
-      legacyCompleted: p.legacyCompleted || !!input.legacyCompleted,
-      exposed: p.exposed || !!input.exposed || !!input.legacyCompleted,
+      legacyCompleted: !!p.legacyCompleted || !!input.legacyCompleted,
+      exposed: !!p.exposed || !!input.exposed || !!input.legacyCompleted,
     });
     problems.set(input.key, p.id);
-    counts.problems! += s.all<Problem>('problems').length - before;
-    const tags = (input.tags ?? []).map((n) => {
-      let t = s.all<Tag>('tags').find((t) => t.name.toLowerCase() === n.toLowerCase());
-      if (!t)
-        t = s.put<Tag>('tags', {
-          id: randomUUID(),
-          name: n,
-          description: '',
-          archived: false,
-          kind: 'pattern',
-        });
-      return { tagId: t.id, difficulty: null };
+    const tagIds = (input.tags ?? []).map((n) => {
+      const existing = named(db, 'tags', n);
+      if (existing) return existing;
+      const hues = many<{ hue: number }>(db, 'SELECT hue FROM tags WHERE hue IS NOT NULL');
+      return insert(db, 'tags', {
+        id: randomUUID(),
+        name: n,
+        hue: newTagHue(hues.map((t) => t.hue)),
+      }).id;
     });
-    const listIds = (input.lists ?? []).map((n) => {
-      let l = s.all<ProblemList>('lists').find((l) => l.name.toLowerCase() === n.toLowerCase());
-      if (!l)
-        l = s.put('lists', { id: randomUUID(), name: n, sourceUrl: null, sourceVersion: null });
-      return l.id;
+    const listIds = (input.lists ?? []).map(
+      (n) =>
+        named(db, 'lists', n) ??
+        insert(db, 'lists', { id: randomUUID(), name: n, sourceUrl: null, sourceVersion: null }).id,
+    );
+    const oldTags = many<{ tagId: string }>(
+        db,
+        'SELECT tagId FROM problem_tags WHERE problemId = ?',
+        p.id,
+      ),
+      oldLists = many<{ listId: string }>(
+        db,
+        'SELECT listId FROM list_memberships WHERE problemId = ?',
+        p.id,
+      );
+    assignLinks(db, p.id, {
+      tags: [...tagIds.map((tagId) => ({ tagId })), ...oldTags],
+      listIds: [...listIds, ...oldLists.map((l) => l.listId)],
     });
-    const oldTags = s
-        .all<{ id: string; problemId: string; tagId: string }>('problem_tags')
-        .filter((t) => t.problemId === p.id),
-      oldLists = s
-        .all<{ id: string; problemId: string; listId: string }>('list_memberships')
-        .filter((l) => l.problemId === p.id)
-        .map((l) => l.listId);
-    assignLinks(s, p.id, { tags: [...tags, ...oldTags], listIds: [...listIds, ...oldLists] });
   }
   const topics = new Map<string, string>();
   for (const input of b.topics) {
-    let t = s.all<Topic>('topics').find((t) => t.name.toLowerCase() === input.name.toLowerCase());
-    if (!t) {
-      t = s.put('topics', {
+    let id = named(db, 'topics', input.name);
+    if (!id) {
+      id = insert(db, 'topics', {
         id: randomUUID(),
         name: input.name,
         score: input.score,
@@ -219,11 +223,10 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
         notes: input.notes,
         lastReviewed: input.lastReviewed ?? null,
         provisional: input.provisional,
-        lastMovement: null,
-      } satisfies Topic);
+      }).id;
       counts.topics!++;
     } else warnings.push(`Existing topic ${input.name} retained; no score overwrite`);
-    topics.set(input.name.toLowerCase(), t.id);
+    topics.set(input.name.toLowerCase(), id);
   }
   const attemptKeys = new Set<string>();
   for (const input of [...b.attempts].sort((a, b) => a.date.localeCompare(b.date))) {
@@ -237,12 +240,16 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       continue;
     }
     attemptKeys.add(input.sourceKey);
-    const p = s.get<Problem>('problems', problemId);
-    const a: AttemptRecord = {
-      id: randomUUID(),
+    const { last } = maybe<{ last: string | null }>(
+      db,
+      "SELECT max(substr(finishedAt, 1, 10)) AS last FROM attempts WHERE problemId = ? AND status = 'completed'",
       problemId,
-      problem: { id: p.id, title: p.title, url: p.url, difficulty: p.difficulty },
-      planItemId: null,
+    )!;
+    const id = randomUUID();
+    insert(db, 'attempts', {
+      id,
+      problemId,
+      context: 'review',
       status: 'completed',
       version: 1,
       language: 'python',
@@ -252,49 +259,26 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       startedAt: input.date,
       finishedAt: input.date,
       studyDate: input.date,
-      runningSince: null,
-      lastHeartbeatAt: null,
-      needsGapDecision: false,
       outcome: input.outcome,
       help: input.help,
       evidence: input.evidence,
       confidence: input.confidence ?? null,
-      feedback: null,
-      reviewedAt: null,
       nextReviewDate: input.nextReviewDate ?? null,
-      context: 'review',
-      gapSeconds: 0,
-    };
-    s.put('attempts', { ...a, sourceKey: input.sourceKey, importId: b.importId });
-    s.put('answer_versions', {
-      id: randomUUID(),
-      attemptId: a.id,
-      code: a.code,
-      notes: a.notes,
-      language: a.language,
-      version: 1,
-      recordedAt: b.source.retrievedAt,
+      sourceKey: input.sourceKey,
+      importId: b.importId,
     });
-    const latest = !p.lastAttemptAt || input.date >= p.lastAttemptAt.slice(0, 10),
-      accepted = s
-        .all<AttemptRecord>('attempts')
-        .filter((x) => x.problemId === p.id && x.outcome === 'solved')
-        .sort((a, b) => (a.finishedAt ?? '').localeCompare(b.finishedAt ?? ''))
-        .at(-1);
-    s.put('problems', {
-      ...p,
-      exposed: true,
-      attemptCount: p.attemptCount + 1,
-      ...(latest ? { lastAttemptAt: input.date, lastOutcome: input.outcome } : {}),
-      ...(accepted
-        ? { lastSolveSeconds: accepted.activeSeconds, lastSolveHelp: accepted.help }
-        : {}),
-    });
-    if (input.nextReviewDate && latest)
-      updateTarget(s, p.id, input.nextReviewDate, 'legacy-candidate');
+    update(db, 'problems', problemId, { exposed: true });
+    if (input.nextReviewDate && (!last || input.date >= last))
+      updateTarget(db, problemId, input.nextReviewDate, 'legacy-candidate');
     for (const n of input.topicNames ?? []) {
       const topicId = topics.get(n.toLowerCase());
-      if (topicId) s.put('attempt_topics', { id: `${a.id}:${topicId}`, attemptId: a.id, topicId });
+      if (topicId)
+        run(
+          db,
+          'INSERT OR IGNORE INTO attempt_topics (attemptId, topicId) VALUES (?, ?)',
+          id,
+          topicId,
+        );
       else warnings.push(`Unknown topic ${n} for ${input.sourceKey}`);
     }
     counts.attempts!++;
@@ -307,10 +291,9 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       continue;
     }
     movementKeys.add(input.sourceKey);
-    s.put('score_decisions', {
+    insert(db, 'score_decisions', {
       id: randomUUID(),
       topicId,
-      topicName: input.topicName,
       attemptId: null,
       oldScore: input.oldScore,
       newScore: input.newScore,
@@ -320,23 +303,28 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       recordedAt: b.source.retrievedAt,
       sourceKey: input.sourceKey,
       importId: b.importId,
-    } satisfies ScoreDecision & { sourceKey: string; importId: string });
+    });
     counts.movements!++;
   }
   for (const r of [...b.records, ...unresolved.filter((r) => r.tab === 'canonical')]) {
-    s.put('import_records', { id: randomUUID(), ...r, importId: b.importId });
+    insert(db, 'import_records', {
+      id: randomUUID(),
+      ...r,
+      raw: r.raw ?? null,
+      importId: b.importId,
+    });
     counts.records!++;
   }
   return { dryRun: b.dryRun, counts, warnings, unresolved };
 }
-export function registerImport(app: FastifyInstance, s: Store, clock: () => Date) {
+export function registerImport(app: FastifyInstance, db: Db, clock: () => Date) {
   app.post('/api/import', (req) => {
     const b = importSchema.parse(req.body);
     let report: ImportReport | undefined;
     const rollback = Symbol('dry-run');
     try {
-      return s.transaction(() => {
-        report = applyImport(s, b, clock);
+      return transaction(db, () => {
+        report = applyImport(db, b, clock);
         if (b.dryRun) throw rollback;
         return report;
       });

@@ -1,4 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
+import { readTables } from '../tables.js';
 import { createApp } from '../../src/server/core/app.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -168,7 +169,7 @@ it('uses a hard list boundary, counts completions and progresses in verified top
   ).toBe(409); // retained refresher already uses the allowance
 });
 it('rebuilds only unstarted items with a version guard and preserves all saved work and manual reviews', async () => {
-  const { request, config } = await fixture();
+  const { app, request, config } = await fixture();
   await request('PATCH', '/api/settings', { questionsPerDay: 4 });
   const plan = (await request('POST', '/api/daily-plan/ensure', {})).json();
   const outside = plan.items.find((i: { title: string }) => i.title === 'Outside');
@@ -201,7 +202,7 @@ it('rebuilds only unstarted items with a version guard and preserves all saved w
     notes: 'keep this',
   });
   await request('PATCH', '/api/settings', { recommendations: config });
-  const before = (await request('GET', '/api/export')).json().tables;
+  const before = readTables(app.tutorJobs.db);
   const current = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(current.items).toHaveLength(4);
   expect(
@@ -222,7 +223,7 @@ it('rebuilds only unstarted items with a version guard and preserves all saved w
     expect(rebuilt.json().items.find((i: { id: string }) => i.id === id)).toEqual(
       current.items.find((i: { id: string }) => i.id === id),
     );
-  const after = (await request('GET', '/api/export')).json().tables;
+  const after = readTables(app.tutorJobs.db);
   for (const table of Object.keys(before).filter((t) => !['daily_plans', 'plan_items'].includes(t)))
     expect(after[table]).toEqual(before[table]);
 });

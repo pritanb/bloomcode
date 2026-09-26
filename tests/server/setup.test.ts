@@ -5,8 +5,8 @@ import { resolveDataDir } from '../../scripts/runtime.mjs';
 import { join, resolve } from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { openDb } from '../../src/server/db/db.js';
-import { settings } from '../../src/server/db/schema.js';
+import { openDb, run } from '../../src/server/db/db.js';
+import { readTables } from '../tables.js';
 
 it('keeps explicit and legacy workspace paths while giving new installations platform defaults', () => {
   const home = '/test-home';
@@ -65,11 +65,11 @@ it('authenticates setup and imports exactly the selected starter list', async ()
         })
       ).statusCode,
     ).toBe(200);
-    const snapshot = (await app.inject({ url: '/api/export', headers })).json();
-    expect(snapshot.tables.problems).toHaveLength(75);
-    expect(snapshot.tables.lists).toHaveLength(1);
-    expect(snapshot.tables.attempts).toHaveLength(0);
-    expect(snapshot.tables.score_decisions).toHaveLength(0);
+    const tables = readTables(app.tutorJobs.db);
+    expect(tables.problems).toHaveLength(75);
+    expect(tables.lists).toHaveLength(1);
+    expect(tables.attempts).toHaveLength(0);
+    expect(tables.score_decisions).toHaveLength(0);
     expect((await app.inject({ url: '/api/settings', headers })).json()).toMatchObject({
       timezone: 'Europe/London',
       questionsPerDay: 3,
@@ -97,12 +97,8 @@ it('does not offer setup to a workspace saved before onboarding existed', async 
   await (await createApp({ dbPath, token: 'setup-test' })).close();
   // Settings written by an older version have no onboardingComplete flag.
   const db = openDb(dbPath);
-  const { onboardingComplete: _removed, ...legacy } = db.orm.select().from(settings).get()!.data;
-  db.orm
-    .update(settings)
-    .set({ data: { ...legacy, timezone: 'Australia/Sydney' } as typeof legacy })
-    .run();
-  db.sqlite.close();
+  run(db, "UPDATE settings SET onboardingComplete = NULL, timezone = 'Australia/Sydney'");
+  db.close();
   const app = await createApp({ dbPath, token: 'setup-test' });
   try {
     expect((await app.inject({ url: '/api/setup', headers })).json()).toEqual({ required: false });
@@ -149,12 +145,12 @@ it('imports a validated custom pack idempotently without creating completion or 
       expect(
         (await app.inject({ method: 'POST', url: '/api/import', headers, payload })).statusCode,
       ).toBe(200);
-    const snapshot = (await app.inject({ url: '/api/export', headers })).json();
-    expect(snapshot.tables.problems).toHaveLength(1);
-    expect(snapshot.tables.problems[0]).toMatchObject({ legacyCompleted: false, exposed: false });
-    expect(snapshot.tables.attempts).toHaveLength(0);
-    expect(snapshot.tables.score_decisions).toHaveLength(0);
-    expect(snapshot.tables.import_batches).toHaveLength(1);
+    const tables = readTables(app.tutorJobs.db);
+    expect(tables.problems).toHaveLength(1);
+    expect(tables.problems![0]).toMatchObject({ legacyCompleted: 0, exposed: 0 });
+    expect(tables.attempts).toHaveLength(0);
+    expect(tables.score_decisions).toHaveLength(0);
+    expect(tables.import_batches).toHaveLength(1);
     expect((await app.inject({ url: '/api/setup', headers })).json()).toEqual({ required: false });
     expect(
       (

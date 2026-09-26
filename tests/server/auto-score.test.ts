@@ -1,4 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
+import { readTables } from '../tables.js';
 import { createApp } from '../../src/server/core/app.js';
 const apps: Awaited<ReturnType<typeof createApp>>[] = [];
 afterEach(async () => {
@@ -43,8 +44,8 @@ async function fixture(topicScore: number | null) {
     movements: [],
     records: [],
   });
-  // /api/problems discloses pattern metadata; the export is side-effect free.
-  const problems = (await request('GET', '/api/export')).json().tables.problems as {
+  // /api/problems discloses pattern metadata, so read the table directly.
+  const problems = readTables(app.tutorJobs.db).problems as {
     id: string;
     title: string;
   }[];
@@ -195,9 +196,9 @@ it('scores by NeetCode category, so a personal tag never decides the topic', asy
   await finish('Fresh Problem', 'mixed', { outcome: 'solved', help: 'none' });
   expect((await request('GET', '/api/topics')).json()[0].score).toBe(3);
   expect((await decisions())[0]).toMatchObject({ topicName: 'Arrays & Hashing' });
-  expect(
-    (await request('GET', '/api/export')).json().tables.tags.map((t: { name: string }) => t.name),
-  ).toEqual(['Some Personal Label']);
+  expect((await request('GET', '/api/tags')).json().map((t: { name: string }) => t.name)).toEqual([
+    'Some Personal Label',
+  ]);
 });
 it('falls back to a topic-named tag for a question outside the verified lists', async () => {
   const app = await createApp({ dbPath: ':memory:', token: 'test' });
@@ -226,7 +227,7 @@ it('falls back to a topic-named tag for a question outside the verified lists', 
     movements: [],
     records: [],
   });
-  const p = (await request('GET', '/api/export')).json().tables.problems[0] as { id: string };
+  const p = readTables(app.tutorJobs.db).problems[0] as { id: string };
   const a = (await request('POST', '/api/attempts', { problemId: p.id, context: 'mixed' })).json();
   await request('POST', `/api/attempts/${a.id}/finish`, {
     version: a.version,

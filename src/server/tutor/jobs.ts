@@ -1,4 +1,4 @@
-import type { Store } from '../db/store.js';
+import type { Db } from '../db/db.js';
 import type { AutoReviewQueue } from '../attempts/auto-review-queue.js';
 import type { Insights } from '../insights/service.js';
 import type { TopicAnalysis } from '../topics/topic-analysis.js';
@@ -9,7 +9,7 @@ import { analyzeTopicsNext } from './topic-job.js';
 
 /** The queues the Codex worker takes work from. */
 export interface TutorJobs {
-  s: Store;
+  db: Db;
   clock: () => Date;
   reviews: AutoReviewQueue;
   insights: Insights;

@@ -1,5 +1,5 @@
-import type { Store } from '../db/store.js';
-import type { AttemptRecord } from '../attempts/attempt-model.js';
+import { type Db, transaction } from '../db/db.js';
+import { getAttempt } from '../attempts/attempt-model.js';
 import type { AutoReviewQueue } from '../attempts/auto-review-queue.js';
 import { attemptContext, type AttemptContext } from '../attempts/attempt-context.js';
 import { saveReview } from '../scoring/review-model.js';
@@ -40,26 +40,26 @@ export function reviewPrompt({ attempt: a, history }: AttemptContext): string {
 }
 /** Write the report for the next queued attempt. Returns whether there was one. */
 export async function reviewNext(
-  { s, clock, reviews }: { s: Store; clock: () => Date; reviews: AutoReviewQueue },
+  { db, clock, reviews }: { db: Db; clock: () => Date; reviews: AutoReviewQueue },
   generate: Generate,
 ): Promise<boolean> {
-  const next = reviews.take(s);
+  const next = reviews.take(db);
   if (!next) return false;
   try {
     const feedback = (
       await generate({
         kind: 'review',
         system: reviewSystemPrompt,
-        user: reviewPrompt(attemptContext(s, next.id)),
+        user: reviewPrompt(attemptContext(db, next.id)),
         maxTokens: 1200,
         timeoutMs: 180_000,
       })
     ).text.trim();
     if (!feedback) throw new Error('The tutor returned an empty report.');
     // Re-read the version: the learner may have saved a reflection meanwhile.
-    s.transaction(() => {
-      const a = s.get<AttemptRecord>('attempts', next.id);
-      if (!a.feedback) saveReview(s, clock, a.id, { version: a.version, feedback, decisions: [] });
+    transaction(db, () => {
+      const a = getAttempt(db, next.id);
+      if (!a.feedback) saveReview(db, clock, a.id, { version: a.version, feedback, decisions: [] });
     });
     reviews.done(next.id);
   } catch (error) {

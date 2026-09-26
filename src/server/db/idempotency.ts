@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { Store } from './store.js';
+import { type Db, maybe, run, transaction } from './db.js';
 import { conflict } from './errors.js';
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -16,7 +16,7 @@ export function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 export function idempotent<T>(
-  s: Store,
+  db: Db,
   scope: string,
   key: unknown,
   payload: unknown,
@@ -24,19 +24,25 @@ export function idempotent<T>(
 ): T {
   const id = z.string().min(1).max(200).parse(key),
     fingerprint = createHash('sha256').update(canonical({ scope, payload })).digest('hex');
-  return s.transaction(() => {
-    const prior = s.sql
-      .prepare('SELECT fingerprint,response FROM idempotency WHERE id=?')
-      .get(id) as { fingerprint: string; response: string } | undefined;
+  return transaction(db, () => {
+    const prior = maybe<{ fingerprint: string; response: string }>(
+      db,
+      'SELECT fingerprint, response FROM idempotency WHERE id = ?',
+      id,
+    );
     if (prior) {
       if (prior.fingerprint !== fingerprint)
         throw conflict('Idempotency key was used with a different request');
       return JSON.parse(prior.response) as T;
     }
     const response = fn();
-    s.sql
-      .prepare('INSERT INTO idempotency(id,fingerprint,response) VALUES (?,?,?)')
-      .run(id, fingerprint, JSON.stringify(response));
+    run(
+      db,
+      'INSERT INTO idempotency (id, fingerprint, response) VALUES (?, ?, ?)',
+      id,
+      fingerprint,
+      JSON.stringify(response),
+    );
     return response;
   });
 }

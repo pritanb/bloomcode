@@ -62,7 +62,7 @@ npm run backup
 
 To recover, quit the app, keep the original data directory, and copy a verified backup into a **new** data directory as `leetcode.sqlite`. Start the app with that `DATA_DIR`, confirm representative answers, score decisions and dates, then switch to it. Never replace a live database or discard its WAL.
 
-There is no JSON export/restore. `GET /api/export` remains as a read-only table dump that import tools use to verify what they applied.
+There is no JSON export or restore; the SQLite backup is the portable copy.
 
 ## Verification
 
@@ -76,10 +76,10 @@ Integration tests use temporary directories and loopback fake HTTP services, an 
 
 ## Pattern notebooks
 
-The notebook is attached to every tag. Questions carry separate manually entered `leetcodeTopics` labels; these do not create or modify proficiency scores. Pattern membership and per-question difficulty continue to use `problem_tags`. Notebook fields live on the tag itself.
+The notebook is attached to every tag. Questions carry separate manually entered `leetcodeTopics` labels; these do not create or modify proficiency scores. Pattern membership uses `problem_tags`. Notebook fields live on the tag itself.
 
-Every tag, including imported categories and formerly classified topic tags, has a notebook page. Legacy `kind` fields are kept but do not restrict notebook access or assignment. (The former standalone notebook table was merged into tags and then dropped by migration `0003_retire_sheet`.)
+Every tag, including imported categories and formerly classified topic tags, has a notebook page. Tags saved before `kind` existed became topics in migration `0005`; `kind` does not restrict notebook access or assignment. (The former standalone notebook table was merged into tags and then dropped by migration `0003_retire_sheet`.)
 
 ## Schema migrations
 
-`openDb` applies the SQL migrations in `drizzle/`. When an existing database has migrations pending, it first saves a copy as `backups/before-migration-<time>.sqlite`; daily backup pruning never deletes these.
+`openDb` applies the numbered SQL files in `migrations/`, recording progress in SQLite's `user_version`. When an existing database has migrations pending, it first saves a copy as `backups/before-migration-<time>.sqlite`; daily backup pruning never deletes these.

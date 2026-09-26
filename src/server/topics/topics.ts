@@ -1,34 +1,29 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Topic, ScoreDecision, Problem } from '../../shared/contracts.js';
-import { Store } from '../db/store.js';
-import { newestAttempt, attemptView, type AttemptRecord } from '../attempts/attempt-model.js';
-import { problemView, assertMetadataVisible } from '../catalogue/problem-model.js';
-import { type AttemptTopic, decisionView, topicView } from './topic-model.js';
-export function registerTopics(app: FastifyInstance, s: Store) {
-  app.get('/api/topics', () => s.all<Topic>('topics').map((t) => topicView(s, t)));
+import type { Db } from '../db/db.js';
+import { attempts, attemptView, NEWEST } from '../attempts/attempt-model.js';
+import { problemViews, assertMetadataVisible } from '../catalogue/problem-model.js';
+import { decisions, getTopic, topics, topicView } from './topic-model.js';
+export function registerTopics(app: FastifyInstance, db: Db) {
+  app.get('/api/topics', () => topics(db));
   // Score-only history is safe during mixed practice; no problem metadata,
   // evidence, notes or attempt identifiers are returned by this route.
   app.get<{ Params: { id: string } }>('/api/topics/:id/history', (req) => {
-    const topic = s.get<Topic>('topics', req.params.id);
+    const topic = getTopic(db, req.params.id);
     return {
       topic: { id: topic.id, name: topic.name, score: topic.score },
-      decisions: s
-        .all<ScoreDecision>('score_decisions')
-        .filter((d) => d.topicId === topic.id)
-        .reverse()
-        .map((d) => ({
-          id: d.id,
-          date: d.date,
-          recordedAt: d.recordedAt,
-          oldScore: d.oldScore,
-          newScore: d.newScore,
-        })),
+      decisions: decisions(db, 'WHERE d.topicId = ? ORDER BY d.rowid DESC', topic.id).map((d) => ({
+        id: d.id,
+        date: d.date,
+        recordedAt: d.recordedAt,
+        oldScore: d.oldScore,
+        newScore: d.newScore,
+      })),
     };
   });
   app.get<{ Params: { id: string } }>('/api/topics/:id', (req) => {
-    assertMetadataVisible(s);
-    const topic = topicView(s, s.get<Topic>('topics', req.params.id)),
+    assertMetadataVisible(db);
+    const topic = topicView(db, getTopic(db, req.params.id)),
       q = z
         .object({
           evidence: z.string().optional(),
@@ -37,43 +32,37 @@ export function registerTopics(app: FastifyInstance, s: Store) {
         })
         .strict()
         .parse(req.query);
-    const ids = new Set(
-      s
-        .all<AttemptTopic>('attempt_topics')
-        .filter((l) => l.topicId === topic.id)
-        .map((l) => l.attemptId),
+    const where = ['a.id IN (SELECT attemptId FROM attempt_topics WHERE topicId = ?)'],
+      params = [topic.id];
+    for (const [column, value] of [
+      ['a.evidence', q.evidence],
+      ['a.help', q.help],
+      ['p.difficulty', q.difficulty],
+    ] as const)
+      if (value) {
+        where.push(`${column} = ?`);
+        params.push(value);
+      }
+    const practised = attempts(db, `WHERE ${where.join(' AND ')} ${NEWEST}`, ...params).map(
+      attemptView,
     );
-    const attempts = s
-      .all<AttemptRecord>('attempts')
-      .filter(
-        (a) =>
-          ids.has(a.id) &&
-          (!q.evidence || a.evidence === q.evidence) &&
-          (!q.help || a.help === q.help) &&
-          (!q.difficulty || a.problem.difficulty === q.difficulty),
-      )
-      .sort(newestAttempt)
-      .map(attemptView);
-    const problemIds = new Set(attempts.map((a) => a.problemId)),
-      known = attempts
+    const known = practised
         .filter((a) => a.outcome === 'solved' && a.activeSeconds !== null)
         .map((a) => a.activeSeconds!)
         .sort((a, b) => a - b),
-      mid = Math.floor(known.length / 2);
+      mid = Math.floor(known.length / 2),
+      problemIds = [...new Set(practised.map((a) => a.problemId))];
     return {
       topic,
-      decisions: s
-        .all<ScoreDecision>('score_decisions')
-        .filter((d) => d.topicId === topic.id)
-        .reverse()
-        .map(decisionView),
-      attempts,
-      problems: s
-        .all<Problem>('problems')
-        .filter((p) => problemIds.has(p.id))
-        .map((p) => problemView(s, p)),
+      decisions: decisions(db, 'WHERE d.topicId = ? ORDER BY d.rowid DESC', topic.id),
+      attempts: practised,
+      problems: problemViews(
+        db,
+        `WHERE p.id IN (${problemIds.map(() => '?').join(', ')})`,
+        ...problemIds,
+      ),
       stats: {
-        attemptCount: attempts.length,
+        attemptCount: practised.length,
         knownTimeCount: known.length,
         medianSeconds: known.length
           ? known.length % 2

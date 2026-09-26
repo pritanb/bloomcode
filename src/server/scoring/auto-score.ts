@@ -1,9 +1,11 @@
-import { randomUUID } from 'node:crypto';
-import type { Problem, ScoreDecision, Topic } from '../../shared/contracts.js';
+import type { ScoreDecision } from '../../shared/contracts.js';
 import type { AttemptRecord } from '../attempts/attempt-model.js';
-import { problemView } from '../catalogue/problem-model.js';
+import { getProblem, problemTags } from '../catalogue/problem-model.js';
 import { neetcodeCategory } from '../topics/neetcode-category.js';
-import type { Store } from '../db/store.js';
+import type { Db } from '../db/db.js';
+import { readSettings } from '../db/settings.js';
+import { topicRows } from '../topics/topic-model.js';
+import { recordDecision } from './review-model.js';
 
 // Conservative automatic movements applied when an attempt finishes.
 // Increases above 3 stay reserved for independent unseen solves, matching
@@ -32,27 +34,25 @@ function rationale(a: AttemptRecord): string {
         : 'stopped early';
   return `Auto: ${what} · ${a.evidence} evidence`;
 }
-export function applyAutoScore(s: Store, a: AttemptRecord, clock: () => Date): ScoreDecision[] {
-  if (s.get<{ id: string; autoScore?: boolean }>('settings', 'singleton').autoScore === false)
-    return [];
+export function applyAutoScore(db: Db, a: AttemptRecord, clock: () => Date): ScoreDecision[] {
+  if (readSettings(db).autoScore === false) return [];
   const delta = autoScoreDelta(a);
   if (!delta) return [];
   // Topics are the curriculum grouping (NeetCode's categories); tags are the
   // user's own labels for what a question involves. Scoring follows the
   // category so relabelling a question never moves a score. Questions outside
   // the verified lists fall back to a tag whose name IS a tracked topic.
-  const problem = s.get<Problem>('problems', a.problemId);
-  const category = neetcodeCategory(problem);
+  const category = neetcodeCategory(getProblem(db, a.problemId));
   const names = new Set<string>();
   if (category) names.add(category.toLowerCase());
   else
-    for (const t of problemView(s, problem).tags.filter((t) => !t.archived))
+    for (const t of problemTags(db, a.problemId).filter((t) => !t.archived))
       names.add(t.name.toLowerCase());
   const cap = a.evidence === 'unseen' && a.outcome === 'solved' && a.help === 'none' ? 5 : 3;
   const decisions: ScoreDecision[] = [];
-  for (const t of s
-    .all<Topic>('topics')
-    .filter((t) => t.score !== null && names.has(t.name.toLowerCase()))) {
+  for (const t of topicRows(db, 'WHERE score IS NOT NULL').filter((t) =>
+    names.has(t.name.toLowerCase()),
+  )) {
     // The cap withholds further increases; it must never pull an existing
     // higher score down, so a solve can only ever raise or leave a score.
     const next =
@@ -62,33 +62,14 @@ export function applyAutoScore(s: Store, a: AttemptRecord, clock: () => Date): S
           : Math.round(Math.min(cap, t.score! + delta) * 100) / 100
         : Math.round(Math.max(1, t.score! + delta) * 100) / 100;
     if (next === t.score) continue;
-    const decision: ScoreDecision = {
-      id: randomUUID(),
-      topicId: t.id,
-      topicName: t.name,
-      attemptId: a.id,
-      oldScore: t.score!,
-      newScore: next,
-      rationale: rationale(a),
-      evidence: a.evidence,
-      date: a.studyDate,
-      recordedAt: clock().toISOString(),
-    };
-    const previous = s
-      .all<ScoreDecision>('score_decisions')
-      .filter((x) => x.attemptId === a.id && x.topicId === t.id)
-      .at(-1);
-    s.put('score_decisions', { ...decision, supersedesId: previous?.id ?? null });
-    s.put('topics', {
-      ...t,
-      score: next,
-      version: t.version + 1,
-      lastReviewed: a.studyDate,
-      provisional: a.evidence !== 'unseen',
-      lastMovement: null,
-    });
-    s.put('attempt_topics', { id: `${a.id}:${t.id}`, attemptId: a.id, topicId: t.id });
-    decisions.push(decision);
+    decisions.push(
+      recordDecision(db, clock, a, t, {
+        newScore: next,
+        rationale: rationale(a),
+        evidence: a.evidence,
+        provisional: a.evidence !== 'unseen',
+      }),
+    );
   }
   return decisions;
 }

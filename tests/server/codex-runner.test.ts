@@ -3,8 +3,7 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../../src/server/core/app.js';
-import { openDb } from '../../src/server/db/db.js';
-import { Store } from '../../src/server/db/store.js';
+import { insert, openDb } from '../../src/server/db/db.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
 import { CodexError, findCodex, runCodex } from '../../src/server/tutor/codex.js';
 import { defaultTutorSettings } from '../../src/shared/tutor.js';
@@ -157,7 +156,7 @@ test('the Codex worker writes the immediate review before the learning report an
   );
   const dbPath = join(data, 'leetcode.sqlite');
   const seed = openDb(dbPath);
-  new Store(seed.sqlite).put('topics', {
+  insert(seed, 'topics', {
     id: 'arrays',
     name: 'Arrays',
     score: 2,
@@ -165,9 +164,8 @@ test('the Codex worker writes the immediate review before the learning report an
     notes: '',
     lastReviewed: null,
     provisional: true,
-    lastMovement: null,
   });
-  seed.sqlite.close();
+  seed.close();
   const app = await createApp({
     dbPath,
     embed: async (texts) =>

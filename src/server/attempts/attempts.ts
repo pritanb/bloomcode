@@ -3,21 +3,21 @@ import { idempotent } from '../db/idempotency.js';
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type { Problem, Settings } from '../../shared/contracts.js';
-import { bumpPlan, type ItemRecord, linkAttempt } from '../plans/plan-model.js';
-import { decisionView } from '../topics/topic-model.js';
-import type { ScoreDecision } from '../../shared/contracts.js';
-import { Store } from '../db/store.js';
+import { bumpPlan, getItem, linkAttempt } from '../plans/plan-model.js';
+import { decisions } from '../topics/topic-model.js';
+import { type Db, insert, maybe, run, transaction, update } from '../db/db.js';
+import { readSettings } from '../db/settings.js';
 import { ApiError, conflict } from '../db/errors.js';
+import { getProblem, hiddenAssessment } from '../catalogue/problem-model.js';
 import {
-  type AttemptRecord,
   version,
   studyDate,
   attemptView,
   reflectionSafeView,
   checkVersion,
+  getAttempt,
 } from './attempt-model.js';
-export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Date) {
+export function registerAttempts(app: FastifyInstance, db: Db, clock: () => Date) {
   app.post('/api/attempts', (req) => {
     const b = z
       .object({
@@ -28,101 +28,76 @@ export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Da
       })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      if (s.all<AttemptRecord>('attempts').some((a) => a.status !== 'completed'))
+    return transaction(db, () => {
+      if (maybe(db, "SELECT 1 FROM attempts WHERE status != 'completed'"))
         throw conflict('Finish the existing active attempt first');
-      const p = s.get<Problem>('problems', b.problemId),
+      const p = getProblem(db, b.problemId),
         now = clock().toISOString();
       // A curriculum assignment is known-topic practice, never unseen mixed evidence.
       if (
         b.context === 'mixed' &&
         b.planItemId &&
-        s.get<ItemRecord>('plan_items', b.planItemId).recommendationKind === 'topic'
+        getItem(db, b.planItemId).recommendationKind === 'topic'
       )
         b.context = 'targeted';
-      const a: AttemptRecord = {
-        id: randomUUID(),
+      const seen =
+        p.exposed ||
+        p.legacyCompleted ||
+        !!maybe(db, "SELECT 1 FROM attempts WHERE problemId = ? AND status = 'completed'", p.id);
+      const id = randomUUID();
+      insert(db, 'attempts', {
+        id,
         problemId: p.id,
-        problem: { id: p.id, title: p.title, url: p.url, difficulty: p.difficulty },
         planItemId: b.planItemId ?? null,
+        context: b.context,
         status: 'active',
         version: 1,
         language: b.language ?? 'python',
-        code: '',
-        notes: '',
         activeSeconds: 0,
         startedAt: now,
-        finishedAt: null,
-        studyDate: studyDate(
-          clock(),
-          s.get<Settings & { id: string }>('settings', 'singleton').timezone,
-        ),
+        studyDate: studyDate(clock(), readSettings(db).timezone),
         runningSince: now,
         lastHeartbeatAt: now,
-        needsGapDecision: false,
-        outcome: null,
         help: 'unknown',
         evidence:
-          p.exposed || p.legacyCompleted || p.attemptCount > 0 || b.context === 'review'
+          seen || b.context === 'review'
             ? 'retention'
             : b.context === 'mixed'
               ? 'unseen'
               : 'near_transfer',
-        confidence: null,
-        feedback: null,
-        reviewedAt: null,
-        nextReviewDate: null,
-        context: b.context,
-        gapSeconds: 0,
-      };
-      s.put('problems', { ...p, exposed: true });
-      s.put('attempts', a);
-      linkAttempt(s, a);
+      });
+      update(db, 'problems', p.id, { exposed: true });
+      const a = getAttempt(db, id);
+      linkAttempt(db, a);
       return attemptView(a);
     });
   });
   app.post<{ Params: { id: string } }>('/api/attempts/:id/cancel', (req) => {
     const b = z.object({ version }).strict().parse(req.body);
-    return idempotent(s, `cancel:${req.params.id}`, req.headers['idempotency-key'], b, () => {
-      const a = s.get<AttemptRecord>('attempts', req.params.id);
+    return idempotent(db, `cancel:${req.params.id}`, req.headers['idempotency-key'], b, () => {
+      const a = getAttempt(db, req.params.id);
       checkVersion(a, b.version);
       if (a.status === 'completed') throw conflict('Submitted attempts cannot be cancelled');
       if (a.planItemId) {
-        const item = s.get<ItemRecord>('plan_items', a.planItemId);
-        s.put('plan_items', { ...item, attemptId: null });
-        bumpPlan(s, item.planId);
+        const item = getItem(db, a.planItemId);
+        update(db, 'plan_items', item.id, { attemptId: null });
+        bumpPlan(db, item.planId);
       }
-      for (const table of ['answer_versions', 'attempt_topics'] as const)
-        for (const row of s.all<{ id: string; attemptId: string }>(table))
-          if (row.attemptId === a.id) s.remove(table, row.id);
-      s.remove('attempts', a.id);
-      s.put('audit_events', {
-        id: randomUUID(),
-        action: 'cancel_attempt',
-        attemptId: a.id,
-        problemId: a.problemId,
-        recordedAt: clock().toISOString(),
-      });
+      run(db, 'DELETE FROM attempt_topics WHERE attemptId = ?', a.id);
+      run(db, 'DELETE FROM attempts WHERE id = ?', a.id);
       return { cancelled: true };
     });
   });
   app.get<{ Params: { id: string } }>('/api/attempts/:id', (req) => {
-    const a = s.get<AttemptRecord>('attempts', req.params.id);
-    const hidden =
-      a.status === 'completed' &&
-      s
-        .all<AttemptRecord>('attempts')
-        .some((x) => x.context === 'mixed' && x.status !== 'completed');
+    const a = getAttempt(db, req.params.id);
+    const hidden = a.status === 'completed' && hiddenAssessment(db);
     const view = reflectionSafeView(a, hidden);
     if (hidden) return view;
-    const scoreDecisions = s
-      .all<ScoreDecision>('score_decisions')
-      .filter((d) => d.attemptId === a.id)
-      .map(decisionView);
+    const scoreDecisions = decisions(db, 'WHERE d.attemptId = ? ORDER BY d.rowid', a.id);
     return scoreDecisions.length ? { ...view, scoreDecisions } : view;
   });
   app.get<{ Params: { id: string } }>('/api/attempts/:id/context', (req) =>
-    attemptContext(s, req.params.id),
+    attemptContext(db, req.params.id),
   );
   app.patch<{ Params: { id: string } }>('/api/attempts/:id/draft', (req) => {
     const b = z
@@ -134,11 +109,12 @@ export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Da
       })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const a = s.get<AttemptRecord>('attempts', req.params.id);
+    return transaction(db, () => {
+      const a = getAttempt(db, req.params.id);
       checkVersion(a, b.version);
       if (a.status === 'completed') throw conflict('Completed answers are immutable');
-      return attemptView(s.put('attempts', { ...a, ...b, version: a.version + 1 }));
+      update(db, 'attempts', a.id, { ...b, version: a.version + 1 });
+      return attemptView(getAttempt(db, a.id));
     });
   });
   app.post<{ Params: { id: string } }>('/api/attempts/:id/timer', (req) => {
@@ -150,8 +126,8 @@ export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Da
       })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const a = s.get<AttemptRecord>('attempts', req.params.id);
+    return transaction(db, () => {
+      const a = getAttempt(db, req.params.id);
       checkVersion(a, b.version);
       if (a.status === 'completed') throw conflict('Attempt already completed');
       const now = clock().toISOString();
@@ -193,8 +169,18 @@ export function registerAttempts(app: FastifyInstance, s: Store, clock: () => Da
         a.status = 'paused';
         a.runningSince = null;
       }
-      a.version++;
-      return attemptView(s.put('attempts', a));
+      const { status, runningSince, needsGapDecision, gapSeconds, activeSeconds, lastHeartbeatAt } =
+        a;
+      update(db, 'attempts', a.id, {
+        status,
+        runningSince,
+        needsGapDecision,
+        gapSeconds,
+        activeSeconds,
+        lastHeartbeatAt,
+        version: a.version + 1,
+      });
+      return attemptView(getAttempt(db, a.id));
     });
   });
 }

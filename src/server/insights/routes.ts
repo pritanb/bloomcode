@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { z } from 'zod';
-import type { Store } from '../db/store.js';
+import type { Db } from '../db/db.js';
 import { assertMetadataVisible } from '../catalogue/problem-model.js';
 import { ApiError } from '../db/errors.js';
 import { LocalEmbeddings, type Embed } from './embeddings.js';
@@ -12,7 +12,7 @@ import type { TutorControl } from '../tutor/routes.js';
 /** The learning-insights and topic-analysis services, recovered after a restart. */
 export function createInsights(
   app: FastifyInstance,
-  s: Store,
+  db: Db,
   clock: () => Date,
   dbPath: string,
   embed?: Embed,
@@ -20,7 +20,7 @@ export function createInsights(
   const local = new LocalEmbeddings(
     join(dbPath === ':memory:' ? tmpdir() : dirname(dbPath), 'embedding-models'),
   );
-  const insights = new Insights(s, clock, embed ?? local.embed);
+  const insights = new Insights(db, clock, embed ?? local.embed);
   // Recover interrupted leases without touching saved study records.
   for (const job of insights.jobs())
     if (job.status === 'running')
@@ -34,13 +34,13 @@ export function createInsights(
     insights.stop();
     await local.close();
   });
-  const topics = new TopicAnalysis(s, clock);
+  const topics = new TopicAnalysis(db, clock);
   topics.recover();
   return { insights, topics };
 }
 export function registerInsights(
   app: FastifyInstance,
-  s: Store,
+  db: Db,
   insights: Insights,
   topics: TopicAnalysis,
   verifyBearer: (header: string | undefined) => boolean,
@@ -72,14 +72,14 @@ export function registerInsights(
     return topics.retry();
   });
   app.post('/api/insights/enable', (req) => {
-    assertMetadataVisible(s);
+    assertMetadataVisible(db);
     const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(req.body);
     insights.put({ id: 'state', kind: 'state', enabled });
     insights.reconcile();
     return status();
   });
   app.post('/api/insights/retry', (req) => {
-    assertMetadataVisible(s);
+    assertMetadataVisible(db);
     z.object({}).strict().parse(req.body);
     for (const job of insights.jobs())
       if (job.status === 'failed')

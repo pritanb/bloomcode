@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { readTables } from '../tables.js';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -544,15 +545,13 @@ it('builds a stable budgeted day, resumes work across midnight and transitions a
   ).toBe('2026-09-25');
 });
 
-it('exports all durable data without secrets and produces a complete private SQLite backup', async () => {
+it('keeps imported source rows and produces a complete private SQLite backup', async () => {
   await request('POST', '/api/import', imported());
-  const snapshotResponse = await request('GET', '/api/export');
-  expect(snapshotResponse.statusCode).toBe(200);
-  const snapshot = snapshotResponse.json();
-  expect(snapshot.schemaVersion).toBe(4);
-  expect(snapshot.tables.import_records[0].raw).toEqual({ unknown: '2:xx', formula: '=A1' });
-  expect(snapshot.tables).not.toHaveProperty('idempotency');
-  expect(JSON.stringify(snapshot)).not.toContain('test-token');
+  const tables = readTables(app.tutorJobs.db);
+  expect(JSON.parse(tables.import_records![0]!.raw as string)).toEqual({
+    unknown: '2:xx',
+    formula: '=A1',
+  });
   const backup = await request('POST', '/api/backup', {});
   expect(backup.statusCode).toBe(200);
   expect(backup.json().path.startsWith(join(dir, 'backups') + '/')).toBe(true);
@@ -563,9 +562,7 @@ it('exports all durable data without secrets and produces a complete private SQL
   });
   try {
     // Restoring is opening the backup file as the database: nothing may be lost.
-    expect((await recovered.inject({ url: '/api/export', headers })).json().tables).toEqual(
-      snapshot.tables,
-    );
+    expect(readTables(recovered.tutorJobs.db)).toEqual(tables);
   } finally {
     await recovered.close();
   }
@@ -632,7 +629,7 @@ it('rolls back every earlier score write when a later decision is stale', async 
       { 'idempotency-key': 'atomic-finish' },
     )
   ).json();
-  const before = (await request('GET', '/api/export')).json().tables;
+  const before = readTables(app.tutorJobs.db);
   const response = await request(
     'POST',
     `/api/attempts/${a.id}/reviews`,
@@ -651,7 +648,7 @@ it('rolls back every earlier score write when a later decision is stale', async 
     { 'idempotency-key': 'atomic-review' },
   );
   expect(response.statusCode).toBe(409);
-  expect((await request('GET', '/api/export')).json().tables).toEqual(before);
+  expect(readTables(app.tutorJobs.db)).toEqual(before);
 });
 
 describe('loopback authentication', () => {

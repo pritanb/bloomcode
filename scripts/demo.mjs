@@ -3,7 +3,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openDb } from '../src/server/db/db.ts';
-import { Store } from '../src/server/db/store.ts';
 import { seedInsightDemo } from '../src/server/insights/demo.ts';
 import { createApp } from '../src/server/core/app.ts';
 
@@ -94,9 +93,9 @@ try {
   }
   const demoDb = openDb(join(directory, 'demo.sqlite'));
   try {
-    seedInsightDemo(new Store(demoDb.sqlite));
+    seedInsightDemo(demoDb);
   } finally {
-    demoDb.sqlite.close();
+    demoDb.close();
   }
   seedTime = undefined;
   await call('POST', '/api/daily-plan/ensure', {});

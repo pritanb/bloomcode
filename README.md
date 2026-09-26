@@ -2,7 +2,7 @@
 
 A local-first app for learning data structures and algorithms through LeetCode practice. BloomCode combines spaced repetition with optional AI feedback on your solutions and recurring difficulties across attempts.
 
-**Electron · TypeScript · React · Fastify · SQLite / Drizzle · MCP**
+**Electron · TypeScript · React · Fastify · SQLite · MCP**
 
 [Get started](#get-started) · [Try the demo](#try-the-demo) · [Engineering](#engineering) · [Why BloomCode?](#why-bloomcode)
 
@@ -81,7 +81,7 @@ Data is stored outside the repository:
 
 Existing macOS databases in `LeetcodeTutor-dev` keep their location. Copy [.env.example](.env.example) to `.env` to choose a different data directory or port. The app and integrations must use matching settings.
 
-Export your records from Settings, or run `npm run backup` while the app is running. Keep credentials, exports and backups private. See [Operations](docs/operations.md) before updating or restoring.
+The app backs up once a day at startup; run `npm run backup` while it is running for an extra copy. Keep credentials, exports and backups private. See [Operations](docs/operations.md) before updating or restoring.
 
 ## Documentation
 

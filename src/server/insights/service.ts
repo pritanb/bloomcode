@@ -1,8 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Store } from '../db/store.js';
-import type { AttemptRecord } from '../attempts/attempt-model.js';
-import { newestAttempt } from '../attempts/attempt-model.js';
-import type { Problem, Tag } from '../../shared/contracts.js';
+import { type Db, many, maybe, transaction } from '../db/db.js';
+import { type AttemptRecord, attempts, getAttempt, NEWEST } from '../attempts/attempt-model.js';
+import { learningRecord, learningRecords, putLearningRecord } from './records.js';
 import {
   ANALYSIS_VERSION,
   REPORT_VERSION,
@@ -20,9 +19,11 @@ import {
 import {
   assertMetadataVisible,
   discloseProblem,
-  type TagLink,
+  hiddenAssessment,
+  problemView,
+  type TagRow,
 } from '../catalogue/problem-model.js';
-import { conflict, ApiError } from '../db/errors.js';
+import { conflict, ApiError, missing } from '../db/errors.js';
 import { keywordScore, rank } from './retrieval.js';
 import type { Embed } from './embeddings.js';
 export const hash = (value: unknown) =>
@@ -77,24 +78,21 @@ export class Insights {
   private refreshing: Promise<void> | undefined;
   private again = false;
   constructor(
-    readonly s: Store,
+    readonly db: Db,
     readonly clock: () => Date,
     readonly embed: Embed,
   ) {}
   records() {
-    return this.s.all<LearningRecord>('learning_insights');
+    return learningRecords<LearningRecord>(this.db);
   }
   put<T extends LearningRecord>(record: T): T {
-    return this.s.put('learning_insights', record);
+    return putLearningRecord(this.db, record);
   }
   enabled() {
     return this.records().some((r) => r.kind === 'state' && r.enabled);
   }
   attempts() {
-    return this.s
-      .all<AttemptRecord>('attempts')
-      .filter((a) => a.status === 'completed')
-      .sort(newestAttempt);
+    return attempts(this.db, `WHERE a.status = 'completed' ${NEWEST}`);
   }
   jobs() {
     return this.records().filter((r): r is InsightJob => r.kind === 'job');
@@ -140,35 +138,32 @@ export class Insights {
     };
   }
   catalogue() {
-    const tags = new Map(
-      this.s
-        .all<Tag & { patternNotes?: string; recognitionCues?: string; pitfalls?: string }>('tags')
-        .filter((t) => !t.archived)
-        .map((t) => [t.id, t]),
+    const patterns = new Map<string, TagRow[]>();
+    for (const t of many<TagRow & { problemId: string }>(
+      this.db,
+      'SELECT t.*, pt.problemId FROM problem_tags pt JOIN tags t ON t.id = pt.tagId WHERE NOT t.archived ORDER BY pt.rowid',
+    ))
+      patterns.set(t.problemId, [...(patterns.get(t.problemId) ?? []), t]);
+    return many<{
+      id: string;
+      title: string;
+      difficulty: string | null;
+      leetcodeTopics: string | null;
+    }>(this.db, 'SELECT id, title, difficulty, leetcodeTopics FROM problems ORDER BY rowid').map(
+      (p) => ({
+        id: p.id,
+        title: p.title,
+        difficulty: p.difficulty,
+        topics: p.leetcodeTopics ? (JSON.parse(p.leetcodeTopics) as string[]) : [],
+        patterns: (patterns.get(p.id) ?? []).map((t) => ({
+          name: t.name,
+          description: t.description,
+          notes: t.patternNotes.slice(0, 1200),
+          recognitionCues: t.recognitionCues.slice(0, 600),
+          pitfalls: t.pitfalls.slice(0, 600),
+        })),
+      }),
     );
-    const links = this.s.all<TagLink>('problem_tags');
-    return this.s.all<Problem>('problems').map((p) => ({
-      id: p.id,
-      title: p.title,
-      difficulty: p.difficulty,
-      topics: p.leetcodeTopics ?? [],
-      patterns: links
-        .filter((l) => l.problemId === p.id)
-        .flatMap((l) => {
-          const t = tags.get(l.tagId);
-          return t
-            ? [
-                {
-                  name: t.name,
-                  description: t.description,
-                  notes: (t.patternNotes ?? '').slice(0, 1200),
-                  recognitionCues: (t.recognitionCues ?? '').slice(0, 600),
-                  pitfalls: (t.pitfalls ?? '').slice(0, 600),
-                },
-              ]
-            : [];
-        }),
-    }));
   }
 
   corpusFingerprint() {
@@ -214,27 +209,31 @@ export class Insights {
       this.reconcile();
       const wasReady = this.embeddingStatus === 'ready';
       const rows = this.observations();
-      const missing = rows
+      const unembedded = rows
         .filter(
           (r) =>
-            !this.s.sql
-              .prepare('SELECT id FROM insight_embeddings WHERE id=? AND fingerprint=? AND model=?')
-              .get(r.id, r.fingerprint, modelKey),
+            !maybe(
+              this.db,
+              'SELECT id FROM insight_embeddings WHERE id = ? AND fingerprint = ? AND model = ?',
+              r.id,
+              r.fingerprint,
+              modelKey,
+            ),
         )
         .slice(0, 16);
-      if (wasReady && !missing.length) return false;
+      if (wasReady && !unembedded.length) return false;
       this.embeddingStatus = 'loading';
       // An empty warm-up downloads/loads the model even before tutor observations exist.
-      const vectors = await this.embed(missing.map((r) => r.summary));
+      const vectors = await this.embed(unembedded.map((r) => r.summary));
       if (this.stopped) return false;
       if (
-        vectors.length !== missing.length ||
+        vectors.length !== unembedded.length ||
         vectors.some((v) => v.length !== 384 || v.some((n) => !Number.isFinite(n)))
       )
         throw Error('Embedding model returned invalid vectors');
-      this.s.transaction(() =>
-        missing.forEach((r, i) =>
-          this.s.sql
+      transaction(this.db, () =>
+        unembedded.forEach((r, i) =>
+          this.db
             .prepare(
               'INSERT OR REPLACE INTO insight_embeddings (id,fingerprint,model,vector) VALUES (?,?,?,?)',
             )
@@ -244,7 +243,7 @@ export class Insights {
       this.embeddingStatus = 'ready';
       this.error = null;
       this.onEmbeddingsReady();
-      return missing.length > 0;
+      return unembedded.length > 0;
     } catch (error) {
       if (!this.stopped) {
         this.embeddingStatus = 'failed';
@@ -260,19 +259,19 @@ export class Insights {
   }
   vectors() {
     return new Map(
-      (
-        this.s.sql
-          .prepare('SELECT id,vector FROM insight_embeddings WHERE model=?')
-          .all(modelKey) as { id: string; vector: string }[]
+      many<{ id: string; vector: string }>(
+        this.db,
+        'SELECT id, vector FROM insight_embeddings WHERE model = ?',
+        modelKey,
       ).map((r) => [r.id, JSON.parse(r.vector) as number[]]),
     );
   }
   async retrieval(query: string, limit = 12) {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     const rows = this.observations(),
       vectors = this.vectors();
     const [vector] = await this.embed([query]);
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     return rank(
       query,
       vector,
@@ -355,7 +354,7 @@ export class Insights {
     };
   }
   claim() {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     if (!this.enabled()) return null;
     this.reconcile();
     const reportJob = this.jobs().find((j) => j.id === 'report-job');
@@ -407,7 +406,7 @@ export class Insights {
     return { job, context };
   }
   extractionContext(attemptId: string) {
-    const a = this.s.get<AttemptRecord>('attempts', attemptId);
+    const a = getAttempt(this.db, attemptId);
     // Explicit limits prevent a large imported answer from overflowing the tutor.
     return {
       attemptId: a.id,
@@ -425,24 +424,25 @@ export class Insights {
     };
   }
   currentJob(id: string, claimId: string) {
-    assertMetadataVisible(this.s);
-    const job = this.s.get<InsightJob>('learning_insights', id);
+    assertMetadataVisible(this.db);
+    const job = learningRecord<InsightJob>(this.db, id);
+    if (!job) throw missing();
     if (job.kind !== 'job' || job.claimId !== claimId || !this.enabled())
       throw conflict('This analysis claim is no longer current');
     const fp = job.attemptId
-      ? fingerprint(this.s.get<AttemptRecord>('attempts', job.attemptId))
+      ? fingerprint(getAttempt(this.db, job.attemptId))
       : this.corpusFingerprint();
     if (job.fingerprint !== fp) throw conflict('Evidence changed; request a new analysis');
     if (!['running', 'done'].includes(job.status)) throw conflict('Analysis is not running');
     return job;
   }
   complete(id: string, claimId: string, result: unknown, model: string | null) {
-    return this.s.transaction(() => {
+    return transaction(this.db, () => {
       const job = this.currentJob(id, claimId);
       if (job.status === 'done') return { ok: true };
       if (job.attemptId) {
         const data = extractionResult.parse(result),
-          a = this.s.get<AttemptRecord>('attempts', job.attemptId),
+          a = getAttempt(this.db, job.attemptId),
           fields = source(a),
           context = this.extractionContext(a.id);
         for (const o of data.observations) {
@@ -569,7 +569,7 @@ export class Insights {
       });
   }
   dismiss(id: string, reason: string) {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     const o = this.observations().find((o) => o.id === id);
     if (!o) throw conflict('Observation is already dismissed or outdated');
     this.put({
@@ -585,9 +585,7 @@ export class Insights {
     });
   }
   status(discloseSuggestions = true): Omit<InsightStatus, 'tutorConnected'> {
-    const hidden = this.s
-      .all<AttemptRecord>('attempts')
-      .some((a) => a.context === 'mixed' && a.status !== 'completed');
+    const hidden = hiddenAssessment(this.db);
     const jobs = this.jobs(),
       coverage = this.coverage(),
       report = this.latestReport(),
@@ -633,20 +631,20 @@ export class Insights {
         }
       : null;
     const referenced = new Set(visible?.findings.flatMap((f) => f.evidenceIds) ?? []);
-    const topicTags = new Map(
-      this.s
-        .all<Tag>('tags')
-        .filter((t) => (t.kind === 'topic' || t.kind === undefined) && !t.archived)
-        .map((t) => [t.id, t.name]),
-    );
-    const topicLinks = this.s.all<TagLink>('problem_tags');
+    const topicTags = new Map<string, string[]>();
+    for (const t of many<{ problemId: string; name: string }>(
+      this.db,
+      "SELECT pt.problemId, t.name FROM problem_tags pt JOIN tags t ON t.id = pt.tagId WHERE t.kind = 'topic' AND NOT t.archived ORDER BY pt.rowid",
+    ))
+      topicTags.set(t.problemId, [...(topicTags.get(t.problemId) ?? []), t.name]);
     const problemTopics = new Map(
-      this.s.all<Problem>('problems').map((p) => {
+      many<{ id: string; leetcodeTopics: string | null }>(
+        this.db,
+        'SELECT id, leetcodeTopics FROM problems',
+      ).map((p) => {
         const names = [
-          ...(p.leetcodeTopics ?? []),
-          ...topicLinks
-            .filter((l) => l.problemId === p.id)
-            .flatMap((l) => (topicTags.has(l.tagId) ? [topicTags.get(l.tagId)!] : [])),
+          ...(p.leetcodeTopics ? (JSON.parse(p.leetcodeTopics) as string[]) : []),
+          ...(topicTags.get(p.id) ?? []),
         ];
         return [
           p.id,
@@ -665,9 +663,8 @@ export class Insights {
               visible?.findings.flatMap((f) => f.suggestions.map((q) => q.problemId)) ?? [],
             ),
           ].flatMap((id) => {
-            const p = this.s.all<Problem>('problems').find((p) => p.id === id);
-            if (!p) return [];
-            discloseProblem(this.s, p, this.clock);
+            if (!maybe(this.db, 'SELECT 1 FROM problems WHERE id = ?', id)) return [];
+            const p = discloseProblem(this.db, problemView(this.db, id));
             return [{ id: p.id, title: p.title }];
           });
     return {

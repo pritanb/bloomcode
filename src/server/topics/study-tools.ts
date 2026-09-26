@@ -5,27 +5,30 @@ import {
   type ActivityDay,
   type PatternDetail,
   type PatternSummary,
-  type Problem,
-  type Settings,
-  type ScoreDecision,
   type WeeklyRecap,
 } from '../../shared/contracts.js';
-import { Store } from '../db/store.js';
-import { assertMetadataVisible, discloseProblem, date } from '../catalogue/problem-model.js';
+import { type Db, many, one, transaction, update } from '../db/db.js';
+import { readSettings } from '../db/settings.js';
 import {
+  assertMetadataVisible,
+  discloseProblem,
+  date,
+  hiddenAssessment,
+  problemViews,
+  type TagRow,
+} from '../catalogue/problem-model.js';
+import {
+  attempts,
   attemptView,
   checkVersion,
-  newestAttempt,
+  getAttempt,
+  NEWEST,
   studyDate,
   version,
-  type AttemptRecord,
 } from '../attempts/attempt-model.js';
 import { addDays } from '../attempts/review-schedule.js';
 import { conflict } from '../db/errors.js';
-import type { TagLink } from '../catalogue/problem-model.js';
-import type { Tag } from '../../shared/contracts.js';
-import { decisionView } from './topic-model.js';
-import type { ItemRecord } from '../plans/plan-model.js';
+import { decisions, NEWEST_DECISION } from './topic-model.js';
 
 const reflectionFields = {
   mistakeLabels: z
@@ -34,71 +37,83 @@ const reflectionFields = {
     .refine((v) => new Set(v).size === v.length, 'Duplicate mistake label'),
   takeaway: z.string().max(2000),
 };
-function patternNotebook(tag: Record<string, unknown>) {
+function patternNotebook(tag: TagRow) {
   return {
-    id: String(tag.id),
-    title: String(tag.name),
-    description: String(tag.description ?? ''),
-    archived: Boolean(tag.archived),
-    recognitionCues: String(tag.recognitionCues ?? ''),
-    pitfalls: String(tag.pitfalls ?? ''),
-    notes: String(tag.patternNotes ?? ''),
-    version: Number(tag.notebookVersion ?? 1),
-    updatedAt: tag.notebookUpdatedAt ? String(tag.notebookUpdatedAt) : null,
+    id: tag.id,
+    title: tag.name,
+    description: tag.description,
+    archived: !!tag.archived,
+    recognitionCues: tag.recognitionCues,
+    pitfalls: tag.pitfalls,
+    notes: tag.patternNotes,
+    version: tag.notebookVersion,
+    updatedAt: tag.notebookUpdatedAt,
   };
 }
-export function activityDays(s: Store, end: string): ActivityDay[] {
-  const counts = new Map<string, number>();
-  for (const attempt of s.all<AttemptRecord>('attempts'))
-    if (attempt.status === 'completed')
-      counts.set(attempt.studyDate, (counts.get(attempt.studyDate) ?? 0) + 1);
+const getTag = (db: Db, id: string) => one<TagRow>(db, 'SELECT * FROM tags WHERE id = ?', id);
+export function activityDays(db: Db, end: string): ActivityDay[] {
+  const counts = new Map(
+    many<{ studyDate: string; n: number }>(
+      db,
+      "SELECT studyDate, count(*) AS n FROM attempts WHERE status = 'completed' GROUP BY studyDate",
+    ).map((r) => [r.studyDate, r.n]),
+  );
   return Array.from({ length: 28 }, (_, i) => {
     const date = addDays(end, i - 27);
     return { date, completedAttempts: counts.get(date) ?? 0 };
   });
 }
-function patternDetail(s: Store, tag: Tag, clock: () => Date): PatternDetail {
-  const examples = s
-    .all<TagLink>('problem_tags')
-    .filter((link) => link.tagId === tag.id)
-    .map((link) => {
-      const { id, title, url, difficulty } = discloseProblem(
-        s,
-        s.get<Problem>('problems', link.problemId),
-        clock,
-      );
-      return { id, title, url, difficulty };
-    });
-  return { ...patternNotebook({ ...tag }), examples };
+function patternDetail(db: Db, tag: TagRow): PatternDetail {
+  // In the order the problems were tagged.
+  const tagged = many<{ problemId: string }>(
+    db,
+    'SELECT problemId FROM problem_tags WHERE tagId = ? ORDER BY rowid',
+    tag.id,
+  );
+  const views = new Map(
+    problemViews(
+      db,
+      'WHERE p.id IN (SELECT problemId FROM problem_tags WHERE tagId = ?)',
+      tag.id,
+    ).map((p) => [p.id, p]),
+  );
+  const examples = tagged.map(({ problemId }) => {
+    const { id, title, url, difficulty } = discloseProblem(db, views.get(problemId)!);
+    return { id, title, url, difficulty };
+  });
+  return { ...patternNotebook(tag), examples };
 }
-export function registerStudyTools(app: FastifyInstance, s: Store, clock: () => Date) {
+export function registerStudyTools(app: FastifyInstance, db: Db, clock: () => Date) {
   app.patch<{ Params: { id: string } }>('/api/attempts/:id/reflection', (req) => {
-    assertMetadataVisible(s);
+    assertMetadataVisible(db);
     const body = z
       .object({ version, ...reflectionFields })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const attempt = s.get<AttemptRecord>('attempts', req.params.id);
+    return transaction(db, () => {
+      const attempt = getAttempt(db, req.params.id);
       checkVersion(attempt, body.version);
       if (attempt.status !== 'completed')
         throw conflict('Finish the attempt before adding a reflection');
-      return attemptView(s.put('attempts', { ...attempt, ...body, version: attempt.version + 1 }));
+      update(db, 'attempts', attempt.id, { ...body, version: attempt.version + 1 });
+      return attemptView(getAttempt(db, attempt.id));
     });
   });
   app.get('/api/mistakes', (req) => {
-    assertMetadataVisible(s);
+    assertMetadataVisible(db);
     const query = z
       .object({ q: z.string().max(300).optional(), label: z.enum(MISTAKE_LABELS).optional() })
       .strict()
       .parse(req.query);
     const q = query.q?.toLocaleLowerCase().trim();
-    return s
-      .all<AttemptRecord>('attempts')
+    return attempts(
+      db,
+      `WHERE a.status = 'completed'
+         AND (json_array_length(coalesce(a.mistakeLabels, '[]')) > 0 OR trim(coalesce(a.takeaway, '')) != '')
+       ${NEWEST}`,
+    )
       .filter(
         (a) =>
-          a.status === 'completed' &&
-          ((a.mistakeLabels?.length ?? 0) > 0 || !!a.takeaway?.trim()) &&
           (!query.label || a.mistakeLabels?.includes(query.label)) &&
           (!q ||
             [a.problem.title, a.takeaway ?? '', ...(a.mistakeLabels ?? [])]
@@ -106,18 +121,16 @@ export function registerStudyTools(app: FastifyInstance, s: Store, clock: () => 
               .toLocaleLowerCase()
               .includes(q)),
       )
-      .sort(newestAttempt)
       .map((a) => attemptView(a));
   });
   app.get('/api/patterns', (req) => {
-    assertMetadataVisible(s);
+    assertMetadataVisible(db);
     const { q } = z
       .object({ q: z.string().max(300).optional() })
       .strict()
       .parse(req.query);
-    return s
-      .all<Tag>('tags')
-      .map((tag) => patternNotebook({ ...tag }))
+    return many<TagRow>(db, 'SELECT * FROM tags ORDER BY rowid')
+      .map(patternNotebook)
       .filter(
         (p) =>
           !q?.trim() ||
@@ -136,11 +149,11 @@ export function registerStudyTools(app: FastifyInstance, s: Store, clock: () => 
       }));
   });
   app.get<{ Params: { id: string } }>('/api/patterns/:id', (req) => {
-    assertMetadataVisible(s);
-    return s.transaction(() => patternDetail(s, s.get<Tag>('tags', req.params.id), clock));
+    assertMetadataVisible(db);
+    return transaction(db, () => patternDetail(db, getTag(db, req.params.id)));
   });
   app.patch<{ Params: { id: string } }>('/api/patterns/:id', (req) => {
-    assertMetadataVisible(s);
+    assertMetadataVisible(db);
     const body = z
       .object({
         version,
@@ -150,64 +163,64 @@ export function registerStudyTools(app: FastifyInstance, s: Store, clock: () => 
       })
       .strict()
       .parse(req.body);
-    return s.transaction(() => {
-      const tag = s.get<Tag>('tags', req.params.id);
-      checkVersion({ version: tag.notebookVersion ?? 1 }, body.version);
-      return patternDetail(
-        s,
-        s.put('tags', {
-          ...tag,
-          recognitionCues: body.recognitionCues,
-          pitfalls: body.pitfalls,
-          patternNotes: body.notes,
-          notebookVersion: body.version + 1,
-          notebookUpdatedAt: clock().toISOString(),
-        }),
-        clock,
-      );
+    return transaction(db, () => {
+      const tag = getTag(db, req.params.id);
+      checkVersion({ version: tag.notebookVersion }, body.version);
+      update(db, 'tags', tag.id, {
+        recognitionCues: body.recognitionCues,
+        pitfalls: body.pitfalls,
+        patternNotes: body.notes,
+        notebookVersion: body.version + 1,
+        notebookUpdatedAt: clock().toISOString(),
+      });
+      return patternDetail(db, getTag(db, tag.id));
     });
   });
   app.get('/api/recap', (req) => {
-    const detailsHidden = s
-      .all<AttemptRecord>('attempts')
-      .some((a) => a.context === 'mixed' && a.status !== 'completed');
+    const detailsHidden = hiddenAssessment(db);
     const query = z.object({ week: date.optional() }).strict().parse(req.query);
-    const settings = s.get<Settings & { id: string }>('settings', 'singleton');
+    const settings = readSettings(db);
     const day = query.week ?? studyDate(clock(), settings.timezone);
     const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
     const weekStart = addDays(day, -((weekday + 6) % 7)),
       weekEnd = addDays(weekStart, 6);
-    const items = new Map(s.all<ItemRecord>('plan_items').map((item) => [item.id, item]));
-    const attempts = s
-      .all<AttemptRecord>('attempts')
-      .filter((a) => a.status === 'completed' && a.studyDate >= weekStart && a.studyDate <= weekEnd)
-      .sort(newestAttempt)
-      .map((a) => ({
-        id: a.id,
-        problemId: a.problemId,
-        problem: a.problem,
-        studyDate: a.studyDate,
-        outcome: a.outcome,
-        help: a.help,
-        activeSeconds: a.activeSeconds,
-        evidence: a.evidence,
-        scheduledReview: !!a.planItemId && items.get(a.planItemId)?.reason === 'Scheduled review',
-      }));
-    const movements = s
-      .all<ScoreDecision>('score_decisions')
-      .filter((d) => d.date >= weekStart && d.date <= weekEnd && d.oldScore !== d.newScore)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt))
-      .map(decisionView);
+    const scheduled = new Set(
+      many<{ id: string }>(db, "SELECT id FROM plan_items WHERE reason = 'Scheduled review'").map(
+        (i) => i.id,
+      ),
+    );
+    const week = attempts(
+      db,
+      `WHERE a.status = 'completed' AND a.studyDate BETWEEN ? AND ? ${NEWEST}`,
+      weekStart,
+      weekEnd,
+    ).map((a) => ({
+      id: a.id,
+      problemId: a.problemId,
+      problem: a.problem,
+      studyDate: a.studyDate,
+      outcome: a.outcome,
+      help: a.help,
+      activeSeconds: a.activeSeconds,
+      evidence: a.evidence,
+      scheduledReview: !!a.planItemId && scheduled.has(a.planItemId),
+    }));
+    const movements = decisions(
+      db,
+      `WHERE d.date BETWEEN ? AND ? AND d.oldScore != d.newScore ${NEWEST_DECISION}, d.rowid`,
+      weekStart,
+      weekEnd,
+    );
     return {
       weekStart,
       weekEnd,
       timezone: settings.timezone,
-      distinctQuestions: new Set(attempts.map((a) => a.problemId)).size,
-      completedAttempts: attempts.length,
-      independentSolves: attempts.filter((a) => a.outcome === 'solved' && a.help === 'none').length,
-      scheduledReviews: attempts.filter((a) => a.scheduledReview).length,
+      distinctQuestions: new Set(week.map((a) => a.problemId)).size,
+      completedAttempts: week.length,
+      independentSolves: week.filter((a) => a.outcome === 'solved' && a.help === 'none').length,
+      scheduledReviews: week.filter((a) => a.scheduledReview).length,
       detailsHidden,
-      attempts: detailsHidden ? [] : attempts,
+      attempts: detailsHidden ? [] : week,
       movements: detailsHidden ? [] : movements,
     } satisfies WeeklyRecap;
   });

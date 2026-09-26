@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Store } from '../db/store.js';
-import type { Topic, ScoreDecision } from '../../shared/contracts.js';
-import type { AttemptRecord } from '../attempts/attempt-model.js';
-import { assertMetadataVisible } from '../catalogue/problem-model.js';
+import { type Db, many, transaction } from '../db/db.js';
+import { learningRecords, putLearningRecord } from '../insights/records.js';
+import type { ScoreDecision } from '../../shared/contracts.js';
+import { attempts } from '../attempts/attempt-model.js';
+import { assertMetadataVisible, hiddenAssessment } from '../catalogue/problem-model.js';
+import { decisions, topicRows } from './topic-model.js';
 import { conflict, ApiError } from '../db/errors.js';
 import {
   topicReason,
@@ -14,17 +16,16 @@ import { z } from 'zod';
 
 export class TopicAnalysis {
   constructor(
-    private s: Store,
+    private db: Db,
     private clock: () => Date,
   ) {}
   topics() {
-    return this.s
-      .all<Topic>('topics')
+    return topicRows(this.db)
       .map(({ id, name, score, provisional, lastReviewed }) => ({
         id,
         name,
         score,
-        provisional,
+        provisional: !!provisional,
         lastReviewed,
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -33,11 +34,16 @@ export class TopicAnalysis {
     const cutoff = new Date(this.clock().getTime() - 28 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
-    const attempts = this.s
-      .all<AttemptRecord>('attempts')
-      .filter((a) => a.status === 'completed' && a.studyDate >= cutoff);
-    const links = this.s.all<{ id: string; attemptId: string; topicId: string }>('attempt_topics');
-    const movements = this.s.all<ScoreDecision>('score_decisions');
+    const recent = attempts(
+      this.db,
+      "WHERE a.status = 'completed' AND a.studyDate >= ? ORDER BY a.rowid",
+      cutoff,
+    );
+    const links = many<{ attemptId: string; topicId: string }>(
+      this.db,
+      'SELECT attemptId, topicId FROM attempt_topics ORDER BY rowid',
+    );
+    const movements: ScoreDecision[] = decisions(this.db, 'ORDER BY d.rowid');
     return this.topics().map((topic) => {
       const ids = new Set(links.filter((l) => l.topicId === topic.id).map((l) => l.attemptId));
       movements
@@ -45,7 +51,7 @@ export class TopicAnalysis {
         .forEach((m) => ids.add(m.attemptId!));
       return {
         ...topic,
-        recentAttempts: attempts
+        recentAttempts: recent
           .filter((a) => ids.has(a.id))
           .sort((a, b) => b.studyDate.localeCompare(a.studyDate))
           .slice(0, 20)
@@ -81,9 +87,7 @@ export class TopicAnalysis {
   }
   record(): TopicAnalysisRecord {
     return (
-      this.s
-        .all<TopicAnalysisRecord>('learning_insights')
-        .find((r) => r.kind === 'topic_analysis') ?? {
+      learningRecords<TopicAnalysisRecord>(this.db, 'topic_analysis')[0] ?? {
         id: 'topic-analysis',
         kind: 'topic_analysis',
         enabled: false,
@@ -97,16 +101,16 @@ export class TopicAnalysis {
     );
   }
   put(r: TopicAnalysisRecord) {
-    return this.s.put('learning_insights', r);
+    return putLearningRecord(this.db, r);
   }
   enable(enabled: boolean) {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     const r = this.record();
     this.put({ ...r, enabled, claimId: null, status: enabled ? 'pending' : 'idle' });
     return this.status();
   }
   retry() {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     const r = this.record();
     this.put({ ...r, enabled: true, status: 'pending', claimId: null, error: null });
     return this.status();
@@ -116,7 +120,7 @@ export class TopicAnalysis {
     if (r.status === 'running') this.put({ ...r, status: 'pending', claimId: null, claimedAt: 0 });
   }
   claim() {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     const r = this.record(),
       fingerprint = this.fingerprint();
     // Runs only when the learner asks (Generate or Refresh), never on a schedule.
@@ -133,14 +137,14 @@ export class TopicAnalysis {
     return { job, topics: this.context() };
   }
   current(claimId: string) {
-    assertMetadataVisible(this.s);
+    assertMetadataVisible(this.db);
     const r = this.record();
     if (!r.enabled || r.claimId !== claimId || !['running', 'done'].includes(r.status))
       throw conflict('Topic analysis changed; request fresh work');
     return r;
   }
   complete(claimId: string, input: unknown, reasonsInput?: unknown) {
-    return this.s.transaction(() => {
+    return transaction(this.db, () => {
       const r = this.current(claimId);
       if (r.status === 'done') return { ok: true };
       const topicIds = z.array(z.string()).max(3).parse(input),
@@ -182,9 +186,7 @@ export class TopicAnalysis {
   }
   status(): TopicAnalysisStatus {
     const r = this.record();
-    const hidden = this.s
-      .all<AttemptRecord>('attempts')
-      .some((a) => a.context === 'mixed' && a.status !== 'completed');
+    const hidden = hiddenAssessment(this.db);
     const status = !r.enabled ? 'idle' : this.expired(r) ? 'pending' : r.status;
     return {
       enabled: r.enabled,

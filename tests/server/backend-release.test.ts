@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { readTables } from '../tables.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -63,14 +64,14 @@ it('refills the same untouched empty generated day after its first question arri
   expect(filled.version).toBeGreaterThan(empty.version);
   expect(filled.items[0]).toMatchObject({ problemId: p.id, status: 'active', attemptId: null });
   expect((await request('POST', '/api/daily-plan/ensure', {})).json()).toEqual(filled);
-  expect((await request('GET', '/api/export')).json().tables.attempts).toEqual([]);
+  expect(readTables(app.tutorJobs.db).attempts).toEqual([]);
 });
 
 it('records actual catalogue disclosure durably and rejects unseen 3-to-4 scoring', async () => {
   expect((await request('POST', '/api/import', batch())).statusCode).toBe(200);
-  const initial = (await request('GET', '/api/export')).json().tables;
+  const initial = readTables(app.tutorJobs.db);
   const p = initial.problems[0];
-  expect(p.exposed).toBe(false); // Ingestion is not disclosure.
+  expect(p.exposed).toBe(0); // Ingestion is not disclosure.
   const tag = initial.tags[0];
   const revealed = (await request('GET', `/api/problems?tags=${tag.id}`)).json().items[0];
   expect(revealed.tags[0].name).toBe('Arrays');
@@ -104,17 +105,15 @@ it('records actual catalogue disclosure durably and rejects unseen 3-to-4 scorin
     { 'idempotency-key': 'review' },
   );
   expect(review.statusCode).toBe(400);
-  const tables = (await request('GET', '/api/export')).json().tables;
+  const tables = readTables(app.tutorJobs.db);
   expect(tables.topics[0].score).toBe(3);
   expect(tables.score_decisions).toHaveLength(0);
-  expect(tables.audit_events).toContainEqual(
-    expect.objectContaining({ action: 'disclose_problem', problemId: p.id }),
-  );
+  expect(tables.problems[0].exposed).toBe(1);
 });
 
 it('blocks active and paused mixed metadata routes without exposing tags, notes or lists', async () => {
   await request('POST', '/api/import', batch());
-  const tables = (await request('GET', '/api/export')).json().tables;
+  const tables = readTables(app.tutorJobs.db);
   const p = tables.problems[0];
   const a = (await request('POST', '/api/attempts', { problemId: p.id, context: 'mixed' })).json();
   expect(a.evidence).toBe('unseen');

@@ -51,10 +51,7 @@ function ScheduledReview({ review }: { review: ReviewTarget }) {
         <p className="small muted">
           Changing this date keeps any question already assigned to your current plan.
         </p>
-        <ReviewEditor
-          key={`${review.id}-${review.version}`}
-          review={{ ...review, constraint: null }}
-        />
+        <ReviewEditor key={`${review.id}-${review.version}`} review={review} />
       </Disclosure>
     </div>
   );

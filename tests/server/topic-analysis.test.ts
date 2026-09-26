@@ -1,32 +1,28 @@
 import { expect, it } from 'vitest';
-import { openDb } from '../../src/server/db/db.js';
-import { Store } from '../../src/server/db/store.js';
+import { insert, one, openDb, run } from '../../src/server/db/db.js';
 import { TopicAnalysis } from '../../src/server/topics/topic-analysis.js';
 import { Insights } from '../../src/server/insights/service.js';
 import { learningRecordSchema } from '../../src/shared/insights.js';
-import type { Topic } from '../../src/shared/contracts.js';
 
 it('generates topics without attempts, embeddings or Learning Insights, preserving scores and refreshing only on request', () => {
   const db = openDb(':memory:'),
-    s = new Store(db.sqlite),
     clock = () => new Date(now);
   let now = Date.parse('2026-09-25T00:00:00Z');
-  const topics = new TopicAnalysis(s, clock),
-    learning = new Insights(s, clock, async () => {
+  const topics = new TopicAnalysis(db, clock),
+    learning = new Insights(db, clock, async () => {
       throw Error('Topic analysis must not need embeddings');
     });
   try {
-    const topic: Topic = {
+    const topic = {
       id: 'arrays',
       name: 'Arrays',
       score: 2,
       version: 1,
       notes: '',
       lastReviewed: null,
-      provisional: true,
-      lastMovement: null,
+      provisional: 1,
     };
-    s.put('topics', topic);
+    insert(db, 'topics', topic);
     const originalLearningFingerprint = learning.corpusFingerprint();
     topics.enable(true);
     expect(learning.enabled()).toBe(false);
@@ -41,7 +37,7 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
       status: 'done',
       report: { topicIds: [priority], reasons: ['Arrays is 2/5, below the 4/5 target.'] },
     });
-    expect(s.get('topics', 'arrays')).toEqual(topic);
+    expect(one(db, "SELECT * FROM topics WHERE id = 'arrays'")).toEqual(topic);
     expect(learning.latestReport()).toBeNull();
     learning.put({ id: 'state', kind: 'state', enabled: true });
     learning.put({
@@ -60,7 +56,7 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
       questionIds: [],
     });
     expect(topics.status().status).toBe('done');
-    s.put('topics', { ...topic, score: 3 });
+    run(db, "UPDATE topics SET score = 3 WHERE id = 'arrays'");
     expect(learning.corpusFingerprint()).toBe(originalLearningFingerprint);
     expect(topics.status()).toMatchObject({ status: 'done' });
     expect(topics.claim()).toBeNull();
@@ -82,38 +78,46 @@ it('generates topics without attempts, embeddings or Learning Insights, preservi
     expect(topics.claim()!.job.claimId).not.toBe(running.job.claimId);
   } finally {
     learning.stop();
-    db.sqlite.close();
+    db.close();
   }
 });
 
 it('includes recent completed attempts and their score movements without changing saved evidence', () => {
-  const db = openDb(':memory:'),
-    s = new Store(db.sqlite);
+  const db = openDb(':memory:');
   try {
-    s.put('topics', {
+    insert(db, 'topics', {
       id: 'graphs',
       name: 'Graphs',
       score: 2,
+      version: 1,
       provisional: false,
-      lastReviewed: null,
     });
-    s.put('problems', { id: 'p' });
+    insert(db, 'problems', {
+      id: 'p',
+      slug: 'p',
+      title: 'P',
+      url: 'https://leetcode.com/problems/p/',
+      difficulty: 'Medium',
+    });
     const attempt = {
-      id: 'a',
       problemId: 'p',
-      problem: { difficulty: 'Medium' },
       status: 'completed',
       context: 'targeted',
+      version: 1,
+      language: 'python',
+      startedAt: '2026-09-24T00:00:00Z',
       studyDate: '2026-09-24',
       outcome: 'not_solved',
       help: 'small',
-      evidence: 'needed a hint',
+      evidence: 'near_transfer',
       confidence: 2,
       activeSeconds: 900,
     };
-    s.put('attempts', attempt);
-    s.put('attempt_topics', { id: 'link', topicId: 'graphs', attemptId: 'a' });
-    s.put('score_decisions', {
+    insert(db, 'attempts', { ...attempt, id: 'a' });
+    insert(db, 'attempts', { ...attempt, id: 'old', studyDate: '2026-07-01' });
+    for (const attemptId of ['a', 'old'])
+      run(db, "INSERT INTO attempt_topics (attemptId, topicId) VALUES (?, 'graphs')", attemptId);
+    insert(db, 'score_decisions', {
       id: 'movement',
       topicId: 'graphs',
       attemptId: 'a',
@@ -121,18 +125,21 @@ it('includes recent completed attempts and their score movements without changin
       recordedAt: '2026-09-24T12:00:00Z',
       oldScore: 3,
       newScore: 2,
+      rationale: '',
+      evidence: 'near_transfer',
     });
-    s.put('attempts', { ...attempt, id: 'old', studyDate: '2026-07-01' });
-    s.put('attempt_topics', { id: 'old-link', topicId: 'graphs', attemptId: 'old' });
-    const analysis = new TopicAnalysis(s, () => new Date('2026-09-25T00:00:00Z'));
+    const saved = one(db, "SELECT * FROM attempts WHERE id = 'a'");
+    const analysis = new TopicAnalysis(db, () => new Date('2026-09-25T00:00:00Z'));
     analysis.enable(true);
     expect(analysis.claim()!.topics[0]).toMatchObject({
       id: 'graphs',
-      recentAttempts: [{ outcome: 'not_solved', help: 'small', date: '2026-09-24' }],
+      recentAttempts: [
+        { outcome: 'not_solved', help: 'small', date: '2026-09-24', difficulty: 'Medium' },
+      ],
       scoreMovements: [{ oldScore: 3, newScore: 2, attemptId: 'a' }],
     });
-    expect(s.get('attempts', 'a')).toEqual(attempt);
+    expect(one(db, "SELECT * FROM attempts WHERE id = 'a'")).toEqual(saved);
   } finally {
-    db.sqlite.close();
+    db.close();
   }
 });

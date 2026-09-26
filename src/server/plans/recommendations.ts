@@ -1,4 +1,4 @@
-import type { Problem, Settings } from '../../shared/contracts.js';
+import type { Problem } from '../../shared/contracts.js';
 import {
   defaultRecommendations,
   type RecommendationOptions,
@@ -6,9 +6,9 @@ import {
 } from '../../shared/recommendations.js';
 import manifest from '../../integrations/manifests/neetcode250.json';
 import { listProjection } from '../catalogue/list-projection.js';
-import { problemView } from '../catalogue/problem-model.js';
-import type { AttemptRecord } from '../attempts/attempt-model.js';
-import type { Store } from '../db/store.js';
+import { problemViews } from '../catalogue/problem-model.js';
+import { type Db, many } from '../db/db.js';
+import { readSettings } from '../db/settings.js';
 
 // Source row order, not an invented popularity or difficulty ranking.
 const sourceTopics = [...new Set(manifest.problems.map((row) => row.pattern))];
@@ -19,31 +19,28 @@ const sourceRows = new Map(
   ]),
 );
 export function recommendationContext(
-  s: Store,
-  config = s.get<Settings & { id: string }>('settings', 'singleton').recommendations ??
-    defaultRecommendations,
+  db: Db,
+  config = readSettings(db).recommendations ?? defaultRecommendations,
 ) {
-  const projection = listProjection(s);
-  const lists = projection.lists;
+  const lists = listProjection(db).lists;
   const solved = new Set(
-    s
-      .all<AttemptRecord>('attempts')
-      .filter((a) => a.status === 'completed' && a.outcome === 'solved')
-      .map((a) => a.problemId),
+    many<{ problemId: string }>(
+      db,
+      "SELECT problemId FROM attempts WHERE status = 'completed' AND outcome = 'solved'",
+    ).map((a) => a.problemId),
   );
   const complete = (p: Problem) =>
     p.legacyCompleted || p.lastOutcome === 'solved' || solved.has(p.id);
-  const pool = s
-    .all<Problem>('problems')
-    .map((p) => problemView(s, p, projection))
-    .filter((p) => !config.listId || p.lists.some((l) => l.id === config.listId));
+  const pool = problemViews(db).filter(
+    (p) => !config.listId || p.lists.some((l) => l.id === config.listId),
+  );
   const verifiedOrder = lists.some(
     (l) => l.id === config.listId && ['NeetCode 250', 'NeetCode 150', 'Blind 75'].includes(l.name),
   );
   const topic = (p: Problem) =>
     (verifiedOrder ? sourceRows.get(p.slug)?.topic : undefined) ??
     p.tags
-      .filter((t) => !t.archived && t.kind !== 'pattern')
+      .filter((t) => !t.archived && t.kind === 'topic')
       .map((t) => t.name)
       .sort()[0] ??
     'Uncategorized';
@@ -82,12 +79,12 @@ export function recommendationContext(
   };
 }
 export function configuredCandidates(
-  s: Store,
+  db: Db,
   ranked: Problem[],
   slots: number,
   retainedRefreshers = 0,
 ) {
-  const ctx = recommendationContext(s),
+  const ctx = recommendationContext(db),
     { config } = ctx;
   const ids = new Set(ctx.pool.map((p) => p.id));
   const eligible = ranked.filter((p) => ids.has(p.id));
@@ -127,10 +124,10 @@ export function configuredCandidates(
   const chosenRefreshers = refreshers.slice(0, Math.min(limit, refresherCapacity));
   return [...fresh.slice(0, slots - chosenRefreshers.length), ...chosenRefreshers];
 }
-export function recommendationReason(s: Store, p: Problem, day: string) {
-  const ctx = recommendationContext(s),
+export function recommendationReason(db: Db, p: Problem, day: string) {
+  const ctx = recommendationContext(db),
     config: RecommendationSettings = ctx.config;
-  if (!s.get<Settings & { id: string }>('settings', 'singleton').recommendations)
+  if (!readSettings(db).recommendations)
     return p.nextReviewDate && p.nextReviewDate <= day ? 'Scheduled review' : 'Balanced practice';
   const source = config.listId
     ? (ctx.options.lists.find((l) => l.id === config.listId)?.name ?? 'Unavailable list')

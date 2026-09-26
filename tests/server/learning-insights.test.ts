@@ -7,10 +7,10 @@ import type { ApiError } from '../../src/server/db/errors.js';
 import { createApp } from '../../src/server/core/app.js';
 import type { Attempt } from '../../src/shared/contracts.js';
 import { Insights } from '../../src/server/insights/service.js';
-import { Store } from '../../src/server/db/store.js';
-import { openDb } from '../../src/server/db/db.js';
+import { insert, openDb, run } from '../../src/server/db/db.js';
+import { learningRecords } from '../../src/server/insights/records.js';
+import { readTables } from '../tables.js';
 import { addProblem } from '../../src/server/catalogue/problem-model.js';
-import type { AttemptRecord } from '../../src/server/attempts/attempt-model.js';
 import type { ObservationInput } from '../../src/shared/insights.js';
 const embed = async (texts: string[]) =>
   texts.map(() => Array.from({ length: 384 }, (_, i) => (i === 0 ? 1 : 0)));
@@ -70,7 +70,7 @@ const complete = (work: { job: { id: string; claimId: string | null } }, result:
 };
 it('validates evidence, deduplicates completed jobs, rejects stale claims and preserves study records', async () => {
   const a = await completed();
-  const before = (await call('GET', '/api/export')).json();
+  const before = readTables(app.tutorJobs.db);
   await call('POST', '/api/insights/enable', { enabled: true });
   const work = claim()!;
   expect(extraction(work).attemptId).toBe(a.id);
@@ -89,10 +89,8 @@ it('validates evidence, deduplicates completed jobs, rejects stale claims and pr
   ).toBe(400);
   expect(complete(work, { observations: [observation], limitation: '' })).toBe(200);
   expect(complete(work, { observations: [observation], limitation: '' })).toBe(200);
-  const exported = (await call('GET', '/api/export')).json();
-  expect(
-    exported.tables.learning_insights.filter((r: { kind: string }) => r.kind === 'observation'),
-  ).toHaveLength(1);
+  expect(learningRecords(app.tutorJobs.db, 'observation')).toHaveLength(1);
+  const after = readTables(app.tutorJobs.db);
   for (const table of [
     'attempts',
     'score_decisions',
@@ -100,7 +98,7 @@ it('validates evidence, deduplicates completed jobs, rejects stale claims and pr
     'daily_plans',
     'plan_items',
   ])
-    expect(exported.tables[table]).toEqual(before.tables[table]);
+    expect(after[table]).toEqual(before[table]);
   await call('PATCH', `/api/attempts/${a.id}/reflection`, {
     version: a.version,
     mistakeLabels: [],
@@ -120,8 +118,7 @@ it('keeps corrections and hands a running job out again after a restart', async 
   await call('POST', '/api/insights/enable', { enabled: true });
   const work = claim()!;
   complete(work, { observations: [observation], limitation: '' });
-  const first = (await call('GET', '/api/export')).json();
-  const o = first.tables.learning_insights.find((r: { kind: string }) => r.kind === 'observation');
+  const [o] = learningRecords<{ id: string }>(app.tutorJobs.db, 'observation');
   expect(
     (
       await call('POST', `/api/insights/observations/${o.id}/dismiss`, {
@@ -142,11 +139,7 @@ it('keeps corrections and hands a running job out again after a restart', async 
   expect(recovered.job.claimId).not.toBe(pending.job.claimId);
   expect(extraction(recovered).corrections[0].reason).toContain('hypothetical');
   complete(recovered, { observations: [observation], limitation: '' });
-  expect(
-    (await call('GET', '/api/export'))
-      .json()
-      .tables.learning_insights.filter((r: { kind: string }) => r.kind === 'observation'),
-  ).toHaveLength(1);
+  expect(learningRecords(app.tutorJobs.db, 'observation')).toHaveLength(1);
   rmSync(dir, { recursive: true, force: true });
 });
 it('protects mixed assessment data and requires bearer authentication for evidence search', async () => {
@@ -210,55 +203,26 @@ it('recovers expired claims and retries failures without dropping pending attemp
 });
 it('validates cross-problem recurrence, citations and suggestions; dismissal removes stale findings', async () => {
   const db = openDb(':memory:'),
-    s = new Store(db.sqlite),
     clock = () => new Date('2026-09-24T00:00:00Z');
-  const service = new Insights(s, clock, embed);
+  const service = new Insights(db, clock, embed);
   try {
+    insert(db, 'tags', { id: 'topic-tag', name: 'Binary Search', kind: 'topic' });
+    insert(db, 'tags', { id: 'legacy-topic', name: 'Stack', kind: 'topic' });
+    insert(db, 'tags', { id: 'pattern-tag', name: 'Hidden pattern', kind: 'pattern' });
     for (const id of ['one', 'two']) {
-      const p = addProblem(s, {
+      const p = addProblem(db, {
         title: id,
         url: `https://leetcode.com/problems/${id}/`,
         leetcodeTopics: ['Array', 'array'],
       });
-      s.put('tags', {
-        id: 'topic-tag',
-        name: 'Binary Search',
-        description: '',
-        kind: 'topic',
-        archived: false,
-      });
-      s.put('tags', { id: 'legacy-topic', name: 'Stack', description: '', archived: false });
-      s.put('problem_tags', {
-        id: `${id}-legacy`,
-        problemId: p.id,
-        tagId: 'legacy-topic',
-        difficulty: null,
-      });
-      s.put('tags', {
-        id: 'pattern-tag',
-        name: 'Hidden pattern',
-        description: '',
-        kind: 'pattern',
-        archived: false,
-      });
-      s.put('problem_tags', {
-        id: `${id}-topic`,
-        problemId: p.id,
-        tagId: 'topic-tag',
-        difficulty: null,
-      });
-      s.put('problem_tags', {
-        id: `${id}-pattern`,
-        problemId: p.id,
-        tagId: 'pattern-tag',
-        difficulty: null,
-      });
-      s.put('attempts', {
+      for (const tagId of ['legacy-topic', 'topic-tag', 'pattern-tag'])
+        run(db, 'INSERT INTO problem_tags (problemId, tagId) VALUES (?, ?)', p.id, tagId);
+      insert(db, 'attempts', {
         id,
         problemId: p.id,
-        problem: p,
+        context: 'review',
         status: 'completed',
-        code: '',
+        version: 1,
         notes: observation.excerpt,
         language: 'python',
         takeaway: '',
@@ -267,11 +231,11 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
         help: 'none',
         confidence: 3,
         evidence: 'retention',
+        startedAt: '2026-09-20T00:00:00Z',
         studyDate: '2026-09-20',
         finishedAt: '2026-09-20T00:00:00Z',
-        feedback: null,
         activeSeconds: 60,
-      } as unknown as AttemptRecord);
+      });
     }
     service.put({ id: 'state', kind: 'state', enabled: true });
     for (let i = 0; i < 2; i++) {
@@ -359,7 +323,7 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
     expect(service.status().report?.findings).toHaveLength(0);
   } finally {
     service.stop();
-    db.sqlite.close();
+    db.close();
   }
 });
 

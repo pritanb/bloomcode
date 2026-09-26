@@ -2,14 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
-import type { Settings } from '../../shared/contracts.js';
 import { mapVerifiedLists, PINNED_REVISION } from '../../integrations/lists.js';
 import { defaultRecommendations } from '../../shared/recommendations.js';
-import { durableTables } from '../db/db.js';
+import { type Db, insert, maybe, transaction } from '../db/db.js';
+import { readSettings, writeSettings } from '../db/settings.js';
 import { conflict } from '../db/errors.js';
 import { applyImport, importSchema } from './import.js';
 import { repoRoot } from '../paths.js';
-import type { Store } from '../db/store.js';
 
 const input = z
   .object({
@@ -26,18 +25,24 @@ const input = z
   })
   .strict();
 
-export function registerSetup(app: FastifyInstance, store: Store, clock: () => Date, demo = false) {
-  const settings = () => store.all<Settings & { id: string }>('settings')[0]!;
-  const empty = () =>
-    durableTables
-      .filter((table) => table !== 'settings')
-      .every((table) => !store.sql.prepare(`SELECT 1 FROM "${table}" LIMIT 1`).get());
+const studyTables = [
+  'problems',
+  'tags',
+  'lists',
+  'attempts',
+  'topics',
+  'daily_plans',
+  'import_batches',
+  'learning_insights',
+];
+export function registerSetup(app: FastifyInstance, db: Db, clock: () => Date, demo = false) {
+  const empty = () => studyTables.every((table) => !maybe(db, `SELECT 1 FROM ${table} LIMIT 1`));
   // Missing flags belong to older installations. Never send them through setup.
-  const required = () => settings().onboardingComplete === false && empty();
+  const required = () => readSettings(db).onboardingComplete === false && empty();
   app.get('/api/setup', () => ({ required: required(), ...(demo ? { demo: true } : {}) }));
   app.post('/api/setup', (req) => {
     const body = input.parse(req.body);
-    return store.transaction(() => {
+    return transaction(db, () => {
       if (!required())
         throw conflict(
           'Setup is only available for a new, empty workspace. Use Settings to make changes.',
@@ -51,7 +56,7 @@ export function registerSetup(app: FastifyInstance, store: Store, clock: () => D
         const mapped = mapVerifiedLists(raw, PINNED_REVISION, '2026-09-16T00:00:00Z');
         const selected = mapped.lists.find((list) => list.name === body.list)!;
         listId = randomUUID();
-        store.put('lists', {
+        insert(db, 'lists', {
           id: listId,
           name: selected.name,
           sourceUrl: selected.sourceUrl,
@@ -66,20 +71,16 @@ export function registerSetup(app: FastifyInstance, store: Store, clock: () => D
             .map((problem) => ({ ...problem, lists: [body.list] })),
           records: [],
         });
-        const report = applyImport(store, payload, clock);
+        const report = applyImport(db, payload, clock);
         if (report.unresolved.length || report.counts.problems !== selected.count)
           throw new Error('Starter list did not import completely');
       }
-      const updated: Settings = {
-        ...settings(),
+      writeSettings(db, {
         timezone: body.timezone,
         questionsPerDay: body.questionsPerDay,
         onboardingComplete: true,
         recommendations: { ...defaultRecommendations, listId, completed: 'exclude' },
-      };
-      store.sql
-        .prepare('UPDATE settings SET data = ? WHERE id = ?')
-        .run(JSON.stringify(updated), 'singleton');
+      });
       return { required: false };
     });
   });

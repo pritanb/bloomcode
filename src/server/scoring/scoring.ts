@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { Store } from '../db/store.js';
+import type { Db } from '../db/db.js';
 import { date } from '../catalogue/problem-model.js';
 import { version } from '../attempts/attempt-model.js';
 import { idempotent } from '../db/idempotency.js';
 import { score } from '../catalogue/import.js';
 import { saveReview } from './review-model.js';
-export function registerScoring(app: FastifyInstance, s: Store, clock: () => Date) {
+export function registerScoring(app: FastifyInstance, db: Db, clock: () => Date) {
   app.post<{ Params: { id: string } }>('/api/attempts/:id/reviews', (req) => {
     const b = z
       .object({
@@ -35,8 +35,8 @@ export function registerScoring(app: FastifyInstance, s: Store, clock: () => Dat
       })
       .strict()
       .parse(req.body);
-    return idempotent(s, `review:${req.params.id}`, req.headers['idempotency-key'], b, () =>
-      saveReview(s, clock, req.params.id, b),
+    return idempotent(db, `review:${req.params.id}`, req.headers['idempotency-key'], b, () =>
+      saveReview(db, clock, req.params.id, b),
     );
   });
 }

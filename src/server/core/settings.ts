@@ -2,10 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { recommendationSchema } from '../../shared/recommendations.js';
 import { recommendationContext } from '../plans/recommendations.js';
-import type { Db } from './storage.js';
-import { settings } from '../db/schema.js';
+import { type Db, maybe } from '../db/db.js';
 import { ApiError } from '../db/errors.js';
-import { Store } from '../db/store.js';
+import { readSettings, writeSettings } from '../db/settings.js';
 
 const validTimezone = (v: string) => {
   try {
@@ -28,33 +27,25 @@ const settingsUpdate = z
   })
   .strict();
 
-const readSettings = (db: Db) => db.orm.select().from(settings).get()!.data;
-
 /** The local app's study day follows the computer's timezone. */
 export function syncSystemTimezone(db: Db) {
   const system = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const current = db.orm.select().from(settings).get();
-  if (system && current && current.data.timezone !== system)
-    db.orm
-      .update(settings)
-      .set({ data: { ...current.data, timezone: system } })
-      .run();
+  if (system && readSettings(db).timezone !== system) writeSettings(db, { timezone: system });
 }
 
-export function registerSettings(app: FastifyInstance, db: Db, store: Store) {
+export function registerSettings(app: FastifyInstance, db: Db) {
   app.get('/api/settings', () => readSettings(db));
   app.patch('/api/settings', (req) => {
     const update = settingsUpdate.parse(req.body);
     const rec = update.recommendations;
-    if (rec?.listId && !store.all<{ id: string }>('lists').some((l) => l.id === rec.listId))
+    if (rec?.listId && !maybe(db, 'SELECT 1 FROM lists WHERE id = ?', rec.listId))
       throw new ApiError(400, 'VALIDATION', 'Choose an available list');
     if (
       rec?.startTopic &&
-      !recommendationContext(store, rec).options.topics.some((t) => t.name === rec.startTopic)
+      !recommendationContext(db, rec).options.topics.some((t) => t.name === rec.startTopic)
     )
       throw new ApiError(400, 'VALIDATION', 'Choose an available starting topic for this list');
-    const data = { ...readSettings(db), ...update };
-    db.orm.update(settings).set({ data }).run();
-    return data;
+    writeSettings(db, update);
+    return readSettings(db);
   });
 }

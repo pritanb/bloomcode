@@ -115,7 +115,6 @@ export interface ReviewTarget {
   id: string;
   problemId: string;
   problemTitle: string;
-  constraint: string | null;
   recommendedDate: string | null;
   effectiveDate: string | null;
   action: 'recommended' | 'manual' | 'snooze' | 'none';
@@ -125,7 +124,7 @@ export interface ReviewTarget {
 export interface PlanItem {
   recommendationKind?: 'topic' | 'refresher' | 'balanced';
   id: string;
-  problemId: string | null;
+  problemId: string;
   title: string;
   url: string | null;
   status: 'active' | 'queued' | 'optional' | 'completed' | 'skipped';
@@ -173,11 +172,6 @@ export interface TopicDetail {
   attempts: Attempt[];
   problems: Problem[];
   stats: { attemptCount: number; knownTimeCount: number; medianSeconds: number | null };
-}
-export interface Snapshot {
-  schemaVersion: 1 | 2 | 3 | 4;
-  exportedAt: string;
-  tables: Record<string, Record<string, unknown>[]>;
 }
 export interface ImportProblem {
   key: string;
