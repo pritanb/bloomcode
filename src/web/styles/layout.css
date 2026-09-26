@@ -509,9 +509,6 @@ small,
   padding: 0.25rem 0.75rem;
   max-width: 100%;
 }
-.tag-choice input[type='number'] {
-  width: 108px;
-}
 .library-toolbar {
   display: flex;
   align-items: center;

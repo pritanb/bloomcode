@@ -199,9 +199,7 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       return l.id;
     });
     const oldTags = s
-        .all<{ id: string; problemId: string; tagId: string; difficulty: number | null }>(
-          'problem_tags',
-        )
+        .all<{ id: string; problemId: string; tagId: string }>('problem_tags')
         .filter((t) => t.problemId === p.id),
       oldLists = s
         .all<{ id: string; problemId: string; listId: string }>('list_memberships')

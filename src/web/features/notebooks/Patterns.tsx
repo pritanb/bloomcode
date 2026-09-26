@@ -443,13 +443,8 @@ function PatternEditor({
         {initial.examples.length ? (
           <ul className="movement-list notebook-example-list">
             {initial.examples.map((problem) => (
-              <li key={problem.id} className="row between">
+              <li key={problem.id}>
                 <Link to={`/library/${problem.id}`}>{problem.title}</Link>
-                <span className="small muted">
-                  {problem.patternDifficulty === null
-                    ? 'Pattern difficulty not set'
-                    : `Pattern difficulty ${problem.patternDifficulty}/10`}
-                </span>
               </li>
             ))}
           </ul>

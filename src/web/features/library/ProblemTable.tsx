@@ -21,7 +21,6 @@ const problemHeaders = [
 ] as const;
 const problemSortKeys: Record<string, string> = {
   Question: 'title',
-  Tags: 'tagDifficulty',
   Difficulty: 'difficulty',
   'Latest submission': 'lastAttempt',
   'LeetCode time': 'solveTime',
@@ -53,7 +52,6 @@ export function ProblemTable({
               onSort: (header) => onSort(problemSortKeys[header]),
               labels: {
                 Question: 'question title',
-                Tags: 'tag difficulty',
                 Difficulty: 'difficulty',
                 'Latest submission': 'last attempt',
                 'LeetCode time': 'solve time',
@@ -80,13 +78,10 @@ export function ProblemTable({
                   variant="secondary"
                   key={t.id}
                   style={tagColour(t)}
-                  title={`${t.name}${t.difficulty !== null ? ` ${t.difficulty}/10` : ''}`}
+                  title={t.name}
                   className="tag-colour chip library-tag"
                 >
-                  <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>
-                    {t.name}
-                    {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
-                  </Link>
+                  <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>{t.name}</Link>
                 </Badge>
               ))}
             </div>

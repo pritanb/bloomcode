@@ -240,10 +240,6 @@
 .theme-v2 .notebook-example-list a:hover {
   color: var(--brand-text);
 }
-.theme-v2 .notebook-example-list .small {
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-}
 .theme-v2 .notebook-examples > [data-slot='button'] {
   align-self: flex-start;
 }

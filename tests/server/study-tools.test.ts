@@ -140,18 +140,18 @@ it('keeps notebook notes on pattern tags, derives assigned questions, and keeps 
   ).json();
   const question = await request('PATCH', `/api/problems/${p.id}`, {
     leetcodeTopics: ['Binary Search'],
-    tags: [{ tagId: tag.id, difficulty: 6 }],
+    tags: [{ tagId: tag.id }],
   });
   expect(question.json()).toMatchObject({
     leetcodeTopics: ['Binary Search'],
-    tags: [{ id: tag.id, difficulty: 6 }],
+    tags: [{ id: tag.id }],
   });
   const before = (await request('GET', '/api/export')).json<Snapshot>();
   expect((await request('GET', `/api/patterns/${tag.id}`)).json()).toMatchObject({
     id: tag.id,
     title: tag.name,
     version: 1,
-    examples: [{ id: p.id, patternDifficulty: 6 }],
+    examples: [{ id: p.id }],
   });
   const notes = {
     recognitionCues: 'Monotonic feasibility check',
@@ -264,10 +264,7 @@ it('gives every tag a notebook regardless of former classification', async () =>
     await request('POST', '/api/tags', { name: 'Binary Search on Answer Space' })
   ).json();
   await request('PATCH', `/api/problems/${p.id}`, {
-    tags: [
-      { tagId: broad.id, difficulty: 4 },
-      { tagId: technique.id, difficulty: 7 },
-    ],
+    tags: [{ tagId: broad.id }, { tagId: technique.id }],
   });
   await request('PATCH', `/api/patterns/${broad.id}`, {
     version: 1,
@@ -296,7 +293,7 @@ it('gives every tag a notebook regardless of former classification', async () =>
   ]);
   expect((await request('GET', `/api/patterns/${broad.id}`)).json()).toMatchObject({
     notes: 'Saved before correction',
-    examples: [{ id: p.id, patternDifficulty: 4 }],
+    examples: [{ id: p.id }],
   });
   expect(
     (
@@ -323,6 +320,6 @@ it('gives every tag a notebook regardless of former classification', async () =>
   await request('PATCH', `/api/tags/${broad.id}`, { kind: 'pattern' });
   expect((await request('GET', `/api/patterns/${broad.id}`)).json()).toMatchObject({
     notes: 'Saved before correction',
-    examples: [{ id: p.id, patternDifficulty: 4 }],
+    examples: [{ id: p.id }],
   });
 });

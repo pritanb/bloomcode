@@ -141,10 +141,7 @@ export function ProblemDetail() {
                         style={tagColour(t)}
                         className="tag-colour chip"
                       >
-                        <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>
-                          {t.name}
-                          {t.difficulty !== null ? ` ${t.difficulty}/10` : ''}
-                        </Link>
+                        <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>{t.name}</Link>
                       </Badge>
                     ))}
                     {!p.tags.length && <p className="small muted">No tags assigned.</p>}

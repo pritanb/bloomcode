@@ -19,7 +19,6 @@ export interface TagLink {
   id: string;
   problemId: string;
   tagId: string;
-  difficulty: number | null;
 }
 export function tagView(tag: Tag): Tag {
   const { id, name, description, archived, hue } = tag;
@@ -60,14 +59,14 @@ export function problemView(s: Store, p: Problem, projection = listProjection(s)
     tags: s
       .all<TagLink>('problem_tags')
       .filter((r) => r.problemId === p.id)
-      .map((r) => ({ ...tagView(s.get<Tag>('tags', r.tagId)), difficulty: r.difficulty })),
+      .map((r) => tagView(s.get<Tag>('tags', r.tagId))),
     lists: projection.forProblem(p),
   };
 }
 export function assignLinks(
   s: Store,
   id: string,
-  body: { tags?: { tagId: string; difficulty?: number | null }[]; listIds?: string[] },
+  body: { tags?: { tagId: string }[]; listIds?: string[] },
   display = false,
 ) {
   if (body.tags) {
@@ -79,7 +78,6 @@ export function assignLinks(
         id: `${id}:${t.tagId}`,
         problemId: id,
         tagId: t.tagId,
-        difficulty: t.difficulty ?? null,
       });
   }
   if (body.listIds) {

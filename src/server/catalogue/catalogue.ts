@@ -5,7 +5,7 @@ import type { Problem, Tag, ProblemList } from '../../shared/contracts.js';
 import { newestAttempt, attemptView, type AttemptRecord } from '../attempts/attempt-model.js';
 import type { ReviewTarget } from '../../shared/contracts.js';
 import { Store } from '../db/store.js';
-import { conflict, ApiError } from '../db/errors.js';
+import { conflict } from '../db/errors.js';
 import { listProjection } from './list-projection.js';
 import {
   name,
@@ -27,14 +27,7 @@ const links = {
     ])
     .optional(),
   tags: z
-    .array(
-      z
-        .object({
-          tagId: z.string(),
-          difficulty: z.number().int().min(1).max(10).nullable().optional(),
-        })
-        .strict(),
-    )
+    .array(z.object({ tagId: z.string() }).strict())
     .max(100)
     .optional(),
   listIds: z.array(z.string()).max(100).optional(),
@@ -181,22 +174,12 @@ export function registerCatalogue(app: FastifyInstance, s: Store, clock: () => D
           .default('all'),
         tags: z.string().optional(),
         tagMode: z.enum(['any', 'all']).default('any'),
-        tagDifficultyMin: z.coerce.number().int().min(1).max(10).optional(),
-        tagDifficultyMax: z.coerce.number().int().min(1).max(10).optional(),
         listId: z.string().optional(),
         difficulty: z.enum(['Easy', 'Medium', 'Hard']).optional(),
         confidence: z.enum(['low', 'medium', 'high', 'unknown']).optional(),
         timeBucket: z.enum(['0-10', '10-20', '20-30', '30-45', '45+', 'unknown']).optional(),
         sort: z
-          .enum([
-            'title',
-            'lastAttempt',
-            'solveTime',
-            'reviewDate',
-            'tagDifficulty',
-            'difficulty',
-            'confidence',
-          ])
+          .enum(['title', 'lastAttempt', 'solveTime', 'reviewDate', 'difficulty', 'confidence'])
           .default('title'),
         direction: z.enum(['asc', 'desc']).default('asc'),
         page: z.coerce.number().int().min(1).default(1),
@@ -204,12 +187,6 @@ export function registerCatalogue(app: FastifyInstance, s: Store, clock: () => D
       })
       .strict()
       .parse(req.query);
-    if (
-      q.tagDifficultyMin !== undefined &&
-      q.tagDifficultyMax !== undefined &&
-      q.tagDifficultyMin > q.tagDifficultyMax
-    )
-      throw new ApiError(400, 'VALIDATION', 'Minimum tag difficulty must not exceed maximum');
     const latestConfidence = new Map<string, number | null>();
     for (const attempt of s
       .all<AttemptRecord>('attempts')
@@ -247,24 +224,11 @@ export function registerCatalogue(app: FastifyInstance, s: Store, clock: () => D
         if (q.status === 'attempted' && p.attemptCount === 0) return false;
         if (q.listId && !p.lists.some((l) => l.id === q.listId)) return false;
         if (q.difficulty && p.difficulty !== q.difficulty) return false;
-        const matching = p.tags.filter(
-          (t) =>
-            (q.tagDifficultyMin === undefined ||
-              (t.difficulty !== null && t.difficulty >= q.tagDifficultyMin)) &&
-            (q.tagDifficultyMax === undefined ||
-              (t.difficulty !== null && t.difficulty <= q.tagDifficultyMax)),
-        );
         if (
           wanted.length &&
           (q.tagMode === 'all'
-            ? !wanted.every((id) => matching.some((t) => t.id === id))
-            : !matching.some((t) => wanted.includes(t.id)))
-        )
-          return false;
-        if (
-          !wanted.length &&
-          (q.tagDifficultyMin !== undefined || q.tagDifficultyMax !== undefined) &&
-          !matching.length
+            ? !wanted.every((id) => p.tags.some((t) => t.id === id))
+            : !p.tags.some((t) => wanted.includes(t.id)))
         )
           return false;
         if (q.confidence) {
@@ -310,13 +274,7 @@ export function registerCatalogue(app: FastifyInstance, s: Store, clock: () => D
               ? p.lastAttemptAt
               : q.sort === 'solveTime'
                 ? p.lastSolveSeconds
-                : q.sort === 'reviewDate'
-                  ? p.nextReviewDate
-                  : (p.tags
-                      .filter((t) => !wanted.length || wanted.includes(t.id))
-                      .map((t) => t.difficulty)
-                      .filter((n): n is number => n !== null)
-                      .sort((a, b) => b - a)[0] ?? null);
+                : p.nextReviewDate;
     items = items.sort((a, b) => {
       const x = val(a),
         y = val(b);

@@ -44,7 +44,7 @@ export interface Problem {
   slug: string;
   difficulty: string | null;
   notes: string;
-  tags: (Tag & { difficulty: number | null })[];
+  tags: Tag[];
   lists: ProblemList[];
   legacyCompleted: boolean;
   exposed: boolean;
@@ -271,9 +271,7 @@ export type PatternSummary = Pick<
   'id' | 'title' | 'archived' | 'version' | 'updatedAt'
 >;
 export interface PatternDetail extends PatternEntry {
-  examples: (Pick<Problem, 'id' | 'title' | 'url' | 'difficulty'> & {
-    patternDifficulty: number | null;
-  })[];
+  examples: Pick<Problem, 'id' | 'title' | 'url' | 'difficulty'>[];
 }
 export interface ActivityDay {
   date: string;

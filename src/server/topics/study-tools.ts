@@ -67,7 +67,7 @@ function patternDetail(s: Store, tag: Tag, clock: () => Date): PatternDetail {
         s.get<Problem>('problems', link.problemId),
         clock,
       );
-      return { id, title, url, difficulty, patternDifficulty: link.difficulty };
+      return { id, title, url, difficulty };
     });
   return { ...patternNotebook({ ...tag }), examples };
 }

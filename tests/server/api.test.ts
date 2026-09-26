@@ -42,13 +42,13 @@ it('persists a deduplicated editable catalogue with tags and lists, validating o
   const body = {
     title: 'Two Sum',
     url: 'https://leetcode.com/problems/two-sum/description/',
-    tags: [{ tagId: tag.id, difficulty: 4 }],
+    tags: [{ tagId: tag.id }],
     listIds: [list.id],
   };
   const added = await request('POST', '/api/problems', body);
   expect(added.statusCode).toBe(200);
   const p = added.json();
-  expect(p.tags[0].difficulty).toBe(4);
+  expect(p.tags[0].id).toBe(tag.id);
   expect(p.lists[0].id).toBe(list.id);
   expect(
     (
@@ -70,14 +70,10 @@ it('persists a deduplicated editable catalogue with tags and lists, validating o
     (
       await request('PATCH', `/api/problems/${p.id}`, {
         notes: 'Saved',
-        tags: [{ tagId: tag.id, difficulty: 10 }],
+        tags: [{ tagId: tag.id }],
       })
     ).json().notes,
   ).toBe('Saved');
-  expect(
-    (await request('PATCH', `/api/problems/${p.id}`, { tags: [{ tagId: tag.id, difficulty: 11 }] }))
-      .statusCode,
-  ).toBe(400);
   expect(
     (await request('PATCH', `/api/tags/${tag.id}`, { name: 'Array', archived: true })).json()
       .archived,

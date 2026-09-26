@@ -32,14 +32,12 @@ export function ProblemForm({
   const [difficulty, setDifficulty] = useState(problem?.difficulty ?? '');
   const [notes, setNotes] = useState(problem?.notes ?? '');
   const [leetcodeTopics, setLeetcodeTopics] = useState((problem?.leetcodeTopics ?? []).join(', '));
-  const [selectedTags, setTags] = useState<Record<string, number | null>>(
-    Object.fromEntries(problem?.tags.map((t) => [t.id, t.difficulty]) ?? []),
-  );
+  const [tagIds, setTagIds] = useState(problem?.tags.map((t) => t.id) ?? []);
   const [listIds, setListIds] = useState(problem?.lists.map((l) => l.id) ?? []);
   const [tagSearch, setTagSearch] = useState('');
   const createPattern = useAction(async () => {
     const tag = await api.send<Tag>('/tags', 'POST', { name: tagSearch.trim() });
-    setTags((old) => ({ ...old, [tag.id]: null }));
+    setTagIds((old) => [...old, tag.id]);
     setTagSearch('');
     return tag;
   });
@@ -55,10 +53,7 @@ export function ProblemForm({
       difficulty: difficulty || null,
       notes,
       leetcodeTopics: enteredTopics,
-      tags: Object.entries(selectedTags).map(([tagId, difficulty]) => ({
-        tagId,
-        difficulty,
-      })),
+      tags: tagIds.map((tagId) => ({ tagId })),
       listIds,
     });
   }
@@ -102,10 +97,7 @@ export function ProblemForm({
         <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </Field>
       <fieldset>
-        <legend>Tags & question difficulty</legend>
-        <p className="small muted">
-          Optional difficulty per pattern, from 1–10. This does not change your topic score.
-        </p>
+        <legend>Tags</legend>
         <Field label="Find or create a tag">
           <Input maxLength={300} value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} />
         </Field>
@@ -113,21 +105,18 @@ export function ProblemForm({
           {tags
             .filter(
               (t) =>
-                (!t.archived || t.id in selectedTags) &&
+                (!t.archived || tagIds.includes(t.id)) &&
                 t.name.toLowerCase().includes(tagSearch.toLowerCase()),
             )
             .map((t) => (
               <div className="tag-choice" key={t.id}>
                 <Label>
                   <Checkbox
-                    checked={t.id in selectedTags}
+                    checked={tagIds.includes(t.id)}
                     onCheckedChange={(checked) =>
-                      setTags((old) => {
-                        const next = { ...old };
-                        if (checked === true) next[t.id] = null;
-                        else delete next[t.id];
-                        return next;
-                      })
+                      setTagIds((old) =>
+                        checked === true ? [...old, t.id] : old.filter((id) => id !== t.id),
+                      )
                     }
                   />
                   <span className="tag-colour tag-label" style={tagColour(t)}>
@@ -135,21 +124,6 @@ export function ProblemForm({
                   </span>
                   {t.archived ? ' (archived)' : ''}
                 </Label>
-                {t.id in selectedTags && (
-                  <Input
-                    aria-label={`${t.name} difficulty (1–10)`}
-                    type="number"
-                    min="1"
-                    max="10"
-                    step="1"
-                    placeholder="Unknown"
-                    value={selectedTags[t.id] ?? ''}
-                    onChange={(e) => {
-                      const difficulty = e.target.value === '' ? null : Number(e.target.value);
-                      setTags((old) => ({ ...old, [t.id]: difficulty }));
-                    }}
-                  />
-                )}
               </div>
             ))}
         </div>
