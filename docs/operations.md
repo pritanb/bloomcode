@@ -78,8 +78,8 @@ Integration tests use temporary directories and loopback fake HTTP services, an 
 
 The notebook is attached to every tag. Questions carry separate manually entered `leetcodeTopics` labels; these do not create or modify proficiency scores. Pattern membership uses `problem_tags`. Notebook fields live on the tag itself.
 
-Every tag, including imported categories and formerly classified topic tags, has a notebook page. Tags saved before `kind` existed became topics in migration `0005`; `kind` does not restrict notebook access or assignment. (The former standalone notebook table was merged into tags and then dropped by migration `0003_retire_sheet`.)
+Every tag has a notebook page; `kind` does not restrict notebook access or assignment.
 
 ## Schema migrations
 
-`openDb` applies the numbered SQL files in `migrations/`, recording progress in SQLite's `user_version`. When an existing database has migrations pending, it first saves a copy as `backups/before-migration-<time>.sqlite`; daily backup pruning never deletes these.
+`migrations/0006_schema.sql` is the whole schema; earlier migrations were folded into it. `openDb` applies each numbered SQL file above the database's `user_version` and sets `user_version` to that file's number, so the next change goes in `0007_*.sql`. When an existing database has migrations pending, it first saves a copy as `backups/before-migration-<time>.sqlite`; daily backup pruning never deletes these.

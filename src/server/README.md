@@ -18,7 +18,7 @@ The first boot creates a 0600 `api-token` in a 0700 data directory. It is never 
 
 ## Persistence and migration
 
-`migrations/` holds numbered `.sql` files. `openDb` runs each one once, in order, inside a transaction, and records progress in SQLite's `user_version` (databases from before this runner are read from Drizzle's old `__drizzle_migrations` table once). Foreign keys are off while migrating and checked afterwards. Before migrating an existing database it saves `backups/before-migration-<time>.sqlite`.
+`migrations/0006_schema.sql` is the whole schema. `openDb` runs each numbered `.sql` file above the database's `user_version` once, in order, inside a transaction, and sets `user_version` to the file's number; add the next change as `0007_*.sql`. Foreign keys are off while migrating and checked afterwards. Before migrating an existing database it saves `backups/before-migration-<time>.sqlite`.
 
 Tables are typed: `0005_relational_schema.sql` is the schema to read. Column names match the TypeScript fields, so `SELECT *` returns API-shaped rows; booleans are 0/1 and a few small lists (`leetcodeTopics`, `mistakeLabels`, settings `recommendations`) are JSON text. Values another table already holds are never copied: a problem's latest attempt, solve time, attempt count and review date, an attempt's problem, and a decision's topic name are joined or computed in the model files' queries. CHECK constraints, foreign keys, unique names/slugs/days and a partial unique index (one active or paused attempt) hold the rules. `learning_insights` stays one JSON column per record, validated by `learningRecordSchema`; imported source rows keep their original `raw` JSON. Scores are absolute decimal values (at most two decimal places), never accumulated deltas.
 

@@ -41,29 +41,17 @@ export function openDb(path: string): Db {
 }
 
 /**
- * Runs each numbered .sql file in migrations/ once, in order, recording progress in
- * SQLite's user_version. Before migrating an existing database it saves a copy to
- * backups/, which daily backup pruning leaves alone.
+ * Runs each numbered .sql file in migrations/ once, in order. SQLite's user_version
+ * holds the number of the last file applied. Before migrating an existing database it
+ * saves a copy to backups/, which daily backup pruning leaves alone.
  */
 function migrate(db: Db, path: string) {
   const folder = fileURLToPath(new URL('migrations/', repoRoot));
-  const files = readdirSync(folder)
-    .filter((f) => /^\d{4}_.+\.sql$/.test(f))
-    .sort();
-  // Databases from before this runner recorded applied files in Drizzle's table.
-  const drizzle = db
-    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '__drizzle_migrations'")
-    .get();
-  if (drizzle)
-    db.transaction(() => {
-      const { n } = db.prepare('SELECT count(*) AS n FROM __drizzle_migrations').get() as {
-        n: number;
-      };
-      db.pragma(`user_version = ${n}`);
-      db.exec('DROP TABLE __drizzle_migrations');
-    })();
   const applied = db.pragma('user_version', { simple: true }) as number;
-  if (applied >= files.length) return;
+  const pending = readdirSync(folder)
+    .filter((f) => /^\d{4}_.+\.sql$/.test(f) && Number(f.slice(0, 4)) > applied)
+    .sort();
+  if (!pending.length) return;
   if (applied > 0 && path !== ':memory:') {
     const backups = join(dirname(path), 'backups');
     mkdirSync(backups, { recursive: true, mode: 0o700 });
@@ -76,13 +64,11 @@ function migrate(db: Db, path: string) {
   }
   // Rebuilding a table needs foreign keys off; they are checked once all files have run.
   db.pragma('foreign_keys = OFF');
-  for (const [index, file] of files.entries()) {
-    if (index < applied) continue;
+  for (const file of pending)
     db.transaction(() => {
       db.exec(readFileSync(join(folder, file), 'utf8'));
-      db.pragma(`user_version = ${index + 1}`);
+      db.pragma(`user_version = ${Number(file.slice(0, 4))}`);
     })();
-  }
   const broken = db.pragma('foreign_key_check') as unknown[];
   if (broken.length) throw new Error(`Migration left ${broken.length} broken references`);
 }
