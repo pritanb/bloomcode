@@ -28,7 +28,7 @@ it('retires Sheet-only lists and settings once, after saving a copy of the datab
     // Put the database back to how the Sheet era left it, before the cleanup migration.
     const old = new Database(dbPath);
     old.exec(`UPDATE settings SET data = json_set(data, '$.dataMode', 'isolated-pilot')`);
-    old.prepare('DELETE FROM __drizzle_migrations WHERE created_at = ?').run(1789516800003);
+    old.prepare('DELETE FROM __drizzle_migrations WHERE created_at >= ?').run(1789516800003);
     old.close();
 
     app = await createApp({ dbPath, token: 'test' });
