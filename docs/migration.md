@@ -1,6 +1,6 @@
 # Read-only Sheet migration
 
-Cutover was approved on 2026-09-17: the app is authoritative and the Sheet is a read-only archive. This document remains as the historical record of how the import was performed and verified. Never write back to the Sheet or maintain two writable study histories.
+Cutover was approved on 2026-09-17: the app is authoritative and the Sheet is a read-only archive. This document remains as the historical record of how the import was performed and verified. Never write back to the Sheet or maintain two writable study histories. The Sheet importer (`scripts/import-sheet.ts`, `src/integrations/sheet.ts`) was removed on 2026-09-26; recover it from git history if ever needed. Imported plan rows no longer influence daily plans.
 
 ## Snapshot format (version 1)
 

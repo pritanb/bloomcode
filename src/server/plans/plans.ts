@@ -61,12 +61,6 @@ function refresherCount(s: Store, items: ItemRecord[]) {
 function candidates(s: Store, day: string, exclude = new Set<string>()): Problem[] {
   const reviews = s.all<ReviewTarget>('review_targets'),
     topics = s.all<Topic>('topics');
-  const planned = new Set(
-    s
-      .all<{ id: string; problemId: string | null; date: string; status: string }>('import_plans')
-      .filter((p) => p.date <= day && !/(complete|done|skip|cancel)/i.test(p.status))
-      .map((p) => p.problemId),
-  );
   const due = (p: Problem) =>
     reviews.find((t) => t.problemId === p.id && t.effectiveDate && t.effectiveDate <= day);
   const weakness = (p: Problem) =>
@@ -92,7 +86,6 @@ function candidates(s: Store, day: string, exclude = new Set<string>()): Problem
         Number(!!due(b)) - Number(!!due(a)) ||
         (due(a)?.effectiveDate ?? '').localeCompare(due(b)?.effectiveDate ?? '') ||
         weakness(a) - weakness(b) ||
-        Number(planned.has(b.id)) - Number(planned.has(a.id)) ||
         (a.lastAttemptAt ?? '').localeCompare(b.lastAttemptAt ?? '') ||
         a.id.localeCompare(b.id),
     );

@@ -1,6 +1,6 @@
 import publicLists from '../../integrations/manifests/neetcode-problems.json';
 import public250 from '../../integrations/manifests/neetcode250.json';
-import { leetcodeSlug } from '../../integrations/sheet.js';
+import { leetcodeSlug } from '../../shared/leetcode.js';
 import type { Problem, ProblemList } from '../../shared/contracts.js';
 import type { ListLink } from './catalogue.js';
 import type { Store } from '../db/store.js';

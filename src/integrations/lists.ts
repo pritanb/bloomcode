@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import neetcode250 from './manifests/neetcode250.json';
-import { leetcodeSlug } from './sheet.js';
+import { leetcodeSlug } from '../shared/leetcode.js';
 import type { ImportPayload } from '../shared/contracts.js';
 export const PINNED_REVISION = '9f104d45b1efc8c2e42b6dcc7b1216cdf8c4f80e';
 export const PINNED_SHA256 = '436dd487beb9126e30e9da8717ff76f2a78e3a94ca0ec4181d9d04de9f7b953c';

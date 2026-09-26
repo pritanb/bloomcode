@@ -1,0 +1,134 @@
+{
+  "importId": "sheet-v2-370270626b3d77362152afecde1db5ca07aceea8eb96808062abdc9b21eddaea",
+  "dryRun": true,
+  "source": {
+    "retrievedAt": "2026-09-16T00:00:00Z"
+  },
+  "problems": [
+    {
+      "key": "test-tree",
+      "title": "Test Tree",
+      "url": "https://leetcode.com/problems/test-tree/",
+      "difficulty": null,
+      "notes": "",
+      "legacyCompleted": false,
+      "exposed": true,
+      "tags": [],
+      "lists": ["Sheet: Tutor Tracker"]
+    }
+  ],
+  "attempts": [
+    {
+      "sourceKey": "Tutor%20Tracker:2",
+      "problemKey": "test-tree",
+      "date": "2026-09-01",
+      "outcome": "solved",
+      "help": "none",
+      "activeSeconds": 754,
+      "confidence": null,
+      "notes": "",
+      "code": "print(1)",
+      "evidence": "legacy",
+      "nextReviewDate": null,
+      "topicNames": ["Trees"]
+    }
+  ],
+  "topics": [
+    {
+      "name": "Trees",
+      "score": 3.85,
+      "notes": "",
+      "lastReviewed": null,
+      "provisional": true
+    }
+  ],
+  "movements": [
+    {
+      "topicName": "Trees",
+      "oldScore": 3.5,
+      "newScore": 3.65,
+      "rationale": "Trees 3.50 -> 3.65",
+      "sourceKey": "Tutor%20Tracker:2:movement:1",
+      "problemKey": "test-tree",
+      "date": "2026-09-01",
+      "evidence": "legacy"
+    }
+  ],
+  "planned": [],
+  "records": [
+    {
+      "sourceKey": "snapshot:metadata",
+      "tab": "_snapshot",
+      "row": 0,
+      "raw": {
+        "metadata": null,
+        "excludedTabs": [],
+        "gridData": {}
+      },
+      "status": "metadata",
+      "reason": "Workbook metadata; non-LeetCode tabs excluded."
+    },
+    {
+      "sourceKey": "Topic%20Ratings:1",
+      "tab": "Topic Ratings",
+      "row": 1,
+      "raw": {
+        "formatted": ["Topic", "Rating (1-5)"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Topic%20Ratings:2",
+      "tab": "Topic Ratings",
+      "row": 2,
+      "raw": {
+        "formatted": ["Trees", 3.85],
+        "unformatted": null
+      },
+      "status": "imported",
+      "reason": "Current decimal score preserved as provisional legacy evidence."
+    },
+    {
+      "sourceKey": "Tutor%20Tracker:1",
+      "tab": "Tutor Tracker",
+      "row": 1,
+      "raw": {
+        "formatted": [
+          "Date",
+          "Problem",
+          "Link",
+          "Result",
+          "Time Min",
+          "Code",
+          "Tutor Rating Change",
+          "Tracked Topic(s)"
+        ],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Tutor%20Tracker:2",
+      "tab": "Tutor Tracker",
+      "row": 2,
+      "raw": {
+        "formatted": [
+          "2026-09-01",
+          "Test Tree",
+          "https://leetcode.com/problems/test-tree/",
+          "Clean",
+          "12:34",
+          "print(1)",
+          "Trees 3.50 -> 3.65",
+          "Trees"
+        ],
+        "unformatted": null
+      },
+      "status": "imported",
+      "reason": "Historical attempt imported; result semantics from the existing tutor tracker."
+    }
+  ]
+}

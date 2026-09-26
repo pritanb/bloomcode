@@ -14,7 +14,6 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "lint": "eslint .",
-    "import:sheet": "node --env-file-if-exists=.env --import tsx scripts/import-sheet.ts",
     "backup": "node --env-file-if-exists=.env --import tsx scripts/backup.ts",
     "restore": "node --env-file-if-exists=.env --import tsx scripts/restore.ts",
     "local": "node --env-file-if-exists=.env scripts/launch-local.mjs",

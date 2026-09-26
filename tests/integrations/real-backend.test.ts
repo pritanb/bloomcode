@@ -6,7 +6,8 @@ import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
-import { mapSheetSnapshot } from '../../src/integrations/sheet.js';
+import sheetEvidenceImport from './fixtures/sheet-evidence-import.json';
+import type { ImportPayload } from '../../src/shared/contracts.js';
 import { applyAndVerify } from '../../src/integrations/import-client.js';
 const exec = promisify(execFile);
 test('real backend accepts mapped source records, idempotent replay, CLI backup and complete empty-only restore', async () => {
@@ -19,43 +20,8 @@ test('real backend accepts mapped source records, idempotent replay, CLI backup 
     const url = await a.listen({ port: 0, host: '127.0.0.1' }),
       url2 = await b.listen({ port: 0, host: '127.0.0.1' });
     const api = new LocalApi({ dataDir: first, baseUrl: url });
-    const mapped = mapSheetSnapshot({
-      retrievedAt: '2026-09-16T00:00:00Z',
-      sheets: [
-        {
-          title: 'Topic Ratings',
-          values: [
-            ['Topic', 'Rating (1-5)'],
-            ['Trees', 3.85],
-          ],
-        },
-        {
-          title: 'Tutor Tracker',
-          values: [
-            [
-              'Date',
-              'Problem',
-              'Link',
-              'Result',
-              'Time Min',
-              'Code',
-              'Tutor Rating Change',
-              'Tracked Topic(s)',
-            ],
-            [
-              '2026-09-01',
-              'Test Tree',
-              'https://leetcode.com/problems/test-tree/',
-              'Clean',
-              '12:34',
-              'print(1)',
-              'Trees 3.50 -> 3.65',
-              'Trees',
-            ],
-          ],
-        },
-      ],
-    });
+    // Captured from the retired Sheet mapper: a topic rating and one tracked attempt.
+    const mapped = { payload: sheetEvidenceImport as ImportPayload };
     expect((await applyAndVerify(api, mapped.payload)).verified).toBe(true);
     expect((await applyAndVerify(api, mapped.payload)).verified).toBe(true);
     const env = { ...process.env, DATA_DIR: first, PORT: new URL(url).port };

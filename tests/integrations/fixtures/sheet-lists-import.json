@@ -1,0 +1,233 @@
+{
+  "importId": "sheet-v2-fe55adb6bc0ec636b57d791620e28be131a0a741213524772ec250ded50ceae0",
+  "dryRun": true,
+  "source": {
+    "retrievedAt": "2026-09-16T00:00:00Z"
+  },
+  "problems": [
+    {
+      "key": "contains-duplicate",
+      "title": "Contains Duplicate",
+      "url": "https://leetcode.com/problems/contains-duplicate/",
+      "difficulty": null,
+      "notes": "Original evidence",
+      "legacyCompleted": false,
+      "exposed": true,
+      "tags": [],
+      "lists": [
+        "Sheet: Neetcode List",
+        "Sheet: Neetcode 250 Additions",
+        "Sheet: Neetcode250 Additions",
+        "Sheet: Others",
+        "Sheet: Microsoft Top Questions",
+        "Sheet: Tutor Tracker",
+        "Sheet: Current Plan"
+      ]
+    }
+  ],
+  "attempts": [
+    {
+      "sourceKey": "Tutor%20Tracker:2",
+      "problemKey": "contains-duplicate",
+      "date": "2026-09-01",
+      "outcome": "solved",
+      "help": "none",
+      "activeSeconds": 754,
+      "confidence": null,
+      "notes": "Original evidence",
+      "code": "",
+      "evidence": "legacy",
+      "nextReviewDate": null,
+      "topicNames": []
+    }
+  ],
+  "topics": [],
+  "movements": [],
+  "planned": [
+    {
+      "sourceKey": "Current%20Plan:2",
+      "problemKey": "contains-duplicate",
+      "date": "2026-09-02",
+      "status": "",
+      "notes": ""
+    }
+  ],
+  "records": [
+    {
+      "sourceKey": "snapshot:metadata",
+      "tab": "_snapshot",
+      "row": 0,
+      "raw": {
+        "metadata": null,
+        "excludedTabs": [],
+        "gridData": {}
+      },
+      "status": "metadata",
+      "reason": "Workbook metadata; non-LeetCode tabs excluded."
+    },
+    {
+      "sourceKey": "Neetcode%20List:1",
+      "tab": "Neetcode List",
+      "row": 1,
+      "raw": {
+        "formatted": ["Problem", "Link"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Neetcode%20List:2",
+      "tab": "Neetcode List",
+      "row": 2,
+      "raw": {
+        "formatted": ["Contains Duplicate", "https://leetcode.com/problems/contains-duplicate/"],
+        "unformatted": null
+      },
+      "status": "imported"
+    },
+    {
+      "sourceKey": "Neetcode%20250%20Additions:1",
+      "tab": "Neetcode 250 Additions",
+      "row": 1,
+      "raw": {
+        "formatted": ["Problem", "Link"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Neetcode%20250%20Additions:2",
+      "tab": "Neetcode 250 Additions",
+      "row": 2,
+      "raw": {
+        "formatted": ["Contains Duplicate", "https://leetcode.com/problems/contains-duplicate/"],
+        "unformatted": null
+      },
+      "status": "duplicate",
+      "reason": "Existing canonical problem; source membership/notes merged."
+    },
+    {
+      "sourceKey": "Neetcode250%20Additions:1",
+      "tab": "Neetcode250 Additions",
+      "row": 1,
+      "raw": {
+        "formatted": ["Problem", "Link"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Neetcode250%20Additions:2",
+      "tab": "Neetcode250 Additions",
+      "row": 2,
+      "raw": {
+        "formatted": ["Contains Duplicate", "https://leetcode.com/problems/contains-duplicate/"],
+        "unformatted": null
+      },
+      "status": "duplicate",
+      "reason": "Existing canonical problem; source membership/notes merged."
+    },
+    {
+      "sourceKey": "Others:1",
+      "tab": "Others",
+      "row": 1,
+      "raw": {
+        "formatted": ["Problem", "Link"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Others:2",
+      "tab": "Others",
+      "row": 2,
+      "raw": {
+        "formatted": ["Contains Duplicate", "https://leetcode.com/problems/contains-duplicate/"],
+        "unformatted": null
+      },
+      "status": "duplicate",
+      "reason": "Existing canonical problem; source membership/notes merged."
+    },
+    {
+      "sourceKey": "Microsoft%20Top%20Questions:1",
+      "tab": "Microsoft Top Questions",
+      "row": 1,
+      "raw": {
+        "formatted": ["Problem", "Link"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Microsoft%20Top%20Questions:2",
+      "tab": "Microsoft Top Questions",
+      "row": 2,
+      "raw": {
+        "formatted": ["Contains Duplicate", "https://leetcode.com/problems/contains-duplicate/"],
+        "unformatted": null
+      },
+      "status": "duplicate",
+      "reason": "Existing canonical problem; source membership/notes merged."
+    },
+    {
+      "sourceKey": "Tutor%20Tracker:1",
+      "tab": "Tutor Tracker",
+      "row": 1,
+      "raw": {
+        "formatted": ["Date", "Problem", "Link", "Result", "Time Min", "Notes"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Tutor%20Tracker:2",
+      "tab": "Tutor Tracker",
+      "row": 2,
+      "raw": {
+        "formatted": [
+          "2026-09-01",
+          "Contains Duplicate",
+          "https://leetcode.com/problems/contains-duplicate/",
+          "Clean",
+          "12:34",
+          "Original evidence"
+        ],
+        "unformatted": null
+      },
+      "status": "imported",
+      "reason": "Historical attempt imported; result semantics from the existing tutor tracker."
+    },
+    {
+      "sourceKey": "Current%20Plan:1",
+      "tab": "Current Plan",
+      "row": 1,
+      "raw": {
+        "formatted": ["Date", "Problem", "Link"],
+        "unformatted": null
+      },
+      "status": "metadata",
+      "reason": "Header row."
+    },
+    {
+      "sourceKey": "Current%20Plan:2",
+      "tab": "Current Plan",
+      "row": 2,
+      "raw": {
+        "formatted": [
+          "2026-09-02",
+          "Contains Duplicate",
+          "https://leetcode.com/problems/contains-duplicate/"
+        ],
+        "unformatted": null
+      },
+      "status": "imported",
+      "reason": "Historical plan candidate only; never creates attempt evidence."
+    }
+  ]
+}

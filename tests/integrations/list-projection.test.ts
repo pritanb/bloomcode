@@ -4,9 +4,14 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createApp } from '../../src/server/core/app.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
-import { mapSheetSnapshot } from '../../src/integrations/sheet.js';
+import sheetListsImport from './fixtures/sheet-lists-import.json';
 import { mapVerifiedLists, PINNED_REVISION } from '../../src/integrations/lists.js';
-import type { ProblemList, ProblemPage, Snapshot } from '../../src/shared/contracts.js';
+import type {
+  ImportPayload,
+  ProblemList,
+  ProblemPage,
+  Snapshot,
+} from '../../src/shared/contracts.js';
 
 test('projects verified slug memberships without exposing Sheet provenance or rewriting history', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'lc-list-projection-'));
@@ -27,50 +32,8 @@ test('projects verified slug memberships without exposing Sheet provenance or re
     // List metadata exists, but no public-list membership edges were imported.
     for (const { count: _count, ...list } of verified.lists)
       await api.request('POST', '/api/lists', list);
-    const tabs = [
-      'Neetcode List',
-      'Neetcode 250 Additions',
-      'Neetcode250 Additions',
-      'Others',
-      'Microsoft Top Questions',
-    ];
-    const { payload } = mapSheetSnapshot({
-      retrievedAt: '2026-09-16T00:00:00Z',
-      sheets: [
-        ...tabs.map((title) => ({
-          title,
-          values: [
-            ['Problem', 'Link'],
-            ['Contains Duplicate', 'https://leetcode.com/problems/contains-duplicate/'],
-          ],
-        })),
-        {
-          title: 'Tutor Tracker',
-          values: [
-            ['Date', 'Problem', 'Link', 'Result', 'Time Min', 'Notes'],
-            [
-              '2026-09-01',
-              'Contains Duplicate',
-              'https://leetcode.com/problems/contains-duplicate/',
-              'Clean',
-              '12:34',
-              'Original evidence',
-            ],
-          ],
-        },
-        {
-          title: 'Current Plan',
-          values: [
-            ['Date', 'Problem', 'Link'],
-            [
-              '2026-09-02',
-              'Contains Duplicate',
-              'https://leetcode.com/problems/contains-duplicate/',
-            ],
-          ],
-        },
-      ],
-    });
+    // Captured from the retired Sheet mapper: lists, one attempt and one plan row.
+    const payload = structuredClone(sheetListsImport) as ImportPayload;
     payload.problems.push(
       {
         key: 'concatenation-of-array',
