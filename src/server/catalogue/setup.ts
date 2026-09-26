@@ -21,7 +21,7 @@ const input = z
       }
     }, 'Invalid timezone'),
     questionsPerDay: z.number().int().min(1).max(20),
-    list: z.enum(['none', 'Blind 75', 'NeetCode 150', 'NeetCode 250']),
+    list: z.enum(['none', 'Blind 75', 'NeetCode 150']),
   })
   .strict();
 

@@ -4,20 +4,19 @@ import {
   type RecommendationOptions,
   type RecommendationSettings,
 } from '../../shared/recommendations.js';
-import manifest from '../../integrations/manifests/neetcode250.json';
 import { listProjection } from '../catalogue/list-projection.js';
 import { problemViews } from '../catalogue/problem-model.js';
 import { type Db, many } from '../db/db.js';
 import { readSettings } from '../db/settings.js';
+import {
+  neetcodeCategories as sourceTopics,
+  neetcodeSourceRows as sourceRows,
+} from '../topics/neetcode-category.js';
 
 // Source row order, not an invented popularity or difficulty ranking.
-const sourceTopics = [...new Set(manifest.problems.map((row) => row.pattern))];
-const sourceRows = new Map(
-  manifest.problems.map((row, index) => [
-    row.link.replace(/\/$/, ''),
-    { topic: row.pattern, index },
-  ]),
-);
+// 'NeetCode 250' is no longer bundled, but a list imported by an earlier
+// release keeps the same ordering; its extra questions fall back to tags.
+const verifiedLists = ['NeetCode 150', 'Blind 75', 'NeetCode 250'];
 export function recommendationContext(
   db: Db,
   config = readSettings(db).recommendations ?? defaultRecommendations,
@@ -34,9 +33,7 @@ export function recommendationContext(
   const pool = problemViews(db).filter(
     (p) => !config.listId || p.lists.some((l) => l.id === config.listId),
   );
-  const verifiedOrder = lists.some(
-    (l) => l.id === config.listId && ['NeetCode 250', 'NeetCode 150', 'Blind 75'].includes(l.name),
-  );
+  const verifiedOrder = lists.some((l) => l.id === config.listId && verifiedLists.includes(l.name));
   const topic = (p: Problem) =>
     (verifiedOrder ? sourceRows.get(p.slug)?.topic : undefined) ??
     p.tags
@@ -65,7 +62,7 @@ export function recommendationContext(
     topics,
     currentTopic,
     orderDescription: verifiedOrder
-      ? 'Pinned NeetCode 250 category and question order; other categories follow alphabetically.'
+      ? 'Pinned NeetCode 150 category and question order; other categories follow alphabetically.'
       : 'Alphabetical topic order; the first non-archived topic tag assigns each question. Untagged questions are Uncategorized.',
   };
   return {

@@ -15,6 +15,7 @@ async function fixture(dbPath = ':memory:', clock = () => new Date('2026-09-16T0
       headers: { authorization: 'Bearer test', 'idempotency-key': crypto.randomUUID() },
       ...(payload ? { payload } : {}),
     });
+  // A 'NeetCode 250' list as imported by an earlier release that bundled it.
   await request('POST', '/api/import', {
     importId: 'fixture',
     dryRun: false,

@@ -19,7 +19,7 @@ async function fixture(topicScore: number | null) {
       headers: { authorization: 'Bearer test', 'idempotency-key': key ?? crypto.randomUUID() },
       ...(payload ? { payload } : {}),
     });
-  // Real NeetCode 250 slugs: the manifest category, not the tag, drives scoring.
+  // Real NeetCode 150 slugs: the manifest category, not the tag, drives scoring.
   await request('POST', '/api/import', {
     importId: 'fixture',
     dryRun: false,

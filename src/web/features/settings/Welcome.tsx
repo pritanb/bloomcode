@@ -102,7 +102,6 @@ function Welcome() {
             <SelectField value={list} onValueChange={setList}>
               <SelectOption value="Blind 75">Blind 75 · 75 questions</SelectOption>
               <SelectOption value="NeetCode 150">NeetCode 150 · 150 questions</SelectOption>
-              <SelectOption value="NeetCode 250">NeetCode 250 · 250 questions</SelectOption>
               <SelectOption value="none">Empty library · add or import later</SelectOption>
             </SelectField>
           </Field>
@@ -128,9 +127,8 @@ function Welcome() {
           </Button>
         </form>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Bringing existing progress? Choose an empty library, then use the import or restore
-          instructions in the project’s migration guide. You can change your study preferences in
-          Settings.
+          Bringing existing progress or your own question list? Choose an empty library, then import
+          a question pack or restore a backup. You can change your study preferences in Settings.
         </p>
       </Panel>
     </main>

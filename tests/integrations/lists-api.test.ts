@@ -13,7 +13,7 @@ import { readTables } from '../tables.js';
 const exec = promisify(execFile);
 // End-to-end verification of the unchanged CLI and canonical API, using only an
 // isolated throwaway database. This never reads or writes the live pilot.
-test('real list CLI exposes all three verified filters and retries without creating study history', async () => {
+test('real list CLI exposes both verified filters and retries without creating study history', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'lc-verified-lists-'));
   const app = await createApp({ dbPath: join(dir, 'leetcode.sqlite') });
   try {
@@ -33,7 +33,7 @@ test('real list CLI exposes all three verified filters and retries without creat
       );
       expect(JSON.parse(run.stdout)).toMatchObject({
         verified: true,
-        verifiedSourceRecords: 400,
+        verifiedSourceRecords: 150,
         blockers: [],
       });
       const ingestion = readTables(app.tutorJobs.db);
@@ -42,7 +42,7 @@ test('real list CLI exposes all three verified filters and retries without creat
       ).toBe(true);
       expect(ingestion.attempts).toEqual([]);
       const lists = (await api.request('GET', '/api/lists')) as ProblemList[];
-      expect(lists).toHaveLength(3);
+      expect(lists).toHaveLength(2);
       for (const definition of expected.lists) {
         const list = lists.find((list) => list.name === definition.name)!;
         expect(list).toMatchObject({
@@ -74,10 +74,10 @@ test('real list CLI exposes all three verified filters and retries without creat
         ((await api.request('GET', '/api/problems?status=completed')) as ProblemPage).total,
       ).toBe(0);
       const tables = readTables(app.tutorJobs.db);
-      expect(tables.problems).toHaveLength(250);
+      expect(tables.problems).toHaveLength(150);
       expect(tables.import_batches).toHaveLength(1);
-      expect(tables.import_records).toHaveLength(400);
-      expect(tables.list_memberships).toHaveLength(475);
+      expect(tables.import_records).toHaveLength(150);
+      expect(tables.list_memberships).toHaveLength(225);
       expect(tables.tags!.length).toBeGreaterThan(0);
 
       expect(await api.request('GET', '/api/patterns')).toHaveLength(tables.tags!.length);

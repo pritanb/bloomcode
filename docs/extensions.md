@@ -4,7 +4,9 @@ The initial extension surface is data and local APIs. There is no runtime plugin
 
 ## Question packs, version 1
 
-See [the runnable example](../examples/question-pack.json). The top-level fields are `version: 1`, `name`, and `questions`. Each question has a title, an HTTPS LeetCode problem URL, optional difficulty (`Easy`, `Medium`, `Hard` or null), and optional tag names. Unknown fields, unsupported versions, duplicate slugs and reserved bundled-list names are rejected. Maximum: 1,000 questions per file.
+The app bundles NeetCode 150 and Blind 75 from NeetCode's MIT-licensed repository. To study any other list, such as NeetCode 250 or a company list, write it as a question pack and import it.
+
+See [the runnable example](../examples/question-pack.json). The top-level fields are `version: 1`, `name`, and `questions`. Each question has a title, an HTTPS LeetCode problem URL, optional difficulty (`Easy`, `Medium`, `Hard` or null), and optional tag names. Unknown fields, unsupported versions, duplicate slugs and the bundled list names (Blind 75, NeetCode 150) are rejected. Maximum: 1,000 questions per file.
 
 Run `npm run import:pack -- --input <file> --dry-run` first, then use `--apply` with the app running. Dry-run checks format and identities; it does not preview how data merges with an existing workspace. Import reads back saved source records. Identical normalized content has the same import ID. Changed packs are additive: they can add questions and tags but do not delete old memberships or overwrite saved work. Rename a list if it represents a different collection. Existing titles and non-null difficulties are retained by the core importer.
 

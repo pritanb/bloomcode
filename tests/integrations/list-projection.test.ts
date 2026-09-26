@@ -28,6 +28,13 @@ test('projects verified slug memberships without rewriting stored history', asyn
     // List metadata exists, but no public-list membership edges were imported.
     for (const { count: _count, ...list } of verified.lists)
       await api.request('POST', '/api/lists', list);
+    // An earlier release bundled NeetCode 250. Its stored list and memberships
+    // stay usable after the manifest was removed.
+    await api.request('POST', '/api/lists', {
+      name: 'NeetCode 250',
+      sourceUrl: 'https://neetcode.io/main.f39af0c52a4e9fb5.js',
+      sourceVersion: 'sha256:426da304cbc42c91a25986ed680c06fd632fc25da741ac2881fd928ac9a051a8',
+    });
     // Captured from the retired Sheet mapper: a list, one attempt and raw records.
     const payload = structuredClone(sheetListsImport) as ImportPayload;
     payload.problems.push(
@@ -35,7 +42,7 @@ test('projects verified slug memberships without rewriting stored history', asyn
         key: 'concatenation-of-array',
         title: 'Concatenation of Array',
         url: 'https://leetcode.com/problems/concatenation-of-array/',
-        lists: [],
+        lists: ['NeetCode 250'],
         exposed: true,
       },
       {
@@ -83,7 +90,12 @@ test('projects verified slug memberships without rewriting stored history', asyn
     const page = (await api.request('GET', '/api/problems')) as ProblemPage;
     expect(page.total).toBe(3);
     const question = page.items.find((p) => p.slug === 'contains-duplicate')!;
-    expect(question.lists.map((l) => l.name).sort()).toEqual(lists.map((l) => l.name).sort());
+    expect(question.lists.map((l) => l.name).sort()).toEqual(
+      lists
+        .map((l) => l.name)
+        .filter((name) => name !== 'NeetCode 250')
+        .sort(),
+    );
     expect(question.latestSubmission).toMatchObject({
       outcome: 'solved',
       activeSeconds: 754,
@@ -92,13 +104,11 @@ test('projects verified slug memberships without rewriting stored history', asyn
     expect(
       page.items.find((p) => p.slug === 'unrelated-fixture')!.lists.map((l) => l.name),
     ).toEqual(['My custom list']);
-    for (const definition of verified.lists) {
-      const list = lists.find((l) => l.name === definition.name)!;
+    for (const name of [...verified.lists.map((l) => l.name), 'NeetCode 250']) {
+      const list = lists.find((l) => l.name === name)!;
       const filtered = (await api.request('GET', `/api/problems?listId=${list.id}`)) as ProblemPage;
       const expected =
-        definition.name === 'NeetCode 250'
-          ? ['concatenation-of-array', 'contains-duplicate']
-          : ['contains-duplicate'];
+        name === 'NeetCode 250' ? ['concatenation-of-array'] : ['contains-duplicate'];
       expect(filtered.total).toBe(expected.length);
       expect(filtered.items.map((p) => p.slug).sort()).toEqual(expected);
     }

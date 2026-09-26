@@ -81,7 +81,7 @@ it('authenticates setup and imports exactly the selected starter list', async ()
           method: 'POST',
           url: '/api/setup',
           headers,
-          payload: { ...payload, list: 'NeetCode 250' },
+          payload: { ...payload, list: 'NeetCode 150' },
         })
       ).statusCode,
     ).toBe(409);

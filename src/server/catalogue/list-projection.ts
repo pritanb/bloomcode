@@ -1,16 +1,16 @@
 import publicLists from '../../integrations/manifests/neetcode-problems.json';
-import public250 from '../../integrations/manifests/neetcode250.json';
 import { leetcodeSlug } from '../../shared/leetcode.js';
 import type { ProblemList } from '../../shared/contracts.js';
 import { type Db, many } from '../db/db.js';
 
 // These bundled, pinned manifests are also verified by the public-list importer.
-// Only their explicit flags/identities establish membership.
+// Only their explicit flags/identities establish membership. Other lists,
+// including a 'NeetCode 250' list imported by an earlier release, show only
+// their stored memberships.
 const slugs = (rows: { link: string }[]) =>
   new Set(rows.map((row) => leetcodeSlug(`https://leetcode.com/problems/${row.link}`)));
 const canonicalMembers = new Map([
   ['neetcode 150', slugs(publicLists.filter((row) => row.neetcode150))],
-  ['neetcode 250', slugs(public250.problems)],
   ['blind 75', slugs(publicLists.filter((row) => row.blind75))],
 ]);
 type ProblemRef = { id: string; slug: string };
