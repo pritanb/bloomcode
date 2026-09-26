@@ -1,6 +1,6 @@
 # Desktop app (macOS)
 
-LeetCode Tutor uses Electron to package its study interface, local server and runtime in one application. Once installed, it does not need Node.js or the project folder. The initial target is Apple silicon Macs; Intel, Windows and Linux packages have not been verified.
+BloomCode uses Electron to package its study interface, local server and runtime in one application. Once installed, it does not need Node.js or the project folder. The initial target is Apple silicon Macs; Intel, Windows and Linux packages have not been verified.
 
 ## Install and open
 
@@ -19,7 +19,7 @@ npm ci
 npm run electron:make -- --arch=arm64
 ```
 
-The installable ZIP is under `dist/electron/make/zip/darwin/arm64/`. To create only the application bundle, use `npm run electron:package -- --arch=arm64`; its output is `dist/electron/LeetCode Tutor-darwin-arm64/LeetCode Tutor.app`.
+The installable ZIP is under `dist/electron/make/zip/darwin/arm64/`. To create only the application bundle, use `npm run electron:package -- --arch=arm64`; its output is `dist/electron/BloomCode-darwin-arm64/BloomCode.app`.
 
 The desktop build stages its own runtime dependencies, including Electron's SQLite binary. Your workspace, API token and `.env` file are not included in the package.
 

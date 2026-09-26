@@ -244,6 +244,6 @@ export async function startMcp() {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
   startMcp().catch(() => {
-    process.stderr.write('LeetCode Tutor MCP failed to start. Check local runtime settings.\n');
+    process.stderr.write('BloomCode MCP failed to start. Check local runtime settings.\n');
     process.exitCode = 1;
   });

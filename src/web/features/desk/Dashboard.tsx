@@ -403,9 +403,7 @@ export function Dashboard() {
       // A running pre-workspace backend can serve newly built static assets.
       // Reject its older payload before the activity card tries to render it.
       if (!Array.isArray(dashboard.activity)) {
-        throw new Error(
-          'The local server is out of date. Stop it and launch LeetCode Tutor again.',
-        );
+        throw new Error('The local server is out of date. Stop it and launch BloomCode again.');
       }
       return dashboard;
     },

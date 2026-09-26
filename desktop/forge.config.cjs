@@ -5,8 +5,8 @@ const path = require('node:path');
 module.exports = {
   outDir: path.resolve(__dirname, '../electron'),
   packagerConfig: {
-    name: 'LeetCode Tutor',
-    executableName: 'LeetCode Tutor',
+    name: 'BloomCode',
+    executableName: 'BloomCode',
     appBundleId: 'io.github.pritanb.leetcode-tutor',
     appCategoryType: 'public.app-category.education',
     icon: path.join(__dirname, 'assets/icon.icns'),
@@ -26,7 +26,7 @@ module.exports = {
       for (const output of result.outputPaths) {
         execFileSync(
           'codesign',
-          ['--force', '--deep', '--sign', '-', path.join(output, 'LeetCode Tutor.app')],
+          ['--force', '--deep', '--sign', '-', path.join(output, 'BloomCode.app')],
           { stdio: 'inherit' },
         );
       }

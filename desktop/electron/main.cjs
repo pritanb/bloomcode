@@ -4,7 +4,9 @@ const { app, BrowserWindow, Menu, dialog, shell, utilityProcess, ipcMain } = req
 const { join } = require('node:path');
 const { pathToFileURL } = require('node:url');
 
-app.setName('LeetCode Tutor');
+app.setName('BloomCode');
+// Preserve the existing Chromium profile and single-instance lock across the rename.
+app.setPath('userData', join(app.getPath('appData'), 'LeetCode Tutor'));
 // Test runs must not share Chromium state or the real app's single-instance lock.
 if (process.env.DESKTOP_TEST_DATA_DIR)
   app.setPath('userData', join(process.env.DESKTOP_TEST_DATA_DIR, 'desktop-profile'));
@@ -164,7 +166,7 @@ async function startWorker() {
   const dataDir = process.env.DESKTOP_TEST_DATA_DIR || resolveDataDir();
   const child = utilityProcess.fork(join(root, 'dist/server/desktop.js'), [], {
     cwd: app.isPackaged ? process.resourcesPath : root,
-    serviceName: 'LeetCode Tutor study server',
+    serviceName: 'BloomCode study server',
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -231,7 +233,7 @@ async function showFailure(error) {
   await stopWorker();
   const result = await dialog.showMessageBox(window, {
     type: 'error',
-    title: 'Could not open LeetCode Tutor',
+    title: 'Could not open BloomCode',
     message: 'Your study workspace could not open.',
     detail: error.message,
     buttons: ['Retry', 'Quit'],
@@ -286,7 +288,7 @@ else {
       void launch();
     })
     .catch((error) => {
-      dialog.showErrorBox('Could not open LeetCode Tutor', error.message);
+      dialog.showErrorBox('Could not open BloomCode', error.message);
       app.quit();
     });
   app.on('activate', focusWindow);

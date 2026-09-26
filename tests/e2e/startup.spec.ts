@@ -16,7 +16,7 @@ test('an older dashboard response gives restart instructions, not a blank screen
   });
   await page.goto('/');
   await expect(
-    page.getByText('The local server is out of date. Stop it and launch LeetCode Tutor again.'),
+    page.getByText('The local server is out of date. Stop it and launch BloomCode again.'),
   ).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
   expect(errors).toEqual([]);
