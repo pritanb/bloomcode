@@ -125,44 +125,6 @@ interface Batch {
   fingerprint: string;
   source: ImportPayload['source'];
   appliedAt: string;
-  evidence?: Pick<ImportPayload, 'attempts' | 'movements' | 'problems'>;
-}
-function importedEvidenceExists(
-  s: Store,
-  b: ImportPayload,
-  kind: 'attempts' | 'movements',
-  input: ImportPayload['attempts'][number] | ImportPayload['movements'][number],
-): boolean {
-  if (!b.source.spreadsheetId) return false;
-  const batches = s
-    .all<Batch>('import_batches')
-    .filter(
-      (prior) => prior.id !== b.importId && prior.source.spreadsheetId === b.source.spreadsheetId,
-    );
-  const rows = s.all<{ id: string; sourceKey?: string; importId?: string }>(
-    kind === 'attempts' ? 'attempts' : 'score_decisions',
-  );
-  let exists = false;
-  for (const prior of batches) {
-    if (!rows.some((row) => row.importId === prior.id && row.sourceKey === input.sourceKey))
-      continue;
-    const original = prior.evidence?.[kind].find((row) => row.sourceKey === input.sourceKey);
-    if (!original)
-      throw conflict(
-        `Source row ${input.sourceKey} overlaps legacy evidence without a comparable source snapshot`,
-      );
-    if (
-      canonical(original) !== canonical(input) ||
-      (input.problemKey &&
-        prior.evidence?.problems.find((p) => p.key === input.problemKey)?.url !==
-          b.problems.find((p) => p.key === input.problemKey)?.url)
-    )
-      throw conflict(
-        `Source row ${input.sourceKey} changed; existing evidence was not overwritten`,
-      );
-    exists = true;
-  }
-  return exists;
 }
 export function applyImport(s: Store, b: ImportPayload, clock: () => Date): ImportReport {
   const counts: Record<string, number> = {
@@ -189,22 +151,11 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       unresolved,
     };
   }
-  const duplicateAttempts = new Set(
-    b.attempts
-      .filter((input) => importedEvidenceExists(s, b, 'attempts', input))
-      .map((input) => input.sourceKey),
-  );
-  const duplicateMovements = new Set(
-    b.movements
-      .filter((input) => importedEvidenceExists(s, b, 'movements', input))
-      .map((input) => input.sourceKey),
-  );
   s.put('import_batches', {
     id: b.importId,
     fingerprint,
     source: b.source,
     appliedAt: clock().toISOString(),
-    evidence: { problems: b.problems, attempts: b.attempts, movements: b.movements },
   });
   const problems = new Map<string, string>();
   const unresolvedRow = (sourceKey: string, raw: unknown, reason: string) => {
@@ -303,7 +254,6 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       continue;
     }
     attemptKeys.add(input.sourceKey);
-    if (duplicateAttempts.has(input.sourceKey)) continue;
     const p = s.get<Problem>('problems', problemId);
     const a: AttemptRecord = {
       id: randomUUID(),
@@ -374,7 +324,6 @@ export function applyImport(s: Store, b: ImportPayload, clock: () => Date): Impo
       continue;
     }
     movementKeys.add(input.sourceKey);
-    if (duplicateMovements.has(input.sourceKey)) continue;
     s.put('score_decisions', {
       id: randomUUID(),
       topicId,
