@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageCircle, Send, Square } from 'lucide-react';
+import { LoaderCircle, MessageCircle, Send, Square } from 'lucide-react';
 import type { ChatState } from '../../../shared/tutor-chat';
 import { api } from '../../app/api';
 import { Panel, ScrollRegion } from '../../components/kit';
@@ -298,9 +298,36 @@ export function TutorChat({
               </div>
             </ScrollRegion>
             <div className="mx-auto w-full max-w-3xl space-y-2">
-              <p role="status" className="min-h-5 text-sm text-muted-foreground">
-                {state.activity}
-              </p>
+              <div role="status" aria-live="polite" aria-atomic="true">
+                {busy ? (
+                  <div className="flex items-start gap-3 rounded-xl bg-muted px-4 py-3">
+                    <LoaderCircle
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0 motion-safe:animate-spin"
+                    />
+                    <div className="min-w-0 text-sm">
+                      <p className="font-medium">
+                        {state.status === 'starting'
+                          ? 'Bloom is starting…'
+                          : state.status === 'working'
+                            ? state.draft
+                              ? 'Bloom is writing…'
+                              : 'Bloom is thinking…'
+                            : action.variables?.path === 'message'
+                              ? 'Sending your message…'
+                              : 'Updating Bloom…'}
+                      </p>
+                      {state.activity && (
+                        <p className="mt-1 text-xs text-muted-foreground">{state.activity}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  state.activity && (
+                    <p className="text-sm text-muted-foreground">{state.activity}</p>
+                  )
+                )}
+              </div>
               {state.status === 'closed' || state.status === 'error' ? (
                 <Button disabled={action.isPending} onClick={() => action.mutate({ path: 'open' })}>
                   Open tutor
