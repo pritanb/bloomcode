@@ -1,8 +1,9 @@
 # Python tutor
 
 Python manages the tutor conversation through the [Codex Python SDK](https://learn.chatgpt.com/docs/codex-sdk).
-BloomCode's existing TypeScript MCP server supplies platform tools. There is no
-separate Python MCP server or API client.
+BloomCode's existing TypeScript MCP server supplies platform tools. Python uses
+an MCP client to prepare learner context; it defines no duplicate platform tools
+or HTTP API client.
 
 ## Run
 
@@ -28,6 +29,7 @@ The tutor reuses file-based Codex sign-in (`auth.json` in `CODEX_HOME`, normally
 records are sent to Codex and use the signed-in account's usage.
 
 Ask: **“For my latest Two Sum attempt, what changed in my help usage?”**
+Or: **“What should I practise next, based on my recent attempts and learning insights?”**
 No attempt ID is required. Enter `/quit` or press Ctrl+C to exit.
 `--model MODEL` overrides the default `gpt-6-sol`. Without `--token-file`, the
 conversation runs without platform tools. `--attempt ID` remains an optional
@@ -42,7 +44,8 @@ answer appears once the turn completes.
 
 - `chat.py`: terminal input and output.
 - `tutor.py`: teaching instructions, Codex session, and dedicated MCP configuration.
-- `../src/integrations/mcp.ts`: the shared `get_recent_attempts` and `get_attempt_context` tools.
+- `learner_state.py`: loads recent attempts through MCP and calculates a compact snapshot.
+- `../src/integrations/mcp.ts`: shared attempt, Learning Insights and evidence-search tools.
 - `../src/server/attempts/attempts.ts`: lists completed attempts through the authenticated API.
 
 `get_recent_attempts` returns summaries newest first, optionally filtered by
@@ -51,7 +54,30 @@ passes a returned ID to `get_attempt_context`, which returns the existing
 platform context, including code, history and topic scores. Ambiguous requests
 can be clarified using titles and dates rather than internal IDs.
 
-Only those two tools are allowlisted for this tutor; the shared server's write
+Before each turn with platform tools enabled, Python loads up to ten completed
+attempts and calculates attempt count, distinct problem count, outcomes and help
+usage. Unknown help stays unknown. The snapshot includes source IDs, dates,
+short titles and a `hasMore` flag; it omits code and notes. It describes a recent
+sample, not lifetime progress or mastery. Blocked or unavailable data is kept
+distinct from an empty history, and every turn replaces the previous snapshot.
+
+The learner message and snapshot are sent together as a JSON envelope. Teaching
+instructions identify the snapshot as untrusted evidence, not instructions.
+The MCP client starts a short-lived instance of the existing server per snapshot,
+using the tutor's generated configuration and a 20-second timeout. This adds a
+local process startup each turn; it does not make an extra model request.
+
+For broader recommendations, the tutor can also read `get_learning_insights` and
+query `retrieve_learning_evidence`. Instructions ask it to inspect at most three
+relevant contexts (including topic scores), and retrieve up to five observations
+per focused search. These additional calls have prompt limits, not a hard context
+budget; existing attempt contexts can include full histories.
+It should cite records, distinguish repeated practice from evidence across
+problems, and acknowledge missing or stale analysis. When Insights is unavailable,
+it can still make provisional suggestions from attempt records. Topic scores
+come from selected contexts; this is not a complete overview of every topic.
+
+Only those four tools are allowlisted for this tutor; the shared server's write
 tools are not exposed. General-purpose Codex tools and web search are disabled.
 The API still enforces authentication and assessment visibility. The MCP process
 holds the existing broad local API credential; server-side scoped credentials
@@ -82,13 +108,14 @@ teaching-quality evaluations remain later work.
 ## Verify
 
 ```sh
+python/.venv/bin/python -m unittest discover -s python -p 'test_*.py'
 node --import tsx tests/integrations/python-context.mjs
 ```
 
 This starts the real TypeScript MCP server against a disposable BloomCode
-database and tests listing, filtering, retrieval and assessment restrictions.
-Add `--live` to verify that Codex calls both tools without being given an ID,
-reports their activity, saves the conversation, then answers a follow-up.
+database and tests listing, filtering, retrieval, snapshot facts and assessment restrictions.
+Add `--live` to verify that Codex uses the snapshot, retrieves context, saves the
+conversation and recommends practice across problems with Insights disabled.
 That option consumes signed-in account usage.
 
 To verify persistence across separate Python processes in disposable storage:
