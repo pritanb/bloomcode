@@ -51,7 +51,7 @@ def main() -> int:
                         state_dir=args.state_dir, new=args.new) as tutor:
             print(f"BloomCode tutor — {'resumed conversation' if tutor.resumed else 'new conversation'}. /quit to exit.")
             if args.token_file:
-                print("Attempt tools enabled. Try: Let's discuss my latest attempt.")
+                print("Attempt tools enabled. /coach latest starts coaching; /coach Two Sum finds a problem.")
             if args.attempt:
                 print(f"\nTutor: {tutor.reply(f'Help me reflect on attempt {args.attempt}.', on_activity=show_activity)}", flush=True)
                 review_changes(tutor)

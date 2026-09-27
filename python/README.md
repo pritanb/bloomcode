@@ -246,13 +246,16 @@ This also uses disposable data and signed-in account usage.
 
 ## Adaptive coaching (LangGraph)
 
-Ask **“Coach me through my latest attempt”** in the floating tutor or terminal.
-A request about “this attempt” uses the completed-attempt screen when supplied.
-Problem names work too; ambiguous attempts prompt a choice. Opening the tutor
-alone does not start coaching. Ordinary explanations and goal/preference requests
-still use the original conversational tutor.
+Click **Coach latest attempt** in the floating tutor, or **Coach this attempt**
+on a completed-attempt screen. In either client, `/coach latest`, `/coach this`
+(with an attempt screen), and `/coach Two Sum` select the target directly.
+Ambiguous results prompt you to send `/coach` followed by an offered attempt ID.
+The original exact “Coach me through my latest attempt” starter also works.
+Other free-form requests stay in ordinary chat until coaching is active. Opening
+the tutor alone does not start coaching. Ordinary explanations and goal/preference
+requests still use the original conversational tutor.
 
-Python routes the request, retrieves bounded evidence through MCP, and runs a
+Python uses the explicit target, retrieves bounded evidence through MCP, and runs a
 LangGraph teaching loop. It selects one focus, asks a diagnostic question, and
 adapts to the answer with a clarification, hint, explanation, or wrap-up. You can
 ask for a direct explanation at any point. Coaching observations are tentative;
@@ -265,7 +268,10 @@ bounded learner snapshot. Learning Insights is supplementary and can be absent.
 Once coaching is active, one structured call both interprets the message and
 chooses the teaching response. Goal/preference requests and unrelated questions
 hand back to ordinary chat, preserving the pending coaching question. Starting or
-switching attempts still uses the separate resolver.
+switching attempts resolves the supplied target directly; no model classifier is
+used.
+Pause and resume are direct state changes. An ambiguous attempt-switch request
+during coaching prompts you to use the button or `/coach` command.
 
 Routine follow-ups retrieve only fresh access status, the selected attempt and
 current preferences. The model sees recent dialogue, the current focus and prior
@@ -274,7 +280,7 @@ Learning Insights when a comparison needs them. Access is checked again before
 committing a response. This reduces input and sequential model calls without
 caching access permissions or preferences.
 
-Routing and structured coaching use the configured model with low reasoning
+Structured coaching uses the configured model with low reasoning
 effort to reduce the wait for short conversational turns. Ordinary chat keeps
 its existing reasoning settings. `BLOOMCODE_COACHING_MODEL` optionally overrides
 only the coaching model; close and reopen the tutor after changing the backend's
@@ -320,8 +326,8 @@ npm run eval:tutor -- --cases=all
 
 The runner starts a disposable study database, seeds two synthetic attempts,
 compares the original `chat_reply` with the LangGraph path using identical learner
-messages, and removes the test database afterwards. It does not use your study
-workspace. Reports remain ignored under `private/coaching-evals/<timestamp>/`:
+messages, with an explicit coaching target for the LangGraph variant, and removes
+the test database afterwards. It does not use your study workspace. Reports remain ignored under `private/coaching-evals/<timestamp>/`:
 
 - `comparison.md`: side-by-side responses, timings, and space for your judgement.
 - `comparison.json`: full responses, model-call metadata, available usage,
@@ -336,5 +342,6 @@ and restart correctness remain deterministic integration/unit checks.
 Score relevance, adaptation, hinting and evidence honesty separately. These are
 single-run examples, not statistically reliable improvement claims. Scripted
 answers may align more naturally with one version's question; inspect the whole
-exchange. Routing and fresh evidence retrieval add latency. Quality scores are
-left blank for human review, and software failures are reported separately.
+exchange. Fresh evidence retrieval and model generation add latency; routing uses
+no model call. Quality scores are left blank for human review, and software
+failures are reported separately.

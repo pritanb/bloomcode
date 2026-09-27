@@ -74,7 +74,7 @@ def main():
                 method = request["method"]
                 if method == "reply":
                     tutor.reply(request["message"], request_id=id,
-                        context_id=request.get('attemptId'),
+                        context_id=request.get('attemptId'), coaching_target=request.get('coach'),
                         on_activity=lambda message: emit("activity", id, message=message),
                         on_text=lambda text: emit("delta", id, text=text))
                 elif method == "coaching":

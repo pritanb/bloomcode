@@ -80,15 +80,22 @@ test('practice blocks the UI and invalidates an in-flight reply; scoped model cr
           method: 'POST',
           url: '/api/tutor-chat/message',
           headers: { authorization: `Bearer ${scoped}` },
-          payload: { id: randomUUID(), message: 'write' },
+          payload: { id: randomUUID(), message: 'write', coach: 'latest' },
         })
       ).statusCode,
     ).toBe(403);
+    const send = vi.spyOn(chat, 'send');
+    const requestId = randomUUID();
     await app.inject({
       method: 'POST',
       url: '/api/tutor-chat/message',
       headers,
-      payload: { id: randomUUID(), message: 'slow' },
+      payload: { id: requestId, message: 'slow', coach: 'latest' },
+    });
+    expect(send).toHaveBeenCalledWith(requestId, {
+      method: 'reply',
+      message: 'slow',
+      coach: 'latest',
     });
     const problem = (
       await app.inject({

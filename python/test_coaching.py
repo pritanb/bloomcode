@@ -68,19 +68,90 @@ class CoachingTests(unittest.TestCase):
 class RoutingTests(unittest.TestCase):
     def test_normal_chat_pauses_and_clarification_is_persisted(self):
         from coaching import Coaching
-        from coaching_model import Route
         with tempfile.TemporaryDirectory() as directory:
-            coach = Coaching(Path(directory), lambda *a: Route(intent='start', attempt_id=None, problem='Two Sum', latest=False), None)
+            coach = Coaching(Path(directory), lambda *a: self.fail('Selection must not call a model'), None)
             class FakeEvidence:
                 def check_access(self): pass
                 def resolve(self, route, context): return None, [{'id':'record','title':'Two Sum','date':'today'}]
             coach.evidence = FakeEvidence()
-            self.assertIn('Which attempt', coach.reply('coach Two Sum'))
+            self.assertIn('Which attempt', coach.reply('/coach Two Sum'))
             coach.close()
-            coach = Coaching(Path(directory), lambda *a: Route(intent='chat',attempt_id=None,problem=None,latest=False), None)
+            coach = Coaching(Path(directory), lambda *a: self.fail('Ordinary chat must not call the coaching model'), None)
             coach.evidence = FakeEvidence()
             self.assertEqual(coach.candidates[0]['id'], 'record')
             self.assertIsNone(coach.reply('What is a hash map?'))
+            coach.close()
+
+    def test_explicit_start_switch_and_resume_have_no_classification_call(self):
+        from coaching import Coaching
+        with tempfile.TemporaryDirectory() as directory:
+            calls, targets = [], []
+            def model(schema, instructions, data):
+                calls.append(schema.__name__)
+                return Teaching(action='question', focus='x', response='Question', evidence_ids=[])
+            class FakeEvidence:
+                def check_access(self): pass
+                def resolve(self, target, context):
+                    targets.append(target)
+                    return ('current' if target == 'this' else target), []
+                def __call__(self, id): return {'ids':[id], 'fingerprint':'1'}
+            coach = Coaching(Path(directory), model, None)
+            coach.evidence = coach.graph.evidence = FakeEvidence()
+            self.assertIsNone(coach.reply('What should I practise?'))
+            self.assertEqual(calls, [])
+            coach.reply('Start', request_id='1', target='latest')
+            coach.reply('Start', request_id='1', target='latest')
+            self.assertEqual(calls, ['Teaching'])
+            with self.assertRaises(ValueError):
+                coach.reply('Start', request_id='1', target='this')
+            coach.control('pause')
+            self.assertIsNone(coach.reply('What is a hash map?'))
+            coach.control('resume')
+            self.assertEqual(calls, ['Teaching'])
+            coach.reply('Start here', request_id='2', context_id='current', target='this')
+            self.assertEqual(coach.view()['attemptId'], 'current')
+            with self.assertRaises(ValueError):
+                coach.reply('Start here', request_id='2', context_id='different', target='this')
+            coach.reply('/coach Two Sum', request_id='3')
+            self.assertEqual(targets, ['latest', 'this', 'Two Sum'])
+            self.assertEqual(calls, ['Teaching'] * 3)
+            coach.close()
+
+    def test_ordinary_chat_after_completion_leaves_coaching_view(self):
+        from coaching import Coaching
+        with tempfile.TemporaryDirectory() as directory:
+            coach = Coaching(Path(directory), lambda *a: Teaching(
+                action='finish', focus='x', response='Done', evidence_ids=[]), None)
+            coach.graph.evidence = evidence
+            coach.graph.start('a', {'id':'1', 'message':'coach'})
+            self.assertEqual(coach.view()['status'], 'completed')
+            self.assertIsNone(coach.reply('What is a hash map?'))
+            self.assertEqual(coach.view()['status'], 'paused')
+            coach.close()
+
+    def test_ambiguous_selection_survives_restart_without_a_model_call(self):
+        from coaching import Coaching
+        with tempfile.TemporaryDirectory() as directory:
+            class FakeEvidence:
+                def check_access(self): pass
+                def resolve(self, target, context):
+                    if target == 'Two Sum':
+                        return None, [{'id':'record','title':'Two Sum','date':'today'}]
+                    return target, []
+                def __call__(self, id): return {'ids':[id], 'fingerprint':'1'}
+            def model(schema, instructions, data):
+                self.assertEqual(schema, Teaching)
+                return Teaching(action='question', focus='x', response='Question', evidence_ids=[])
+            coach = Coaching(Path(directory), model, None)
+            coach.evidence = coach.graph.evidence = FakeEvidence()
+            coach.reply('/coach Two Sum')
+            coach.close()
+            coach = Coaching(Path(directory), model, None)
+            coach.evidence = coach.graph.evidence = FakeEvidence()
+            coach.reply('record', request_id='selection')
+            coach.reply('record', request_id='selection')
+            self.assertEqual(len(coach.view()['messages']), 2)
+            self.assertEqual(coach.view()['attemptId'], 'record')
             coach.close()
 
     def test_invalid_model_references_are_repaired_once(self):
@@ -175,6 +246,30 @@ class RoutingTests(unittest.TestCase):
             graph.close()
 
 class FocusedEvidenceTests(unittest.TestCase):
+    def test_explicit_targets_select_the_requested_record_only(self):
+        from contextlib import asynccontextmanager
+        from unittest.mock import patch
+        from coaching_evidence import Evidence
+        calls = []
+        @asynccontextmanager
+        async def session(config): yield object()
+        async def call(client, tool, args):
+            calls.append((tool, args))
+            if tool == 'get_attempt_context':
+                return {'attempt': {'id': args['attemptId'], 'status':'completed'}}
+            return {'attempts': [
+                {'id':id, 'problem':{'title':'Two Sum'}, 'finishedAt':'today'}
+                for id in ['newest', 'older']]}
+        with patch('coaching_evidence.platform_session', session), patch('coaching_evidence.call', call):
+            provider = Evidence(None)
+            self.assertEqual(provider.resolve('latest', 'screen'), ('newest', []))
+            self.assertEqual(provider.resolve('this', 'screen'), ('screen', []))
+            id, candidates = provider.resolve('Two Sum', 'screen')
+            self.assertIsNone(id)
+            self.assertEqual(len(candidates), 2)
+            self.assertEqual(calls[-1], ('get_recent_attempts', {'limit':5, 'problem':'Two Sum'}))
+            with self.assertRaises(ValueError): provider.resolve('this', None)
+
     def test_followup_reads_fresh_access_attempt_and_preferences_only(self):
         from contextlib import asynccontextmanager
         from unittest.mock import patch

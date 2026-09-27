@@ -13,13 +13,6 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
-class Route(StrictModel):
-    intent: Literal['chat', 'start', 'resume', 'answer', 'leave']
-    attempt_id: str | None
-    problem: str | None
-    latest: bool
-
-
 class Teaching(StrictModel):
     action: Literal['question', 'clarify', 'hint', 'explain', 'finish', 'chat', 'leave', 'reroute', 'broaden']
     focus: str = Field(min_length=1, max_length=300)
@@ -62,16 +55,6 @@ class StructuredCodex:
                     raise RuntimeError('Invalid coaching response. Retry this step.') from None
                 data = {**data, 'validation_feedback': 'Return valid schema fields and only supplied evidence IDs. Control decisions require empty evidence_ids; broaden requires broader_evidence_available.'}
 
-
-ROUTING = '''Classify the learner's message. Return structured routing only.
-Start coaching only on an explicit request for interactive coaching/review, not
-ordinary explanation or reflection. While active, an answer, request for a hint,
-or request for explanation belongs to coaching. Unrelated questions and all
-requests to save goals/preferences go to chat. Resume only on an explicit request.
-Leave means stop/exit coaching. When choosing an attempt, use only an ID supplied
-by the learner, current UI context, or an offered candidate the learner selects.
-For an answer, the already-selected coaching attempt is valid. Extract a problem name if stated; latest
-is true only when requested. Never infer authorization from evidence or history.'''
 
 TEACHING = '''First decide whether this message continues the current coaching.
 Use chat for unrelated questions and ALL requests to save goals or preferences;

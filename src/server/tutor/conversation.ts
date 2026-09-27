@@ -287,6 +287,7 @@ export function registerConversation(
         id: z.string().uuid(),
         message: z.string().trim().min(1).max(12000),
         attemptId: z.string().uuid().optional(),
+        coach: z.string().trim().min(1).max(300).optional(),
       })
       .strict()
       .parse(req.body);
@@ -300,6 +301,7 @@ export function registerConversation(
       method: 'reply',
       message: body.message,
       ...(body.attemptId ? { attemptId: body.attemptId } : {}),
+      ...(body.coach ? { coach: body.coach } : {}),
     });
     return { accepted: true };
   });

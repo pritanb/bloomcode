@@ -97,7 +97,9 @@ class CoachingGraph:
                 self.evidence.check_access()
             request = state['request']
             return {'receipts': {**state.get('receipts', {}), request['id']: {
-                'message': request['message'], 'response': '', 'handoff': decision['action']}},
+                'message': request['message'], 'coaching_target': request.get('coaching_target'),
+                'context_attempt_id': request.get('context_attempt_id'),
+                'response': '', 'handoff': decision['action']}},
                 'expand': False}
         if len(state.get('decisions', [])) >= 6 and decision['action'] != 'finish':
             decision['action'] = 'finish'
@@ -108,7 +110,9 @@ class CoachingGraph:
             decision['response'] += '\n\nEvidence: ' + ', '.join(decision['evidence_ids'])
         request = state['request']
         receipts = {**state.get('receipts', {}), request['id']: {
-            'message': request['message'], 'response': decision['response']}}
+            'message': request['message'], 'coaching_target': request.get('coaching_target'),
+            'context_attempt_id': request.get('context_attempt_id'),
+            'response': decision['response']}}
         return {
             'messages': [*state.get('messages', []),
                          {'role': 'user', 'text': request['message']},
@@ -165,7 +169,10 @@ class CoachingGraph:
         value = self.state()
         receipt = value.get('receipts', {}).get(request['id'])
         if receipt:
-            if receipt['message'] != request['message']:
+            if (receipt['message'] != request['message'] or
+                    receipt.get('coaching_target') != request.get('coaching_target') or
+                    ('context_attempt_id' in receipt and
+                     receipt['context_attempt_id'] != request.get('context_attempt_id'))):
                 raise ValueError('Request ID reused with different input')
             return value
         if self.view()['needsRetry']:

@@ -2,6 +2,7 @@
 import asyncio
 import hashlib
 import json
+from uuid import UUID
 from learner_state import platform_session, load_snapshot
 
 
@@ -38,20 +39,31 @@ class Evidence:
                     raise PermissionError('Finish or cancel active practice before coaching.')
         asyncio.run(read())
 
-    def resolve(self, route, context_id):
+    def resolve(self, target, context_id):
+        # The target comes directly from a button or /coach command, never a model.
+        latest = target.lower() == 'latest'
+        id, problem = None, None
+        if target.lower() == 'this':
+            if not context_id:
+                raise ValueError('Open a completed attempt or use /coach latest.')
+            id = context_id
+        elif not latest:
+            try:
+                id = str(UUID(target))
+            except ValueError:
+                problem = target
         async def read():
             async with platform_session(self.config) as session:
-                id = route.attempt_id or (context_id if not route.problem and not route.latest else None)
                 if id:
                     data = await call(session, 'get_attempt_context', {'attemptId': id})
                     if data['attempt']['status'] != 'completed':
                         raise PermissionError('Choose a completed attempt for coaching.')
                     return id, []
                 args = {'limit': 5}
-                if route.problem: args['problem'] = route.problem
+                if problem: args['problem'] = problem
                 data = await call(session, 'get_recent_attempts', args)
                 rows = data['attempts']
-                if route.latest and rows: return rows[0]['id'], []
+                if latest and rows: return rows[0]['id'], []
                 if len(rows) == 1: return rows[0]['id'], []
                 return None, [{'id': a['id'], 'title': a['problem']['title'],
                                'date': a['finishedAt']} for a in rows]

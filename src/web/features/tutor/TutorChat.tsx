@@ -10,7 +10,6 @@ import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 
 const suggestions = [
-  'Coach me through my latest attempt.',
   'What should I practise next?',
   'How am I progressing on my goals?',
   'Help me reflect on my latest attempt.',
@@ -76,15 +75,24 @@ export function TutorChat({
   if (!state) return null;
   const busy = state.status === 'starting' || state.status === 'working' || action.isPending;
   const ready = state.status === 'ready' && !action.isPending;
-  const send = () => {
-    if (!ready || !message.trim()) return;
+  const send = (text = message, coach?: string) => {
+    if (!ready || !text.trim()) return;
     following.current = true;
     action.mutate(
       {
         path: 'message',
-        body: { id: crypto.randomUUID(), message, ...(attemptId ? { attemptId } : {}) },
+        body: {
+          id: crypto.randomUUID(),
+          message: text,
+          ...(attemptId ? { attemptId } : {}),
+          ...(coach ? { coach } : {}),
+        },
       },
-      { onSuccess: () => setMessage('') },
+      {
+        onSuccess: () => {
+          if (!coach) setMessage('');
+        },
+      },
     );
   };
   return (
@@ -140,6 +148,20 @@ export function TutorChat({
               onClick={() => action.mutate({ path: 'new' })}
             >
               New conversation
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy || !!state.coachingError || state.proposals.length > 0}
+              onClick={() =>
+                send(
+                  attemptId
+                    ? 'Coach me through this attempt.'
+                    : 'Coach me through my latest attempt.',
+                  attemptId ? 'this' : 'latest',
+                )
+              }
+            >
+              {attemptId ? 'Coach this attempt' : 'Coach latest attempt'}
             </Button>
             <Button
               variant="ghost"
@@ -299,7 +321,7 @@ export function TutorChat({
                     value={message}
                     maxLength={12000}
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="What would you like to work on?"
+                    placeholder="Ask a question, or use /coach followed by a problem name"
                     rows={3}
                     disabled={state.status === 'starting'}
                   />

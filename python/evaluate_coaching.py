@@ -22,7 +22,7 @@ def main():
     report = {'createdAt': datetime.now(timezone.utc).isoformat(), 'model': 'gpt-6-sol',
               'coachingModel': os.environ.get('BLOOMCODE_COACHING_MODEL', 'gpt-6-sol'),
               'coachingReasoningEffort': 'low',
-              'baseline': 'Existing TutorSession.chat_reply, unchanged teaching instructions and MCP tools',
+              'baseline': 'Ordinary TutorSession.chat_reply with current teaching instructions and MCP tools',
               'limits': 'Scripted replies are identical between variants and may fit one generated question better. One run is not a statistical benchmark. Human scores are intentionally blank.', 'cases': []}
     args.output.mkdir(parents=True, exist_ok=True)
     for case in cases:
@@ -37,7 +37,8 @@ def main():
                     trace_start = len(tutor.coaching.model.trace) if tutor.coaching else 0
                     try:
                         reply = tutor.chat_reply if variant == 'before' else tutor.reply
-                        text = reply(message, on_activity=activity.append)
+                        options = {'coaching_target': case['target']} if variant == 'after' and not turns else {}
+                        text = reply(message, on_activity=activity.append, **options)
                         error = None
                     except Exception as ex:
                         text, error = '', type(ex).__name__ + ': ' + str(ex)
@@ -58,7 +59,7 @@ def main():
 
 def render(report, path):
     lines = ['# Tutor response comparison', '', f"Ordinary chat model: {report['model']}. Coaching model: {report['coachingModel']} ({report['coachingReasoningEffort']} reasoning).", '', report['limits'], '',
-             'Before: existing Codex tutor. After: LangGraph coaching using the reported coaching model and disposable study data.', '',
+             'Before: ordinary Codex chat. After: LangGraph coaching with an explicit target, using the reported coaching model and disposable study data.', '',
              'Score each version 1–5 for relevance, adaptation, appropriate hinting, and evidence honesty. Mark unsupported claims and software errors separately. No quality score has been assigned automatically.', '']
     for case in report['cases']:
         lines += [f"## {case['id']}", '', case['rubric'], '']

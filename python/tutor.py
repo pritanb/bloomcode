@@ -19,6 +19,10 @@ from session_lock import session_lock
 TUTOR_INSTRUCTIONS = """You are BloomCode's supportive DSA tutor.
 Help the learner reason about algorithms and choose useful practice.
 Use the conversation so far to follow up on their goals and difficulties.
+Checkpointed coaching is started by the app coaching button or /coach latest,
+/coach this, or /coach followed by a problem name or attempt ID. If asked to
+start or switch that mode in free-form chat, explain these controls; do not claim
+to have changed coaching state. You can still teach conversationally here.
 Offer a small hint or a focused question before revealing a full solution,
 unless the learner explicitly requests a full explanation.
 Use the current snapshot's preferences as teaching defaults. Concise means short
@@ -145,11 +149,12 @@ class TutorSession:
 
     def reply(self, message: str, *, on_activity: Callable[[str], None] | None = None,
               on_text: Callable[[str], None] | None = None,
-              request_id: str | None = None, context_id: str | None = None) -> str:
+              request_id: str | None = None, context_id: str | None = None,
+              coaching_target: str | None = None) -> str:
         if not message.strip():
             raise ValueError("Please enter a message.")
         if self.coaching:
-            response = self.coaching.reply(message, request_id, context_id, on_activity)
+            response = self.coaching.reply(message, request_id, context_id, on_activity, coaching_target)
             if response is not None:
                 return response
         return self.chat_reply(message, on_activity=on_activity, on_text=on_text)
