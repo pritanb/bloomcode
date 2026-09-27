@@ -90,6 +90,7 @@ export async function registerLocalAuth(
               '/api/topics/scores',
               '/api/learning-goals',
               '/api/tutor-preferences',
+              '/api/tutor-access',
             ].includes(path) || /^\/api\/attempts\/[a-zA-Z0-9_-]+\/context$/.test(path)
           : req.method === 'POST' && path === '/api/insights/retrieve';
       if (!allowed)

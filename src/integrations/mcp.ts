@@ -20,6 +20,7 @@ const key = z
 const date = z.iso.date();
 const action = z.enum(['recommended', 'manual', 'none']);
 const schemas = {
+  get_tutor_access: z.strictObject({}),
   get_tutor_preferences: z.strictObject({}),
   propose_tutor_preferences: z.strictObject({ change: preferenceChange }),
   confirm_tutor_preferences: confirmedPreferenceChange.extend({ idempotencyKey: key }),
@@ -106,6 +107,7 @@ const schemas = {
   }),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  get_tutor_access: 'Check whether tutoring is permitted; no study records are returned.',
   get_tutor_preferences:
     'Read the current explanation depth, hint style and version. A null sourceConversation means defaults, not learner-confirmed preferences.',
   propose_tutor_preferences:
@@ -150,6 +152,7 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
       'get_learning_goals',
       'propose_learning_goal',
       'get_topic_scores',
+      'get_tutor_access',
       'get_recent_attempts',
       'search_questions',
       'get_attempt_context',
@@ -163,7 +166,10 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
 export async function callTool(api: LocalApi, name: string, args: unknown) {
   try {
     let result: unknown;
-    if (name === 'get_tutor_preferences') {
+    if (name === 'get_tutor_access') {
+      schemas.get_tutor_access.parse(args);
+      result = await api.request('GET', '/api/tutor-access');
+    } else if (name === 'get_tutor_preferences') {
       schemas.get_tutor_preferences.parse(args);
       result = await api.request('GET', '/api/tutor-preferences');
     } else if (name === 'propose_tutor_preferences') {

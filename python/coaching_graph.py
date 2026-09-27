@@ -1,9 +1,14 @@
 """Durable coaching steps. The waiting node has no model calls or side effects."""
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import TypedDict
 from uuid import uuid4
+
+# Local-only by default, including when a developer has tracing enabled globally.
+os.environ['LANGSMITH_TRACING'] = 'false'
+os.environ['LANGCHAIN_TRACING_V2'] = 'false'
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import interrupt, Command
@@ -66,6 +71,10 @@ class CoachingGraph:
         if len(state.get('decisions', [])) >= 6 and decision['action'] != 'finish':
             decision['action'] = 'finish'
             decision['response'] += '\nWe can pause here; start another coaching session when you want to continue.'
+        if hasattr(self.evidence, 'check_access'):
+            self.evidence.check_access()
+        if decision['evidence_ids']:
+            decision['response'] += '\n\nEvidence: ' + ', '.join(decision['evidence_ids'])
         request = state['request']
         receipts = {**state.get('receipts', {}), request['id']: {
             'message': request['message'], 'response': decision['response']}}

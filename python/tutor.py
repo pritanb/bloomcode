@@ -119,6 +119,9 @@ class TutorSession:
     resumed: bool
     context_config: Path | None = None
     host_data: Path | None = None
+    coaching: object | None = None
+    coaching_error: str | None = None
+    last_usage: dict | None = None
     pending_goals: list[dict] = field(default_factory=list)
     pending_preferences: list[dict] = field(default_factory=list)
 
@@ -141,13 +144,25 @@ class TutorSession:
         return saved
 
     def reply(self, message: str, *, on_activity: Callable[[str], None] | None = None,
-              on_text: Callable[[str], None] | None = None) -> str:
+              on_text: Callable[[str], None] | None = None,
+              request_id: str | None = None, context_id: str | None = None) -> str:
         if not message.strip():
             raise ValueError("Please enter a message.")
+        if self.coaching:
+            response = self.coaching.reply(message, request_id, context_id, on_activity)
+            if response is not None:
+                return response
+        return self.chat_reply(message, on_activity=on_activity, on_text=on_text)
+
+    def chat_reply(self, message: str, *, on_activity=None, on_text=None) -> str:
         if self.context_config:
             if on_activity:
                 on_activity("Loading learner snapshot…")
             snapshot = load_snapshot(self.context_config)
+            if self.coaching:
+                coaching = self.coaching.view()
+                if coaching and snapshot['status'] != 'blocked':
+                    snapshot['coachingDiscussion'] = coaching['messages'][-4:]
             if on_activity:
                 on_activity(f"Learner snapshot {snapshot['status']}.")
             message = json.dumps({"learner_message": message, "learner_snapshot": snapshot})
@@ -188,6 +203,8 @@ class TutorSession:
                             final_response = item.text
                 elif event.method == "item/agentMessage/delta" and on_text and event.payload.item_id in answer_ids:
                     on_text(event.payload.delta)
+                elif event.method == "thread/tokenUsage/updated":
+                    self.last_usage = event.payload.token_usage.model_dump(mode='json')
                 elif event.method == "turn/completed":
                     completed = event.payload.turn
         response = final_response or fallback_response
@@ -292,6 +309,27 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
                 thread = codex.thread_resume(saved["thread_id"], **options)
             else:
                 thread = codex.thread_start(ephemeral=False, **options)
-            yield TutorSession(thread, session_file, workspace_key, resumed=bool(saved),
-                               context_config=codex_home / "config.toml" if token_file else None,
-                               host_data=host_data)
+            tutor = TutorSession(thread, session_file, workspace_key, resumed=bool(saved),
+                                 context_config=codex_home / "config.toml" if token_file else None,
+                                 host_data=host_data)
+            if token_file:
+                try:
+                    from coaching import Coaching
+                    from coaching_model import StructuredCodex
+                    if new:
+                        (root / 'active-coaching.json').write_text('null')
+                        (root / 'coaching-routing.json').write_text('{}')
+                    tutor.coaching = Coaching(root, StructuredCodex(codex, options), tutor.context_config)
+                    if new:
+                        tutor.coaching.control('clear')
+                    tutor.coaching.view()
+                except Exception:
+                    if tutor.coaching:
+                        tutor.coaching.close()
+                        tutor.coaching = None
+                    tutor.coaching_error = 'Coaching is unavailable. Check LangGraph dependencies or start a new conversation if its checkpoint is incompatible. Ordinary chat is available.'
+            try:
+                yield tutor
+            finally:
+                if tutor.coaching:
+                    tutor.coaching.close()

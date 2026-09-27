@@ -59,6 +59,12 @@ def main() -> int:
                 message = input("\nYou: ").strip()
                 if message == "/quit":
                     return 0
+                if message in ('/coach-pause', '/coach-resume', '/coach-retry'):
+                    if tutor.coaching:
+                        tutor.coaching.control(message.removeprefix('/coach-'))
+                        view = tutor.coaching.view()
+                        print(json.dumps(view, indent=2))
+                    continue
                 if message == "/confirm":
                     review_changes(tutor)
                     continue

@@ -1,5 +1,7 @@
 """Schema-validated, stateless Codex calls used by routing and coaching."""
 import json
+import re
+import time
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from openai_codex import ApprovalMode, Sandbox
@@ -34,26 +36,23 @@ class StructuredCodex:
                    'config': {'mcp_servers.bloomcode.enabled': False},
                    'approval_mode': ApprovalMode.deny_all, 'sandbox': Sandbox.read_only}
         thread = self.codex.thread_start(ephemeral=True, **options)
-        try:
-            for attempt in range(2):
-                result = thread.run(json.dumps(data), output_schema=schema.model_json_schema())
-                if result.error or result.status.value != 'completed':
-                    raise RuntimeError('Codex could not finish the coaching step.')
-                try:
-                    value = schema.model_validate_json(result.final_response or '')
-                    if isinstance(value, Teaching):
-                        allowed = set(data.get('evidence', {}).get('ids', []))
-                        if not set(value.evidence_ids) <= allowed:
-                            raise ValueError('Unsupported evidence reference')
-                    self.trace.append({'schema': schema.__name__, 'action': getattr(value, 'action', None)})
-                    return value
-                except ValueError:
-                    if attempt:
-                        raise RuntimeError('Invalid coaching response. Retry this step.') from None
-                    data = {**data, 'validation_feedback': 'Return valid schema fields and only supplied evidence IDs.'}
-        finally:
-            # Ephemeral threads are never the authoritative coaching history.
-            pass
+        for attempt in range(2):
+            started = time.monotonic()
+            result = thread.run(json.dumps(data), output_schema=schema.model_json_schema())
+            if result.error or result.status.value != 'completed':
+                raise RuntimeError('Codex could not finish the coaching step.')
+            try:
+                value = schema.model_validate_json(result.final_response or '')
+                if isinstance(value, Teaching):
+                    allowed = set(data.get('evidence', {}).get('ids', []))
+                    if not (set(value.evidence_ids) | set(re.findall(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}', value.response))) <= allowed:
+                        raise ValueError('Unsupported evidence reference')
+                self.trace.append({'schema': schema.__name__, 'action': getattr(value, 'action', None), 'latencySeconds': round(time.monotonic()-started, 3), 'usage': result.usage.model_dump(mode='json') if result.usage else None})
+                return value
+            except ValueError:
+                if attempt:
+                    raise RuntimeError('Invalid coaching response. Retry this step.') from None
+                data = {**data, 'validation_feedback': 'Return valid schema fields and only supplied evidence IDs.'}
 
 
 ROUTING = '''Classify the learner's message. Return structured routing only.

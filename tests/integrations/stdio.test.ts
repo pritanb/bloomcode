@@ -58,6 +58,7 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
       'get_recent_attempts',
       'get_today',
       'get_topic_scores',
+      'get_tutor_access',
       'get_tutor_preferences',
       'propose_learning_goal',
       'propose_tutor_preferences',

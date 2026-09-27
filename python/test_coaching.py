@@ -64,3 +64,37 @@ class CoachingTests(unittest.TestCase):
         self.assertEqual(self.graph.view()['status'], 'completed')
         self.graph.clear()
         self.assertIsNone(self.graph.view())
+
+class RoutingTests(unittest.TestCase):
+    def test_normal_chat_pauses_and_clarification_is_persisted(self):
+        from coaching import Coaching
+        from coaching_model import Route
+        with tempfile.TemporaryDirectory() as directory:
+            coach = Coaching(Path(directory), lambda *a: Route(intent='start', attempt_id=None, problem='Two Sum', latest=False), None)
+            class FakeEvidence:
+                def check_access(self): pass
+                def resolve(self, route, context): return None, [{'id':'record','title':'Two Sum','date':'today'}]
+            coach.evidence = FakeEvidence()
+            self.assertIn('Which attempt', coach.reply('coach Two Sum'))
+            coach.close()
+            coach = Coaching(Path(directory), lambda *a: Route(intent='chat',attempt_id=None,problem=None,latest=False), None)
+            coach.evidence = FakeEvidence()
+            self.assertEqual(coach.candidates[0]['id'], 'record')
+            self.assertIsNone(coach.reply('What is a hash map?'))
+            coach.close()
+
+    def test_invalid_model_references_are_repaired_once(self):
+        from coaching_model import StructuredCodex
+        from types import SimpleNamespace
+        class Thread:
+            count = 0
+            def run(self, *a, **kw):
+                self.count += 1
+                return SimpleNamespace(error=None, status=SimpleNamespace(value='completed'),
+                  final_response=json.dumps({'action':'question','focus':'test','response':'Question', 'evidence_ids':['invented']}), usage=None)
+        import json
+        thread = Thread()
+        codex = SimpleNamespace(thread_start=lambda **kwargs: thread)
+        with self.assertRaises(RuntimeError):
+            StructuredCodex(codex, {})(Teaching, 'test', {'evidence': {'ids': ['real']}})
+        self.assertEqual(thread.count, 2)
