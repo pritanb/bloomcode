@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { TutorConversation } from '../../src/server/tutor/conversation.js';
+import { TutorConversation, tutorRuntimePaths } from '../../src/server/tutor/conversation.js';
 import { createApp } from '../../src/server/core/app.js';
 
 const workers: TutorConversation[] = [];
@@ -19,6 +19,19 @@ const worker = (timeout = 10000) => {
 afterEach(() => {
   workers.forEach((w) => w.stop());
   workers.length = 0;
+});
+
+test('desktop staging uses the development worktree for both interpreter and worker', () => {
+  const root = resolve('test-worktree');
+  const paths = tutorRuntimePaths(resolve('dist/electron-stage'), { BLOOMCODE_TUTOR_ROOT: root });
+  expect(paths.worker).toBe(join(root, 'python/worker.py'));
+  expect(paths.python).toBe(
+    join(root, 'python/.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python'),
+  );
+  expect(tutorRuntimePaths(root, { BLOOMCODE_PYTHON: '/custom/python' })).toEqual({
+    python: '/custom/python',
+    worker: join(root, 'python/worker.py'),
+  });
 });
 
 test('worker streams, deduplicates requests and recovers from cancellation and crashes', async () => {

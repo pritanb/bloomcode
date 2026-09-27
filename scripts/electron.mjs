@@ -64,6 +64,8 @@ if (!installed) {
 let devServer;
 try {
   if (mode === 'dev') {
+    // The staged desktop app does not contain Python, its venv or source MCP tools.
+    process.env.BLOOMCODE_TUTOR_ROOT = root;
     const { createServer } = await import('vite');
     // Match the backend port while keeping Vite's existing Origin/CSRF proxy checks.
     process.env.TUTOR_DEV_API_PORT = process.env.DESKTOP_TEST_PORT || process.env.PORT || '4317';

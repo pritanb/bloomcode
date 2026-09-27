@@ -34,6 +34,13 @@ and terminal from writing the same session concurrently. Worker crashes do not
 affect saved study work. Set `BLOOMCODE_PYTHON` to an absolute Python executable
 if the environment is installed somewhere other than `python/.venv`.
 
+`npm run electron:dev` sets `BLOOMCODE_TUTOR_ROOT` to the source worktree so the
+staged Electron backend can find both `python/worker.py` and its virtual
+environment. Restart that command after launcher/backend changes. A Python
+executable override alone cannot supply missing worker files. Desktop packaging
+still does not bundle the Python runtime; this development path is not a packaged
+release solution.
+
 ### Terminal and development setup
 
 Requires Python 3.11+, Node.js matching the repository's requirements, and a

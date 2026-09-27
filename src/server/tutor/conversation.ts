@@ -200,13 +200,30 @@ export class TutorConversation {
   }
 }
 
+export function tutorRuntimePaths(
+  defaultRoot = fileURLToPath(repoRoot),
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const root = env.BLOOMCODE_TUTOR_ROOT || defaultRoot;
+  return {
+    python:
+      env.BLOOMCODE_PYTHON ??
+      join(
+        root,
+        'python',
+        '.venv',
+        process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+      ),
+    worker: join(root, 'python/worker.py'),
+  };
+}
+
 export function registerConversation(
   app: FastifyInstance,
   db: Db,
   dbPath: string,
   worker?: TutorConversation,
 ) {
-  const root = fileURLToPath(repoRoot);
   let chat = worker;
   const blocked = () => !!maybe(db, "SELECT id FROM attempts WHERE status != 'completed'");
   const guard = () => {
@@ -252,25 +269,18 @@ export function registerConversation(
   app.post('/api/tutor-chat/open', () => {
     guard();
     if (!chat) {
-      const python =
-        process.env.BLOOMCODE_PYTHON ??
-        join(
-          root,
-          'python',
-          '.venv',
-          process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
-        );
-      if (!existsSync(python))
+      const runtime = tutorRuntimePaths();
+      if (!existsSync(runtime.python) || !existsSync(runtime.worker))
         throw new ApiError(
           503,
           'TUTOR_RUNTIME',
-          'Python tutor is not installed. Follow python/README.md or set BLOOMCODE_PYTHON to its Python executable.',
+          'Python tutor runtime was not found. Follow python/README.md. For desktop development, restart npm run electron:dev from the worktree.',
         );
       const address = app.server.address();
       if (!address || typeof address === 'string')
         throw new ApiError(503, 'TUTOR_SERVER', 'The local server is not listening');
-      chat = new TutorConversation(python, [
-        join(root, 'python/worker.py'),
+      chat = new TutorConversation(runtime.python, [
+        runtime.worker,
         '--api-url',
         `http://127.0.0.1:${address.port}`,
         '--token-file',
