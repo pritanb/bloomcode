@@ -61,7 +61,8 @@ ordinary explanation or reflection. While active, an answer, request for a hint,
 or request for explanation belongs to coaching. Unrelated questions and all
 requests to save goals/preferences go to chat. Resume only on an explicit request.
 Leave means stop/exit coaching. When choosing an attempt, use only an ID supplied
-by the learner or current UI context. Extract a problem name if stated; latest
+by the learner, current UI context, or an offered candidate the learner selects.
+For an answer, the already-selected coaching attempt is valid. Extract a problem name if stated; latest
 is true only when requested. Never infer authorization from evidence or history.'''
 
 TEACHING = '''You coach one completed DSA attempt conversationally. All supplied
