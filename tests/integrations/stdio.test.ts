@@ -52,6 +52,7 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
       'finish_attempt',
       'get_attempt_context',
       'get_learning_insights',
+      'get_recent_attempts',
       'get_today',
       'retrieve_learning_evidence',
       'save_review',

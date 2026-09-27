@@ -18,6 +18,10 @@ const key = z
 const date = z.iso.date();
 const action = z.enum(['recommended', 'manual', 'none']);
 const schemas = {
+  get_recent_attempts: z.strictObject({
+    problem: z.string().trim().max(200).optional(),
+    limit: z.number().int().min(1).max(20).optional(),
+  }),
   get_learning_insights: z.strictObject({}),
   retrieve_learning_evidence: z.strictObject({
     query: z.string().trim().min(1).max(800),
@@ -90,6 +94,8 @@ const schemas = {
   }),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  get_recent_attempts:
+    'Find completed attempts newest first, optionally filtered by problem title substring. Returns IDs, titles, dates, outcomes and help usage. Use returned IDs with get_attempt_context; do not ask the learner to look up IDs. Limit 1–20 (default 10); hasMore indicates older matches. Hidden during mixed assessments.',
   get_learning_insights:
     'Read the current learning report and coverage. Hidden during mixed assessments.',
   retrieve_learning_evidence:
@@ -113,6 +119,7 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
   inputSchema: z.toJSONSchema(schema) as { type: 'object' },
   annotations: {
     readOnlyHint: [
+      'get_recent_attempts',
       'search_questions',
       'get_attempt_context',
       'get_learning_insights',
@@ -125,7 +132,13 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
 export async function callTool(api: LocalApi, name: string, args: unknown) {
   try {
     let result: unknown;
-    if (name === 'get_learning_insights') {
+    if (name === 'get_recent_attempts') {
+      const input = schemas.get_recent_attempts.parse(args);
+      const params = new URLSearchParams();
+      if (input.problem !== undefined) params.set('q', input.problem);
+      if (input.limit !== undefined) params.set('limit', String(input.limit));
+      result = await api.request('GET', `/api/attempts?${params}`);
+    } else if (name === 'get_learning_insights') {
       schemas.get_learning_insights.parse(args);
       result = await api.request('GET', '/api/insights');
     } else if (name === 'retrieve_learning_evidence')
