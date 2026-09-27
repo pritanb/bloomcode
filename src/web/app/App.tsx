@@ -26,6 +26,7 @@ import { Mistakes } from '../features/notebooks/Mistakes';
 import { Patterns } from '../features/notebooks/Patterns';
 import { ThemeSwitch } from './theme';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const AttemptPage = lazy(() =>
   import('../features/practice/Attempt').then((module) => ({ default: module.AttemptPage })),
@@ -44,7 +45,15 @@ export function App() {
   const [collapsed, setCollapsed] = useState(false);
   const focused = useLocation().pathname.startsWith('/attempts/');
   return (
-    <div className={isDesktopMac ? 'app-shell desktop-app' : 'app-shell'}>
+    <div
+      className={cn(
+        'app-shell',
+        isDesktopMac && 'desktop-app',
+        // The attempt workspace has no sidebar; it fills the window and scrolls inside its panels.
+        focused &&
+          '[@media(min-width:901px)_and_(min-height:560px)]:flex [@media(min-width:901px)_and_(min-height:560px)]:h-screen [@media(min-width:901px)_and_(min-height:560px)]:flex-col [@media(min-width:901px)_and_(min-height:560px)]:overflow-hidden',
+      )}
+    >
       <SetupGate
         chrome={(hasWorkspace) => (
           <DesktopTitleBar
@@ -70,7 +79,7 @@ function Workspace({
   const focused = pathname.startsWith('/attempts/');
   if (focused) {
     return (
-      <main className="attempt-workspace">
+      <main className="flex w-full min-w-0 flex-col bg-background px-7 pt-7 pb-10 max-[700px]:px-4 max-[700px]:py-6 [@media(min-width:901px)_and_(min-height:560px)]:min-h-0 [@media(min-width:901px)_and_(min-height:560px)]:flex-1 [@media(min-width:901px)_and_(min-height:560px)]:pb-6">
         <Routes>
           <Route
             path="/attempts/:id"
