@@ -17,3 +17,5 @@ output/playwright/
 .venv/
 __pycache__/
 *.pyc
+
+/docs/ai-tutor-prd.md
