@@ -15,13 +15,16 @@ def main() -> int:
     parser.add_argument("--attempt", help="Completed BloomCode attempt ID to discuss")
     parser.add_argument("--api-url", default="http://127.0.0.1:4317")
     parser.add_argument("--token-file", type=Path, help="Path to BloomCode's api-token file")
+    parser.add_argument("--new", action="store_true", help="Start a new conversation")
+    parser.add_argument("--state-dir", type=Path, help="Override local conversation storage")
     args = parser.parse_args()
     if args.attempt and not args.token_file:
         parser.error("--attempt requires --token-file")
 
     try:
-        with open_tutor(args.model, api_url=args.api_url, token_file=args.token_file) as tutor:
-            print("BloomCode tutor — /quit to exit. Memory lasts until you exit.")
+        with open_tutor(args.model, api_url=args.api_url, token_file=args.token_file,
+                        state_dir=args.state_dir, new=args.new) as tutor:
+            print(f"BloomCode tutor — {'resumed conversation' if tutor.resumed else 'new conversation'}. /quit to exit.")
             if args.token_file:
                 print("Attempt tools enabled. Try: Let's discuss my latest attempt.")
             if args.attempt:

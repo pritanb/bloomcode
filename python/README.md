@@ -52,7 +52,27 @@ The API still enforces authentication and assessment visibility. The MCP process
 holds the existing broad local API credential; server-side scoped credentials
 remain production hardening work. User MCP configuration is not modified.
 
-Conversation memory lasts until exit. Persistence is the next milestone.
+## Saved conversations
+
+Closing the terminal preserves the conversation. Run the same command again to
+resume it automatically. Add `--new` to start a fresh chat; older Codex threads
+remain stored. The last-conversation pointer changes after a completed reply,
+so opening an empty new chat does not replace it.
+
+Storage defaults to a `tutor` directory beside the supplied API token. Without
+platform tools, it uses the repository's ignored `private/tutor` directory.
+Use `--state-dir /absolute/path` to override it. Keep separate storage per study
+workspace; a saved conversation cannot resume with a different token-file path.
+Run one tutor process per storage directory at a time.
+
+Codex owns the saved thread history in `codex-home`; `last-session.json` holds
+the thread ID. The private directory also contains our tool configuration and
+credential symlinks. BloomCode's database-only backup does not include these
+conversation files. Back up the tutor storage separately if needed. Resume
+errors are reported rather than silently starting a replacement chat.
+
+Persistent learner goals across chats, streaming, context budgeting and
+teaching-quality evaluations remain later work.
 
 ## Verify
 
@@ -64,3 +84,11 @@ This starts the real TypeScript MCP server against a disposable BloomCode
 database and tests listing, filtering, retrieval and assessment restrictions.
 Add `--live` to verify that Codex calls both tools without being given an ID,
 then answers a follow-up. That option consumes signed-in account usage.
+
+To verify persistence across separate Python processes in disposable storage:
+
+```sh
+python/.venv/bin/python python/check_resume.py
+```
+
+This is a live Codex check and consumes signed-in account usage.
