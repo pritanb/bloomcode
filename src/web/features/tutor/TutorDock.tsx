@@ -105,7 +105,7 @@ export function TutorDock({ children }: { children: ReactNode }) {
           }}
         >
           <TutorPet className="h-24 w-24 drop-shadow-sm motion-safe:transition-transform motion-safe:group-hover:-translate-y-1" />
-          <span className="rounded-full border bg-background px-3 py-1 text-xs font-medium shadow-sm">
+          <span className="rounded-full border border-primary bg-primary px-3 py-1 text-xs font-medium text-primary-foreground shadow-sm">
             Ask Bloom
           </span>
         </button>
