@@ -653,10 +653,6 @@ small,
   align-items: center;
   gap: 0.5rem;
 }
-.topic-chart-summary > a {
-  margin-left: auto;
-}
-
 .level.easy {
   background: #dcfce7;
   color: #166534;
@@ -1207,24 +1203,6 @@ small,
   }
 }
 
-/* Give the score chart most of the width beside its review history. */
-.topic-progress-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-}
-.topic-progress-layout > .panel {
-  margin-bottom: 0;
-}
-@media (min-width: 1100px) {
-  .topic-progress-layout {
-    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
-  }
-  .topic-progress-layout > :only-child {
-    grid-column: 1 / -1;
-  }
-}
-
 /* Fit each page to the window: the page never scrolls; long lists and
    tables scroll inside their own panel. Narrow or short windows fall back
    to ordinary page scrolling. */
@@ -1257,9 +1235,6 @@ small,
 .problem-detail-layout .panel {
   margin: 0;
   flex-shrink: 0;
-}
-.topic-detail-layout > .panel {
-  margin: 0;
 }
 @media (min-width: 1100px) {
   .problem-detail-layout {
@@ -1353,7 +1328,6 @@ small,
     grid-template-rows: minmax(0, 1fr);
   }
   .settings-grid.fill-page > *,
-  .topic-detail-layout.fill-page > .panel,
   .problem-detail-side,
   .problem-history,
   .notebook-editor,
@@ -1380,28 +1354,7 @@ small,
   }
 }
 @media (min-width: 1100px) and (min-height: 560px) {
-  .topic-progress-layout.fill-page {
-    grid-template-rows: minmax(0, 1fr);
-    align-items: stretch;
-  }
-  .topic-progress-layout.fill-page > .panel {
-    position: relative;
-    min-height: 0;
-    overflow-y: auto;
-  }
-  .topic-progress-layout.fill-page .topic-score-chart {
-    flex: 1 1 0;
-    height: auto;
-    min-height: 180px;
-  }
   .problem-detail-layout.fill-page {
     grid-template-rows: minmax(0, 1fr);
-  }
-  .topic-detail-layout.fill-page {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-  }
-  .topic-detail-layout > .topic-related {
-    grid-column: 1 / -1;
   }
 }

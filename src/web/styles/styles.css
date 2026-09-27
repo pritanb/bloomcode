@@ -202,36 +202,6 @@
   font-size: 0.875rem;
 }
 
-/* Rank sits beside the name so the score chart below keeps its room. */
-.focus-tile {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: 'rank name' 'score score' 'reason reason' 'link link';
-  align-items: center;
-  height: 100%;
-  color: var(--foreground);
-  text-decoration: none;
-}
-.focus-tile:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-}
-.focus-tile > div {
-  grid-area: score;
-}
-.focus-meter > i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--primary);
-}
-/* Marks the 4/5 readiness target. */
-@media (prefers-reduced-motion: reduce) {
-  .focus-tile {
-    transition: none;
-  }
-}
-
 /* Visual polish: depth, clearer hierarchy and a recognisable identity. */
 .app {
   background:
