@@ -33,6 +33,11 @@ No attempt ID is required. Enter `/quit` or press Ctrl+C to exit.
 conversation runs without platform tools. `--attempt ID` remains an optional
 shortcut for starting a discussion about a known attempt.
 
+During a reply, the terminal shows when the tutor searches for attempts or
+retrieves context, and whether each tool call completes or fails. These updates
+come from SDK events and contain no tool arguments or study records. The final
+answer appears once the turn completes.
+
 ## Follow the code
 
 - `chat.py`: terminal input and output.
@@ -71,7 +76,7 @@ credential symlinks. BloomCode's database-only backup does not include these
 conversation files. Back up the tutor storage separately if needed. Resume
 errors are reported rather than silently starting a replacement chat.
 
-Persistent learner goals across chats, streaming, context budgeting and
+Persistent learner goals across chats, answer-text streaming, context budgeting and
 teaching-quality evaluations remain later work.
 
 ## Verify
@@ -83,7 +88,8 @@ node --import tsx tests/integrations/python-context.mjs
 This starts the real TypeScript MCP server against a disposable BloomCode
 database and tests listing, filtering, retrieval and assessment restrictions.
 Add `--live` to verify that Codex calls both tools without being given an ID,
-then answers a follow-up. That option consumes signed-in account usage.
+reports their activity, saves the conversation, then answers a follow-up.
+That option consumes signed-in account usage.
 
 To verify persistence across separate Python processes in disposable storage:
 

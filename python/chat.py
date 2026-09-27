@@ -9,6 +9,10 @@ from openai_codex import CodexError
 from tutor import open_tutor
 
 
+def show_activity(message: str) -> None:
+    print(f"Tutor: {message}", flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Talk to BloomCode's DSA tutor.")
     parser.add_argument("--model", default="gpt-6-sol")
@@ -28,7 +32,7 @@ def main() -> int:
             if args.token_file:
                 print("Attempt tools enabled. Try: Let's discuss my latest attempt.")
             if args.attempt:
-                print(f"\nTutor: {tutor.reply(f'Help me reflect on attempt {args.attempt}.')}", flush=True)
+                print(f"\nTutor: {tutor.reply(f'Help me reflect on attempt {args.attempt}.', on_activity=show_activity)}", flush=True)
             while True:
                 message = input("\nYou: ").strip()
                 if message == "/quit":
@@ -36,7 +40,7 @@ def main() -> int:
                 if not message:
                     continue
                 print("Tutor: thinking…", flush=True)
-                print(f"\nTutor: {tutor.reply(message)}", flush=True)
+                print(f"\nTutor: {tutor.reply(message, on_activity=show_activity)}", flush=True)
     except (EOFError, KeyboardInterrupt):
         print("\nConversation ended.")
         return 0

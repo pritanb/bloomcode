@@ -1,12 +1,12 @@
 """A conversation with BloomCode's tutor, backed by the Codex Python SDK."""
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
 import os
 import json
 import shutil
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 from urllib.parse import urlsplit
 
 from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox, Thread
@@ -39,6 +39,11 @@ DISABLED_FEATURES = (
     "goals", "skill_search", "tool_suggest", "hooks",
 )
 
+TOOL_ACTIVITY = {
+    "get_recent_attempts": ("Finding recent attempts…", "Attempt search"),
+    "get_attempt_context": ("Retrieving attempt context…", "Context retrieval"),
+}
+
 
 @dataclass
 class TutorSession:
@@ -47,17 +52,41 @@ class TutorSession:
     workspace_key: str
     resumed: bool
 
-    def reply(self, message: str) -> str:
+    def reply(self, message: str, *, on_activity: Callable[[str], None] | None = None) -> str:
         if not message.strip():
             raise ValueError("Please enter a message.")
-        result = self.thread.run(message)
-        if result.status.value != "completed" or not result.final_response:
+        completed = None
+        final_response = None
+        fallback_response = None
+        with closing(self.thread.turn(message).stream()) as events:
+            for event in events:
+                if event.method in {"item/started", "item/completed"}:
+                    item = event.payload.item.root
+                    if (item.type == "mcpToolCall" and item.server == "bloomcode"
+                            and item.tool in TOOL_ACTIVITY and on_activity):
+                        started, label = TOOL_ACTIVITY[item.tool]
+                        if event.method == "item/started":
+                            on_activity(started)
+                        else:
+                            failed = item.error is not None or item.status.value == "failed"
+                            on_activity(f"{label} {'failed' if failed else 'completed'}.")
+                    elif event.method == "item/completed" and item.type == "agentMessage":
+                        if item.phase is None:
+                            fallback_response = item.text
+                        elif item.phase.value == "final_answer":
+                            final_response = item.text
+                elif event.method == "turn/completed":
+                    completed = event.payload.turn
+        response = final_response or fallback_response
+        if completed and completed.error:
+            raise RuntimeError(completed.error.message)
+        if completed is None or completed.status.value != "completed" or not response:
             raise RuntimeError("The tutor did not complete a response.")
         # Save only after a completed turn: an unused --new chat keeps the old pointer.
         pending = self.session_file.with_suffix(".tmp")
         pending.write_text(json.dumps({"thread_id": self.thread.id, "workspace": self.workspace_key}))
         pending.replace(self.session_file)
-        return result.final_response
+        return response
 
 
 @contextmanager

@@ -92,14 +92,18 @@ import os
 from pathlib import Path
 from tutor import open_tutor
 with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN'])) as tutor:
-    result = tutor.thread.run('For my latest Two Sum attempt, what changed in my recorded help usage compared to earlier attempts?')
-    calls = [item.root for item in result.items if item.root.type == 'mcpToolCall']
-    for name in ['get_recent_attempts', 'get_attempt_context']:
-        assert any(c.tool == name and c.error is None for c in calls), result.items
-    assert all(c.tool in ['get_recent_attempts', 'get_attempt_context'] for c in calls)
-    assert result.final_response, result
-    print('PASS: Python tutor used both existing-server tools without a supplied ID')
-    print('Tutor:', result.final_response)
+    activity = []
+    def report(message):
+        activity.append(message)
+        print('Tutor:', message, flush=True)
+    answer = tutor.reply('For my latest Two Sum attempt, what changed in my recorded help usage compared to earlier attempts?', on_activity=report)
+    for started, completed in [('Finding recent attempts…', 'Attempt search completed.'),
+                               ('Retrieving attempt context…', 'Context retrieval completed.')]:
+        assert started in activity and completed in activity, activity
+        assert activity.index(started) < activity.index(completed), activity
+    assert tutor.session_file.exists()
+    print('PASS: Python tutor streamed both tool activities without a supplied ID and saved the conversation')
+    print('Tutor:', answer)
     print('Follow-up:', tutor.reply('Which problem were we discussing? Be brief.'))
 `,
       ],
