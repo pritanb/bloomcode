@@ -313,11 +313,9 @@ export function TutorChat({
                   }}
                   className="space-y-3"
                 >
-                  <label htmlFor="tutor-message" className="text-sm font-medium">
-                    Message your tutor
-                  </label>
                   <Textarea
                     id="tutor-message"
+                    aria-label="Message your tutor"
                     value={message}
                     maxLength={12000}
                     onChange={(event) => setMessage(event.target.value)}
@@ -332,14 +330,11 @@ export function TutorChat({
                       event.preventDefault();
                       if (!event.repeat) event.currentTarget.form?.requestSubmit();
                     }}
-                    aria-describedby="tutor-message-help"
+                    className="rounded-2xl border-transparent bg-[color-mix(in_srgb,var(--foreground)_6%,var(--background))] px-4 py-3 shadow-none focus-visible:ring-1 dark:bg-muted"
                     placeholder="Ask a question, or use /coach followed by a problem name"
                     rows={3}
                     disabled={state.status === 'starting'}
                   />
-                  <p id="tutor-message-help" className="text-xs text-muted-foreground">
-                    Enter to send · Shift+Enter for a new line
-                  </p>
                   <div className="flex justify-end gap-3">
                     {busy ? (
                       <Button
