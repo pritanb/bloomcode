@@ -244,6 +244,52 @@ This also uses disposable data and signed-in account usage.
   or coach active practice. Existing live scenarios verify key behaviors but are
   not a comprehensive benchmark of teaching quality.
 
+## Evidence-first answers (LangGraph)
+
+Ordinary messages now run through `answer_graph.py` before the existing Codex
+chat turn: **snapshot → retrieve and inspect evidence → answer**. This is also
+used when active coaching hands a message back to chat. It adds no classifier or
+planning model call. Codex still streams the answer, keeps conversation history,
+and owns optional tool calls and learner-confirmed goal/preference proposals.
+
+The graph uses the existing `retrieve_learning_evidence` MCP tool twice: the
+question itself, then a bounded search for strengths and counterexamples. It
+keeps up to five observations across both polarities and inspects up to three
+linked/current attempts. Observation excerpts must still occur in the current
+source field; mismatches are excluded. Code, notes and takeaways are truncated
+with explicit flags. The answer receives coverage and retrieval limitations.
+Similarity alone does not establish relevance or a learning difficulty; the
+model must compare supporting and conflicting evidence and cite attempt IDs.
+
+Learning Insights must be enabled and its embedding index ready. Disabled,
+loading or failed search is labelled unavailable, not an empty history. The tutor
+can still use its ordinary snapshot and tools to fill specific gaps. All ordinary
+messages take this path, including general questions; this avoids a classifier
+but adds local retrieval work. Current code/notes are untrusted evidence. No
+study records, scores, schedules or preferences are changed by retrieval.
+
+Short follow-ups include the last substantive question as search context in the
+running worker; source records are retrieved afresh, never cached. That search
+hint resets when the worker restarts. Conversation history still resumes through
+Codex, and the model can use its tools when fresh evidence has gaps. The graph
+itself has no additional durable transcript or checkpoint store. Hosted LangSmith
+tracing remains disabled.
+
+Verify the real MCP path with synthetic data, including corrections, disabled
+search and assessment restrictions:
+
+```sh
+node --import tsx tests/integrations/answer-evidence.mjs
+# Explicit live comparison using your signed-in Codex allowance:
+node --import tsx tests/integrations/answer-evidence.mjs --live
+```
+
+Live reports stay ignored under `private/answer-evals/<timestamp>/`. They preserve
+before/after answers, first-text and total latency, node timings and retrieved
+evidence. This fixture uses deterministic vectors to check integration, not to
+benchmark embedding quality. Before uses model-directed tools; after retrieves
+before answering. Both use the same model and current teaching instructions.
+
 ## Adaptive coaching (LangGraph)
 
 Click **Coach latest attempt** in the floating tutor, or **Coach this attempt**
@@ -304,8 +350,10 @@ active coaching pointer, preserving old checkpoints and authoritative goals and
 preferences. Checkpoints are versioned and are **not included in study database
 backups**. Unsupported state can be reset with New conversation. For a corrupt
 SQLite file, close the tutor and move that file aside before reopening; do not
-replace or delete BloomCode's study database. Missing coaching dependencies leave
-ordinary chat available. Hosted LangSmith tracing is disabled by default.
+replace or delete BloomCode's study database. LangGraph is required for the
+ordinary answer flow as well as coaching. A corrupt coaching checkpoint leaves
+ordinary evidence-backed chat available. Hosted LangSmith tracing is disabled
+by default.
 
 The graph pauses between turns using a separate `interrupt()` node; resuming it
 cannot replay a model call before the pause. Request receipts prevent duplicate
