@@ -60,7 +60,7 @@ records are sent to Codex and use the signed-in account's usage.
 Ask: **“For my latest Two Sum attempt, what changed in my help usage?”**
 Or: **“What should I practise next, based on my recent attempts and learning insights?”**
 No attempt ID is required. Enter `/quit` or press Ctrl+C to exit.
-`--model MODEL` overrides the default `gpt-6-sol`. Without `--token-file`, the
+`--model MODEL` overrides the ordinary-chat default `gpt-6-sol`. Without `--token-file`, the
 conversation runs without platform tools. `--attempt ID` remains an optional
 shortcut for starting a discussion about a known attempt.
 
@@ -273,6 +273,14 @@ hints. It can request one bounded expansion to broader learner history and
 Learning Insights when a comparison needs them. Access is checked again before
 committing a response. This reduces input and sequential model calls without
 caching access permissions or preferences.
+
+Routing and structured coaching use the configured model with low reasoning
+effort to reduce the wait for short conversational turns. Ordinary chat keeps
+its existing reasoning settings. `BLOOMCODE_COACHING_MODEL` optionally overrides
+only the coaching model; close and reopen the tutor after changing the backend's
+environment. Evaluation reports record both models and coaching effort. A faster
+model is not necessarily an equally capable teacher; inspect the saved responses
+before changing it. No priority service tier is enabled.
 
 Activity appears while coaching runs; the answer appears after schema and
 reference validation. General chat continues to stream tokens as before.

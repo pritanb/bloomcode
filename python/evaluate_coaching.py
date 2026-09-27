@@ -1,6 +1,7 @@
 """Explicit live comparison. Invoked by tests/integrations/coaching-eval.mjs."""
 import argparse
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -19,6 +20,8 @@ def main():
     cases = json.loads((Path(__file__).parent / 'evals/scenarios.json').read_text())
     if args.cases != 'all': cases = [c for c in cases if c['id'] in args.cases.split(',')]
     report = {'createdAt': datetime.now(timezone.utc).isoformat(), 'model': 'gpt-6-sol',
+              'coachingModel': os.environ.get('BLOOMCODE_COACHING_MODEL', 'gpt-6-sol'),
+              'coachingReasoningEffort': 'low',
               'baseline': 'Existing TutorSession.chat_reply, unchanged teaching instructions and MCP tools',
               'limits': 'Scripted replies are identical between variants and may fit one generated question better. One run is not a statistical benchmark. Human scores are intentionally blank.', 'cases': []}
     args.output.mkdir(parents=True, exist_ok=True)
@@ -54,8 +57,8 @@ def main():
 
 
 def render(report, path):
-    lines = ['# Tutor response comparison', '', f"Model: {report['model']}", '', report['limits'], '',
-             'Before: existing Codex tutor. After: LangGraph coaching using the same Codex model and disposable study data.', '',
+    lines = ['# Tutor response comparison', '', f"Ordinary chat model: {report['model']}. Coaching model: {report['coachingModel']} ({report['coachingReasoningEffort']} reasoning).", '', report['limits'], '',
+             'Before: existing Codex tutor. After: LangGraph coaching using the reported coaching model and disposable study data.', '',
              'Score each version 1–5 for relevance, adaptation, appropriate hinting, and evidence honesty. Mark unsupported claims and software errors separately. No quality score has been assigned automatically.', '']
     for case in report['cases']:
         lines += [f"## {case['id']}", '', case['rubric'], '']

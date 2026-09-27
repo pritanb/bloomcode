@@ -1,10 +1,12 @@
 """Schema-validated, stateless Codex calls used by routing and coaching."""
 import json
+import os
 import re
 import time
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from openai_codex import ApprovalMode, Sandbox
+from openai_codex.generated.v2_all import ReasoningEffort
 
 
 class StrictModel(BaseModel):
@@ -28,17 +30,19 @@ class Teaching(StrictModel):
 class StructuredCodex:
     def __init__(self, codex, options):
         self.codex, self.options = codex, options
+        self.model = os.environ.get("BLOOMCODE_COACHING_MODEL", options.get("model", "gpt-6-sol"))
+        self.effort = ReasoningEffort.low
         self.trace = []
 
     def __call__(self, schema, instructions, data):
         # Override the inherited MCP configuration: graph code retrieves evidence.
-        options = {**self.options, 'base_instructions': instructions,
+        options = {**self.options, 'model': self.model, 'base_instructions': instructions,
                    'config': {'mcp_servers.bloomcode.enabled': False},
                    'approval_mode': ApprovalMode.deny_all, 'sandbox': Sandbox.read_only}
         thread = self.codex.thread_start(ephemeral=True, **options)
         for attempt in range(2):
             started = time.monotonic()
-            result = thread.run(json.dumps(data), output_schema=schema.model_json_schema())
+            result = thread.run(json.dumps(data), output_schema=schema.model_json_schema(), effort=self.effort)
             if result.error or result.status.value != 'completed':
                 raise RuntimeError('Codex could not finish the coaching step.')
             try:
@@ -51,7 +55,7 @@ class StructuredCodex:
                     allowed = set(data.get('evidence', {}).get('ids', []))
                     if not (set(value.evidence_ids) | set(re.findall(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}', value.response))) <= allowed:
                         raise ValueError('Unsupported evidence reference')
-                self.trace.append({'schema': schema.__name__, 'action': getattr(value, 'action', None), 'latencySeconds': round(time.monotonic()-started, 3), 'inputCharacters': len(json.dumps(data)), 'usage': result.usage.model_dump(mode='json') if result.usage else None})
+                self.trace.append({'model': self.model, 'reasoningEffort': self.effort.value, 'schema': schema.__name__, 'action': getattr(value, 'action', None), 'latencySeconds': round(time.monotonic()-started, 3), 'inputCharacters': len(json.dumps(data)), 'usage': result.usage.model_dump(mode='json') if result.usage else None})
                 return value
             except ValueError:
                 if attempt:
