@@ -12,7 +12,6 @@ import '../features/notebooks/notebooks.css';
 import '../features/settings/settings-reports.css';
 import '../features/practice/attempt.css';
 
-document.body.classList.add('theme-v2');
 import './theme';
 
 const queryClient = new QueryClient({

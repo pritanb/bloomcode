@@ -1,25 +1,25 @@
 /* Page styles for the new theme (see styles/theme.css for tokens). */
 
 /* Focused attempt workspace: /attempts/:id */
-.theme-v2 .attempt-workspace {
+.attempt-workspace {
   padding: 1.75rem 1.75rem 2.5rem;
 }
 .attempt-page {
   max-width: 88rem;
   margin: 0 auto;
 }
-.theme-v2 .attempt-page .workspace-top {
+.attempt-page .workspace-top {
   margin-bottom: 1.25rem;
 }
-.theme-v2 .attempt-page .workspace-top > a {
+.attempt-page .workspace-top > a {
   font-size: 0.875rem;
   color: var(--muted-foreground);
 }
-.theme-v2 .attempt-page .workspace-top > a:hover {
+.attempt-page .workspace-top > a:hover {
   color: var(--foreground);
   text-decoration: none;
 }
-.theme-v2 .attempt-page .page-title {
+.attempt-page .page-title {
   margin-bottom: 1.25rem;
 }
 .attempt-page .panel h2:not(.section-title) {
@@ -36,11 +36,11 @@
   font-weight: 600;
   letter-spacing: -0.005em;
 }
-.theme-v2 .attempt-page .error {
+.attempt-page .error {
   margin: 0 0 1rem;
   border-radius: 1rem;
 }
-.theme-v2 .attempt-page .warning {
+.attempt-page .warning {
   margin: 0 0 1rem;
   padding: 1rem 1.25rem;
   border: 0;
@@ -53,7 +53,7 @@
 }
 
 /* Code editor: flat, bordered, always legible in both themes. */
-.theme-v2 .attempt-page .code-panel {
+.attempt-page .code-panel {
   margin: 0;
   border-radius: 0.875rem;
   background: var(--card);
@@ -71,12 +71,12 @@
 .attempt-page .cm-scroller {
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace !important;
 }
-.theme-v2 .attempt-page .report-code .code-footer {
+.attempt-page .report-code .code-footer {
   padding: 0.5rem 0.75rem;
   background: var(--muted);
   border-top-color: var(--border);
 }
-.theme-v2 .attempt-page .report-column-title {
+.attempt-page .report-column-title {
   font-family: var(--font-display);
   font-size: 0.9375rem;
   font-weight: 600;
@@ -84,7 +84,7 @@
 }
 
 /* Report result form (active attempt). */
-.theme-v2 .finish-panel {
+.finish-panel {
   gap: 1.25rem;
   padding: 1.5rem 1.75rem;
 }
@@ -95,16 +95,16 @@
   margin: -0.75rem 0 0;
   font-size: 0.875rem;
 }
-.theme-v2 .finish-panel .report-columns {
+.finish-panel .report-columns {
   gap: 2rem;
   margin: 0;
   padding: 0;
   border: 0;
 }
-.theme-v2 .finish-panel .report-fields .form-grid {
+.finish-panel .report-fields .form-grid {
   gap: 1rem 1.25rem;
 }
-.theme-v2 .finish-panel .report-footer {
+.finish-panel .report-footer {
   margin-top: 0.25rem;
   padding-top: 1.25rem;
 }
@@ -119,7 +119,7 @@
   font-size: 0.875rem;
 }
 @media (min-width: 1100px) {
-  .theme-v2 .finish-panel .report-columns {
+  .finish-panel .report-columns {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
     gap: 2.5rem;
   }
@@ -140,7 +140,7 @@
   gap: 1rem;
   min-width: 0;
 }
-.theme-v2 .attempt-layout .panel {
+.attempt-layout .panel {
   margin: 0;
 }
 @media (min-width: 1100px) {
@@ -163,7 +163,7 @@
   }
 }
 
-.theme-v2 .completion {
+.completion {
   gap: 1.125rem;
 }
 .completion-head {
@@ -185,7 +185,7 @@
   width: 1.125rem;
   height: 1.125rem;
 }
-.theme-v2 .completion-head h2 {
+.completion-head h2 {
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -259,10 +259,10 @@ p.completion-scores {
 }
 
 /* Tutor report reads like an article, not a nested card. */
-.theme-v2 .tutor-panel {
+.tutor-panel {
   gap: 0.875rem;
 }
-.theme-v2 .tutor-panel .feedback {
+.tutor-panel .feedback {
   padding: 0;
   border: 0;
   font-size: 0.9375rem;
@@ -272,7 +272,7 @@ p.completion-scores {
   margin: 0;
 }
 
-.theme-v2 .attempt-reflection form {
+.attempt-reflection form {
   gap: 1rem;
 }
 .attempt-reflection .section-title + p {
@@ -307,11 +307,11 @@ p.completion-scores {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 40%, transparent);
 }
 
-.theme-v2 .attempt-comparison {
+.attempt-comparison {
   gap: 0;
   padding: 0.5rem;
 }
-.theme-v2 .attempt-comparison .comparison-toggle {
+.attempt-comparison .comparison-toggle {
   width: 100%;
   justify-content: space-between;
   height: auto;
@@ -348,13 +348,13 @@ p.completion-scores {
   background: var(--muted);
   line-height: 1.6;
 }
-.theme-v2 .attempt-comparison .comparison-code {
+.attempt-comparison .comparison-code {
   border-radius: 0.875rem;
   border-color: var(--border);
   font-size: 0.8125rem;
 }
 
-.theme-v2 .attempt-record {
+.attempt-record {
   gap: 1.25rem;
 }
 .attempt-record > [role='status'] {
