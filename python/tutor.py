@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox, Thread
 from learner_state import load_snapshot, save_confirmed_change
+from session_lock import session_lock
 
 
 TUTOR_INSTRUCTIONS = """You are BloomCode's supportive DSA tutor.
@@ -139,7 +140,8 @@ class TutorSession:
         pending.remove(proposal)
         return saved
 
-    def reply(self, message: str, *, on_activity: Callable[[str], None] | None = None) -> str:
+    def reply(self, message: str, *, on_activity: Callable[[str], None] | None = None,
+              on_text: Callable[[str], None] | None = None) -> str:
         if not message.strip():
             raise ValueError("Please enter a message.")
         if self.context_config:
@@ -152,10 +154,14 @@ class TutorSession:
         completed = None
         final_response = None
         fallback_response = None
-        with closing(self.thread.turn(message).stream()) as events:
+        answer_ids = set()
+        turn = self.thread.turn(message)
+        with closing(turn.stream()) as events:
             for event in events:
                 if event.method in {"item/started", "item/completed"}:
                     item = event.payload.item.root
+                    if item.type == "agentMessage" and (item.phase is None or item.phase.value == "final_answer"):
+                        answer_ids.add(item.id)
                     if (event.method == "item/completed" and item.type == "mcpToolCall"
                             and item.server == "bloomcode" and item.tool in {"propose_learning_goal", "propose_tutor_preferences"}
                             and item.error is None and item.result is not None):
@@ -180,6 +186,8 @@ class TutorSession:
                             fallback_response = item.text
                         elif item.phase.value == "final_answer":
                             final_response = item.text
+                elif event.method == "item/agentMessage/delta" and on_text and event.payload.item_id in answer_ids:
+                    on_text(event.payload.delta)
                 elif event.method == "turn/completed":
                     completed = event.payload.turn
         response = final_response or fallback_response
@@ -211,78 +219,79 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
     workspace_key = str(token_file.resolve()) if token_file else "standalone"
     root = (state_dir or ((token_file.resolve().parent if token_file else repo / "private") / "tutor")).resolve()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    session_file = root / "last-session.json"
-    saved = json.loads(session_file.read_text()) if session_file.exists() and not new else None
-    if saved and saved["workspace"] != workspace_key:
-        raise ValueError("This conversation belongs to a different data workspace. Use a separate --state-dir.")
+    with session_lock(root):
+        session_file = root / "last-session.json"
+        saved = json.loads(session_file.read_text()) if session_file.exists() and not new else None
+        if saved and saved["workspace"] != workspace_key:
+            raise ValueError("This conversation belongs to a different data workspace. Use a separate --state-dir.")
 
-    codex_home = root / "codex-home"
-    codex_home.mkdir(exist_ok=True, mode=0o700)
-    auth_link = codex_home / "auth.json"
-    if not auth_link.exists():
-        auth_link.symlink_to(auth_file.resolve())
-    workspace = root / "workspace"
-    workspace.mkdir(exist_ok=True)
-    mcp_config = ""
-    host_data = None
+        codex_home = root / "codex-home"
+        codex_home.mkdir(exist_ok=True, mode=0o700)
+        auth_link = codex_home / "auth.json"
+        if not auth_link.exists():
+            auth_link.symlink_to(auth_file.resolve())
+        workspace = root / "workspace"
+        workspace.mkdir(exist_ok=True)
+        mcp_config = ""
+        host_data = None
 
-    if token_file is not None:
-        node = shutil.which("node")
-        if not node or not (repo / "node_modules/tsx").is_dir():
-            raise RuntimeError("Install Node.js and run npm ci in the worktree first.")
-        url = urlsplit(api_url)
-        if (url.scheme != "http" or url.hostname != "127.0.0.1"
-                or url.username or url.password or url.path not in {"", "/"}
-                or url.query or url.fragment):
-            raise ValueError("Use an API URL like http://127.0.0.1:4317.")
-        if not token_file.is_file():
-            raise ValueError("Cannot read the API token file. Check --token-file.")
-        scoped_token = token_file.resolve().parent / "tutor-token"
-        if not scoped_token.is_file():
-            raise ValueError("Restart the updated BloomCode backend to create tutor-token beside api-token.")
-        host_data = root / "host-data"
-        host_data.mkdir(exist_ok=True)
-        host_link = host_data / "api-token"
-        if host_link.is_symlink():
-            host_link.unlink()
-        host_link.symlink_to(token_file.resolve())
-        api_data = root / "api-data"
-        api_data.mkdir(exist_ok=True)
-        token_link = api_data / "api-token"
-        if token_link.is_symlink():
-            token_link.unlink()
-        token_link.symlink_to(scoped_token)
-        tool_args = ["--import", "tsx", str(repo / "src/integrations/mcp.ts")]
-        mcp_config = (
-            "[mcp_servers.bloomcode]\n"
-            f"command = {json.dumps(node)}\n"
-            f"args = {json.dumps(tool_args)}\n"
-            f"cwd = {json.dumps(str(repo))}\n"
-            f"env.DATA_DIR = {json.dumps(str(api_data))}\n"
-            f"env.PORT = {json.dumps(str(url.port or 80))}\n"
-            f"enabled_tools = {json.dumps(list(TOOL_ACTIVITY))}\n"
-            'required = true\n'
-            'tool_timeout_sec = 15\n'
+        if token_file is not None:
+            node = shutil.which("node")
+            if not node or not (repo / "node_modules/tsx").is_dir():
+                raise RuntimeError("Install Node.js and run npm ci in the worktree first.")
+            url = urlsplit(api_url)
+            if (url.scheme != "http" or url.hostname != "127.0.0.1"
+                    or url.username or url.password or url.path not in {"", "/"}
+                    or url.query or url.fragment):
+                raise ValueError("Use an API URL like http://127.0.0.1:4317.")
+            if not token_file.is_file():
+                raise ValueError("Cannot read the API token file. Check --token-file.")
+            scoped_token = token_file.resolve().parent / "tutor-token"
+            if not scoped_token.is_file():
+                raise ValueError("Restart the updated BloomCode backend to create tutor-token beside api-token.")
+            host_data = root / "host-data"
+            host_data.mkdir(exist_ok=True)
+            host_link = host_data / "api-token"
+            if host_link.is_symlink():
+                host_link.unlink()
+            host_link.symlink_to(token_file.resolve())
+            api_data = root / "api-data"
+            api_data.mkdir(exist_ok=True)
+            token_link = api_data / "api-token"
+            if token_link.is_symlink():
+                token_link.unlink()
+            token_link.symlink_to(scoped_token)
+            tool_args = ["--import", "tsx", str(repo / "src/integrations/mcp.ts")]
+            mcp_config = (
+                "[mcp_servers.bloomcode]\n"
+                f"command = {json.dumps(node)}\n"
+                f"args = {json.dumps(tool_args)}\n"
+                f"cwd = {json.dumps(str(repo))}\n"
+                f"env.DATA_DIR = {json.dumps(str(api_data))}\n"
+                f"env.PORT = {json.dumps(str(url.port or 80))}\n"
+                f"enabled_tools = {json.dumps(list(TOOL_ACTIVITY))}\n"
+                'required = true\n'
+                'tool_timeout_sec = 15\n'
+            )
+        # Rebuild our own configuration so stale tool settings are not retained.
+        (codex_home / "config.toml").write_text(mcp_config)
+        config = CodexConfig(
+            cwd=str(workspace),
+            env={"CODEX_HOME": str(codex_home)},
+            config_overrides=(
+                'cli_auth_credentials_store="file"',
+                'web_search="disabled"',
+                *(f"features.{name}=false" for name in DISABLED_FEATURES),
+            ),
         )
-    # Rebuild our own configuration so stale tool settings are not retained.
-    (codex_home / "config.toml").write_text(mcp_config)
-    config = CodexConfig(
-        cwd=str(workspace),
-        env={"CODEX_HOME": str(codex_home)},
-        config_overrides=(
-            'cli_auth_credentials_store="file"',
-            'web_search="disabled"',
-            *(f"features.{name}=false" for name in DISABLED_FEATURES),
-        ),
-    )
-    with Codex(config) as codex:
-        options = dict(model=model, cwd=str(workspace), base_instructions=TUTOR_INSTRUCTIONS,
-                       sandbox=Sandbox.read_only, approval_mode=ApprovalMode.deny_all)
-        if saved:
-            # Failure is surfaced; never silently replace a saved conversation.
-            thread = codex.thread_resume(saved["thread_id"], **options)
-        else:
-            thread = codex.thread_start(ephemeral=False, **options)
-        yield TutorSession(thread, session_file, workspace_key, resumed=bool(saved),
-                           context_config=codex_home / "config.toml" if token_file else None,
-                           host_data=host_data)
+        with Codex(config) as codex:
+            options = dict(model=model, cwd=str(workspace), base_instructions=TUTOR_INSTRUCTIONS,
+                           sandbox=Sandbox.read_only, approval_mode=ApprovalMode.deny_all)
+            if saved:
+                # Failure is surfaced; never silently replace a saved conversation.
+                thread = codex.thread_resume(saved["thread_id"], **options)
+            else:
+                thread = codex.thread_start(ephemeral=False, **options)
+            yield TutorSession(thread, session_file, workspace_key, resumed=bool(saved),
+                               context_config=codex_home / "config.toml" if token_file else None,
+                               host_data=host_data)

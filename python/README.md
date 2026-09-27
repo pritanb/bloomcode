@@ -7,6 +7,35 @@ or HTTP API client.
 
 ## Run
 
+### Inside BloomCode
+
+After installing the dependencies below, run `npm run build` and restart the
+BloomCode backend. Click **Ask your tutor** from any screen, or **Talk to your tutor**
+on the study desk. The floating panel stays with you as you navigate; minimising
+it preserves your draft and lets a running response finish. Escape minimises
+the panel when focus is inside it. Completed attempts also have **Discuss with tutor**.
+
+Click **Open tutor** to resume the last completed conversation. Activity and
+answer text appear as the worker runs. Cited attempt IDs link to verified saved
+attempts. Proposed goal/preference changes have **Confirm and save** and
+**Discard** buttons; plain chat agreement cannot bypass those controls.
+
+**Stop** cancels a running request, and **Close tutor** releases the session for
+the terminal client. Reopen to resume completed turns. **New conversation** starts
+fresh while retaining saved goals and preferences. The backend pauses tutor access
+during any active attempt, terminates an in-flight reply when practice starts,
+and hides conversation results until practice finishes or is cancelled.
+
+Fastify starts `python/worker.py` only when requested and communicates using a
+versioned JSON-lines protocol. The worker uses the same tutor as the terminal.
+The UI polls the backend every half-second while visible to display streaming
+updates. Requests time out after three minutes. A process lock prevents the app
+and terminal from writing the same session concurrently. Worker crashes do not
+affect saved study work. Set `BLOOMCODE_PYTHON` to an absolute Python executable
+if the environment is installed somewhere other than `python/.venv`.
+
+### Terminal and development setup
+
 Requires Python 3.11+, Node.js matching the repository's requirements, and a
 running BloomCode backend containing the latest changes in this worktree.
 An older installed app will not have the new attempt-list endpoint.
@@ -43,6 +72,8 @@ answer appears once the turn completes.
 ## Follow the code
 
 - `chat.py`: terminal input and output.
+- `worker.py`: JSON-lines bridge and conversation history for the in-app tutor.
+- `session_lock.py`: exclusive access shared by the terminal and app.
 - `tutor.py`: teaching instructions, Codex session, and dedicated MCP configuration.
 - `learner_state.py`: loads recent attempts through MCP and calculates a compact snapshot.
 - `../src/integrations/mcp.ts`: shared attempt, Learning Insights and evidence-search tools.
@@ -196,3 +227,19 @@ node --import tsx tests/integrations/python-context.mjs --live-preferences
 ```
 
 This also uses disposable data and signed-in account usage.
+
+## Current limits
+
+- This is the local development integration. Python, its dependencies, Node/tsx
+  and file-based Codex sign-in must already be installed. The desktop installer
+  does not yet bundle the Python runtime or support every authentication method.
+- One conversation is active at a time. The UI shows the last 100 messages from
+  completed turns. Conversation listing, export/import and retention controls are
+  not implemented. Codex history is separate from SQLite backups.
+- Interrupted answers and unconfirmed proposals are not restored after the worker
+  closes. A confirmed database write is not undone by pressing Stop; refreshed
+  goals/preferences show its current state.
+- Context is bounded, and goal relevance still needs interpretation. The tutor
+  does not autonomously score work, change schedules, diagnose learning difficulties,
+  or coach active practice. Existing live scenarios verify key behaviors but are
+  not a comprehensive benchmark of teaching quality.

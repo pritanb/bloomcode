@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import type { Embed } from '../insights/embeddings.js';
+import type { TutorConversation } from '../tutor/conversation.js';
 import { tokenFor, tutorTokenFor } from './auth.js';
 import { registerHttp } from './http.js';
 import { openStorage } from './storage.js';
@@ -7,6 +8,7 @@ import { registerStudyRoutes } from './study-routes.js';
 import { registerTutorFeatures } from './tutor-features.js';
 
 export interface AppOptions {
+  conversationWorker?: TutorConversation;
   dbPath: string;
   embed?: Embed;
   demo?: boolean;
@@ -36,6 +38,7 @@ export async function createApp(options: AppOptions) {
     dbPath: options.dbPath,
     demo: options.demo,
     dailyBackup: options.dailyBackup,
+    conversationWorker: options.conversationWorker,
   });
   // 4. The Codex tutor and the insights it builds.
   registerTutorFeatures(app, {
