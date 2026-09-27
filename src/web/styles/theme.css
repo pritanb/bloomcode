@@ -565,10 +565,6 @@ body,
     vertical-align: middle;
     color: var(--muted-foreground);
   }
-  .problem-table th:first-child {
-    width: 12rem;
-    min-width: 12rem;
-  }
   .responsive-table thead .table-sort {
     font: inherit;
     letter-spacing: inherit;

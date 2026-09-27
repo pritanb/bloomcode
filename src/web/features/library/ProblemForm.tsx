@@ -1,14 +1,16 @@
-import { tagColour } from '../../lib/tag-colour';
 import { Input } from '@/components/ui/input';
 import { SelectField, SelectOption } from '@/components/select-field';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useState, type FormEvent } from 'react';
 import type { Problem, ProblemList, Tag } from '../../../shared/contracts';
 import { api } from '../../app/api';
 import { ErrorNotice, Field, useAction } from '../../components/ui';
+import { ChoicePill, TagDot } from './tags';
+
+const legendClass = 'mb-3 font-heading text-[0.9375rem] font-semibold tracking-[-0.005em]';
+const hintClass = 'text-[0.8125rem] text-muted-foreground';
 
 export function ProblemForm({
   problem,
@@ -58,8 +60,8 @@ export function ProblemForm({
     });
   }
   return (
-    <form onSubmit={submit} className="stack">
-      <div className="form-grid">
+    <form onSubmit={submit} className="flex flex-col gap-5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-4">
         <Field label="Question title">
           <Input required value={title} onChange={(e) => setTitle(e.target.value)} />
         </Field>
@@ -82,26 +84,28 @@ export function ProblemForm({
           </SelectField>
         </Field>
       </div>
-      <Field label="LeetCode topics">
-        <Input
-          value={leetcodeTopics}
-          onChange={(event) => setLeetcodeTopics(event.target.value)}
-          placeholder="Binary Search, Array"
-        />
-      </Field>
-      <p className="small muted">
-        Optional additional categories, separated by commas. Each tag below has its own notebook
-        page.
-      </p>
+      <div className="flex flex-col gap-2">
+        <Field label="LeetCode topics">
+          <Input
+            value={leetcodeTopics}
+            onChange={(event) => setLeetcodeTopics(event.target.value)}
+            placeholder="Binary Search, Array"
+          />
+        </Field>
+        <p className={hintClass}>
+          Optional additional categories, separated by commas. Each tag below has its own notebook
+          page.
+        </p>
+      </div>
       <Field label="Question notes">
         <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </Field>
-      <fieldset>
-        <legend>Tags</legend>
+      <fieldset className="flex min-w-0 flex-col gap-3">
+        <legend className={legendClass}>Tags</legend>
         <Field label="Find or create a tag">
           <Input maxLength={300} value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} />
         </Field>
-        <div className="tag-choices">
+        <div className="flex flex-wrap gap-2">
           {tags
             .filter(
               (t) =>
@@ -109,22 +113,21 @@ export function ProblemForm({
                 t.name.toLowerCase().includes(tagSearch.toLowerCase()),
             )
             .map((t) => (
-              <div className="tag-choice" key={t.id}>
-                <Label>
-                  <Checkbox
-                    checked={tagIds.includes(t.id)}
-                    onCheckedChange={(checked) =>
-                      setTagIds((old) =>
-                        checked === true ? [...old, t.id] : old.filter((id) => id !== t.id),
-                      )
-                    }
-                  />
-                  <span className="tag-colour tag-label" style={tagColour(t)}>
-                    {t.name}
-                  </span>
+              <ChoicePill key={t.id}>
+                <Checkbox
+                  checked={tagIds.includes(t.id)}
+                  onCheckedChange={(checked) =>
+                    setTagIds((old) =>
+                      checked === true ? [...old, t.id] : old.filter((id) => id !== t.id),
+                    )
+                  }
+                />
+                <TagDot hue={t.hue} />
+                <span className="min-w-0 truncate">
+                  {t.name}
                   {t.archived ? ' (archived)' : ''}
-                </Label>
-              </div>
+                </span>
+              </ChoicePill>
             ))}
         </div>
         {tagSearch.trim() &&
@@ -132,6 +135,7 @@ export function ProblemForm({
             <Button
               type="button"
               variant="outline"
+              className="self-start"
               disabled={createPattern.isPending || pending}
               onClick={() => createPattern.mutate()}
             >
@@ -140,16 +144,16 @@ export function ProblemForm({
           )}
         <ErrorNotice error={createPattern.error} />
         {!tags.length && (
-          <p className="small muted">
+          <p className={hintClass}>
             Create a tag to group questions and keep shared notebook notes.
           </p>
         )}
       </fieldset>
-      <fieldset>
-        <legend>List membership</legend>
-        <div className="tag-choices">
+      <fieldset className="flex min-w-0 flex-col gap-3">
+        <legend className={legendClass}>List membership</legend>
+        <div className="flex flex-wrap gap-2">
           {lists.map((l) => (
-            <Label className="check" key={l.id}>
+            <ChoicePill key={l.id}>
               <Checkbox
                 checked={listIds.includes(l.id)}
                 onCheckedChange={(checked) =>
@@ -159,15 +163,15 @@ export function ProblemForm({
                 }
               />
               {l.name}
-            </Label>
+            </ChoicePill>
           ))}
         </div>
         {!lists.length && (
-          <p className="small muted">No lists yet. Create a custom list in Manage tags & lists.</p>
+          <p className={hintClass}>No lists yet. Create a custom list in Manage tags & lists.</p>
         )}
       </fieldset>
       <ErrorNotice error={error} />
-      <div className="row">
+      <div className="flex flex-wrap gap-2">
         <Button variant="default" disabled={pending}>
           {pending ? 'Saving…' : 'Save question'}
         </Button>

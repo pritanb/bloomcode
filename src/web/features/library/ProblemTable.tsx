@@ -1,162 +1,171 @@
-import { Dialog } from 'radix-ui';
-import { tagColour } from '../../lib/tag-colour';
 import { enumLabel, helpLabel, languageLabel } from '../../lib/labels';
 import { Button } from '@/components/ui/button';
-import { TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { FileText } from 'lucide-react';
+import { Dialog } from 'radix-ui';
 import { Link } from 'react-router-dom';
 import type { Problem } from '../../../shared/contracts';
-import { dateLabel, duration, ResponsiveTable, TableCell } from '../../components/ui';
-import { outcomeTone } from './library-utils';
+import { dateLabel, duration } from '../../components/ui';
+import {
+  CellSub,
+  DataTable,
+  DataTableCell,
+  DataTableRow,
+  type DataTableColumn,
+} from '../../components/data-table';
+import {
+  SidePanel,
+  SidePanelContent,
+  SidePanelDescription,
+  SidePanelTitle,
+  SidePanelTrigger,
+} from '../../components/kit';
+import { outcomeText } from './library-utils';
+import { DifficultyBadge, TagBadge } from './tags';
 
-const problemHeaders = [
-  'Question',
-  'Tags',
-  'Difficulty',
-  'Latest submission',
-  'LeetCode time',
-  'Confidence',
-  'Next review',
-  'Attempt notes',
-] as const;
-const problemSortKeys: Record<string, string> = {
-  Question: 'title',
-  Difficulty: 'difficulty',
-  'Latest submission': 'lastAttempt',
-  'LeetCode time': 'solveTime',
-  Confidence: 'confidence',
-  'Next review': 'reviewDate',
-};
+const columns: DataTableColumn[] = [
+  { key: 'title', header: 'Question', sortLabel: 'question title', className: 'min-w-[13rem]' },
+  { key: 'tags', header: 'Tags', className: 'w-[10rem] min-w-[10rem]' },
+  { key: 'difficulty', header: 'Difficulty', sortLabel: 'difficulty' },
+  {
+    key: 'lastAttempt',
+    header: 'Latest submission',
+    sortLabel: 'last attempt',
+    className: 'min-w-[10rem]',
+  },
+  { key: 'solveTime', header: 'LeetCode time', sortLabel: 'solve time' },
+  { key: 'confidence', header: 'Confidence', sortLabel: 'confidence' },
+  { key: 'reviewDate', header: 'Next review', sortLabel: 'next review', className: 'min-w-[8rem]' },
+  { key: 'notes', header: 'Attempt notes' },
+];
+
+function AttemptNotes({ problem }: { problem: Problem }) {
+  return (
+    <SidePanel>
+      <SidePanelTrigger asChild>
+        <Button variant="ghost" size="sm" className="-mx-2 -my-0.5">
+          <FileText aria-hidden="true" />
+          View notes
+        </Button>
+      </SidePanelTrigger>
+      <SidePanelContent closeLabel="Close attempt notes">
+        <SidePanelTitle>Attempt notes</SidePanelTitle>
+        <SidePanelDescription className="-mt-2 text-[0.9375rem] text-muted-foreground">
+          {problem.title}
+        </SidePanelDescription>
+        <div className="rounded-2xl bg-muted p-4 text-[0.9375rem] leading-relaxed whitespace-pre-wrap wrap-anywhere">
+          {problem.latestSubmission?.notes}
+        </div>
+        <Dialog.Close asChild>
+          <Button variant="outline" className="self-end">
+            Close
+          </Button>
+        </Dialog.Close>
+      </SidePanelContent>
+    </SidePanel>
+  );
+}
+
 export function ProblemTable({
   problems,
   sort = 'title',
   direction = 'asc',
   onSort,
+  scroll = false,
 }: {
   problems: Problem[];
   sort?: string;
   direction?: 'asc' | 'desc';
   onSort?: (key: string) => void;
+  /** Scroll the rows inside the table region under a sticky header (library page). */
+  scroll?: boolean;
 }) {
   return (
-    <ResponsiveTable
-      headers={problemHeaders}
-      className={`problem-table${onSort ? ' sortable-table' : ''}`}
-      sorting={
-        onSort
-          ? {
-              active:
-                Object.keys(problemSortKeys).find((header) => problemSortKeys[header] === sort) ??
-                '',
-              direction,
-              onSort: (header) => onSort(problemSortKeys[header]),
-              labels: {
-                Question: 'question title',
-                Difficulty: 'difficulty',
-                'Latest submission': 'last attempt',
-                'LeetCode time': 'solve time',
-                Confidence: 'confidence',
-                'Next review': 'next review',
-              },
-            }
-          : undefined
-      }
+    <DataTable
+      columns={columns}
+      scroll={scroll}
+      stickyFirstColumn
+      aria-label="Questions"
+      sort={onSort ? { key: sort, direction, onSort } : undefined}
     >
       {problems.map((p) => (
-        <TableRow role="row" key={p.id}>
-          <TableCell label={problemHeaders[0]}>
-            <div className="problem-cell">
-              <Link className="problem-link" to={`/library/${p.id}`} title={`Open ${p.title}`}>
-                {p.title}
-              </Link>
-            </div>
-          </TableCell>
-          <TableCell label={problemHeaders[1]}>
-            <div className="chips" aria-label="Tags">
+        <DataTableRow key={p.id}>
+          <DataTableCell>
+            <Link
+              className="font-medium tracking-[-0.005em] text-foreground no-underline hover:underline hover:decoration-border"
+              to={`/library/${p.id}`}
+              title={`Open ${p.title}`}
+            >
+              {p.title}
+            </Link>
+          </DataTableCell>
+          <DataTableCell>
+            <div className="flex w-[9rem] max-w-full flex-wrap gap-1" aria-label="Tags">
               {p.tags.map((t) => (
-                <Badge
-                  variant="secondary"
-                  key={t.id}
-                  style={tagColour(t)}
-                  title={t.name}
-                  className="tag-colour chip library-tag"
-                >
-                  <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>{t.name}</Link>
-                </Badge>
+                <TagBadge key={t.id} tag={t} />
               ))}
             </div>
-          </TableCell>
-          <TableCell label={problemHeaders[2]}>
-            <Badge variant="secondary" className={`level ${p.difficulty?.toLowerCase()}`}>
-              {p.difficulty ?? 'Unknown'}
-            </Badge>
-          </TableCell>
-          <TableCell label={problemHeaders[3]}>
+          </DataTableCell>
+          <DataTableCell>
+            <DifficultyBadge difficulty={p.difficulty} />
+          </DataTableCell>
+          <DataTableCell>
             {p.latestSubmission ? (
               <>
                 <Link
-                  className={outcomeTone(p.latestSubmission.outcome)}
+                  className={`font-medium no-underline hover:underline ${outcomeText(p.latestSubmission.outcome)}`}
                   to={`/attempts/${p.latestSubmission.id}`}
                 >
                   {enumLabel(p.latestSubmission.outcome)}
                 </Link>
-                <small>
+                <CellSub>
                   {helpLabel(p.latestSubmission.help)} ·{' '}
                   {languageLabel(p.latestSubmission.language)}
-                </small>
-                <small>{dateLabel(p.latestSubmission.finishedAt)}</small>
+                </CellSub>
+                <CellSub>{dateLabel(p.latestSubmission.finishedAt)}</CellSub>
               </>
             ) : (
-              'Not submitted'
+              <span className="text-muted-foreground">Not submitted</span>
             )}
-          </TableCell>
-          <TableCell label={problemHeaders[4]}>
-            {duration(p.latestSubmission?.activeSeconds ?? null)}
-          </TableCell>
-          <TableCell label={problemHeaders[5]}>
-            {p.latestConfidence != null ? `${p.latestConfidence} / 5` : 'Not rated'}
+          </DataTableCell>
+          <DataTableCell>{duration(p.latestSubmission?.activeSeconds ?? null)}</DataTableCell>
+          <DataTableCell>
+            {p.latestConfidence != null ? (
+              <>
+                {p.latestConfidence}
+                <span className="text-muted-foreground"> / 5</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Not rated</span>
+            )}
             {p.latestSubmission?.confidence == null && p.latestConfidence != null && (
-              <small>Earlier submission</small>
+              <CellSub>Earlier submission</CellSub>
             )}
-          </TableCell>
-          <TableCell label={problemHeaders[6]}>
-            {p.nextReviewDate ? dateLabel(p.nextReviewDate) : 'Not scheduled'}
+          </DataTableCell>
+          <DataTableCell>
+            {p.nextReviewDate ? (
+              dateLabel(p.nextReviewDate)
+            ) : (
+              <span className="text-muted-foreground">Not scheduled</span>
+            )}
             {p.reviewAction && p.reviewAction !== 'none' && (
-              <small>
+              <CellSub>
                 {p.reviewAction === 'manual'
                   ? 'Chosen date'
                   : p.reviewAction === 'snooze'
                     ? 'Snoozed'
                     : 'Recommended'}
-              </small>
+              </CellSub>
             )}
-          </TableCell>
-          <TableCell label={problemHeaders[7]}>
+          </DataTableCell>
+          <DataTableCell>
             {p.latestSubmission?.notes ? (
-              <Dialog.Root>
-                <Dialog.Trigger asChild>
-                  <Button variant="link" className="h-auto p-0">
-                    View notes
-                  </Button>
-                </Dialog.Trigger>
-                <Dialog.Portal>
-                  <Dialog.Overlay className="notes-dialog-overlay" />
-                  <Dialog.Content className="notes-dialog">
-                    <Dialog.Title>Attempt notes</Dialog.Title>
-                    <Dialog.Description className="muted">{p.title}</Dialog.Description>
-                    <div className="notes-dialog-body preserve">{p.latestSubmission.notes}</div>
-                    <Dialog.Close asChild>
-                      <Button variant="outline">Close</Button>
-                    </Dialog.Close>
-                  </Dialog.Content>
-                </Dialog.Portal>
-              </Dialog.Root>
+              <AttemptNotes problem={p} />
             ) : (
-              'No notes'
+              <span className="text-muted-foreground">No notes</span>
             )}
-          </TableCell>
-        </TableRow>
+          </DataTableCell>
+        </DataTableRow>
       ))}
-    </ResponsiveTable>
+    </DataTable>
   );
 }
