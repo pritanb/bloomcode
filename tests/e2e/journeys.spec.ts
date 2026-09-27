@@ -88,7 +88,11 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
   await expect(page.getByRole('checkbox', { name: 'Missed edge case', exact: true })).toBeChecked();
   await page.getByRole('link', { name: 'Done for now', exact: true }).click();
   await expect(
-    page.locator('.recent-practice').getByRole('listitem').filter({ hasText: problem.title }),
+    page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: 'Recent practice', exact: true }) })
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('link', { name: problem.title, exact: true }) }),
   ).toContainText('9:53');
   await page.goto(
     `/library?search=${encodeURIComponent(problem.title)}&status=completed&timeBucket=0-10`,
