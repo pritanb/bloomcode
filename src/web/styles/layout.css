@@ -963,13 +963,6 @@ small,
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
 }
-.notebook-layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
-}
-.notebook-layout > * {
-  min-width: 0;
-}
 @media (max-width: 900px) {
   .app {
     grid-template-columns: 1fr;
@@ -985,7 +978,6 @@ small,
   #main {
     padding: 1.5rem 1rem;
   }
-  .notebook-layout,
   .attempt-comparison-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
@@ -1010,20 +1002,6 @@ small,
 .question-notes .muted + p,
 .attempt-history .muted + p {
   margin-top: 0.25rem;
-}
-.notebook-entry-button {
-  width: 100%;
-  justify-content: flex-start;
-  text-align: left;
-  height: auto;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.notebook-list > li:first-child {
-  border-top: 0;
-}
-.notebook-list > li > .row + .row {
-  margin-top: 0.75rem;
 }
 .review-calendar-entry {
   padding: 0.875rem 0;
@@ -1300,11 +1278,6 @@ small,
   }
 
   /* Question library: the table body scrolls under a pinned header. */
-  .mistakes-panel {
-    position: relative;
-    min-height: 0;
-    overflow-y: auto;
-  }
   .library-results .table-scroll {
     flex: 1 1 0;
     min-height: 8rem;
@@ -1347,33 +1320,27 @@ small,
 
   /* Two-column pages: each column scrolls on its own. */
   .settings-grid.fill-page,
-  .management-grid.fill-page,
-  .notebook-layout.fill-page {
+  .management-grid.fill-page {
     align-items: stretch;
     grid-template-rows: minmax(0, 1fr);
   }
   .settings-grid.fill-page > *,
   .topic-detail-layout.fill-page > .panel,
   .problem-detail-side,
-  .problem-history,
-  .notebook-editor,
-  .notebook-layout.fill-page > .panel {
+  .problem-history {
     position: relative;
     min-height: 0;
     overflow-y: auto;
   }
-  .management-grid.fill-page > .panel,
-  .notebook-index {
+  .management-grid.fill-page > .panel {
     min-height: 0;
     overflow: hidden;
   }
   .management-grid.fill-page > .panel > .plain-list,
-  .notebook-index > .movement-list,
   .library-results .table-scroll {
     position: relative;
   }
-  .management-grid.fill-page > .panel > .plain-list,
-  .notebook-index > .movement-list {
+  .management-grid.fill-page > .panel > .plain-list {
     flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
