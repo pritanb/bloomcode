@@ -1,30 +1,37 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import {
   BookOpenCheck,
   CalendarCheck,
+  CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
-  ChartNoAxesCombined,
+  History,
   ListChecks,
+  Lock,
+  RotateCcw,
   Sparkles,
-  type LucideIcon,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ActivityDay, WeeklyRecap as Recap } from '../../../shared/contracts';
 import { api } from '../../app/api';
+import { dateLabel, ErrorNotice, Loading } from '../../components/ui';
 import {
-  dateLabel,
-  ErrorNotice,
-  Icon,
-  Loading,
-  PageTitle,
-  SectionTitle,
-} from '../../components/ui';
+  EmptyState,
+  FillPage,
+  List,
+  ListRow,
+  PageHeader,
+  ScrollRegion,
+  Panel,
+  StatTile,
+} from '../../components/kit';
 import { enumLabel, helpLabel } from '../../lib/labels';
+import { ActivityFigures, ActivityStrip } from './ActivityStrip';
+import { statRow, statTile } from './stat-row';
 
 function shiftWeek(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -32,127 +39,67 @@ function shiftWeek(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-// Same card language as the Study desk stat row.
-export function StatTile({
-  label,
-  value,
-  sub,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: ReactNode;
-  sub: ReactNode;
-  icon: LucideIcon;
-  tone: 'solid' | 'sky' | 'emerald' | 'amber' | 'rose';
-}) {
-  return (
-    <Card className="panel stat-card">
-      <span
-        className={`stat-icon ${tone === 'solid' ? 'solid' : `tone-${tone}`}`}
-        aria-hidden="true"
-      >
-        <Icon icon={icon} />
-      </span>
-      <p className="stat-label">{label}</p>
-      <p className="stat-value">{value}</p>
-      <p className="stat-sub">{sub}</p>
-    </Card>
+function CompletedAttempts({ recap }: { recap: Recap }) {
+  return recap.attempts.length ? (
+    <List>
+      {recap.attempts.map((attempt) => {
+        const solved = attempt.outcome === 'solved';
+        return (
+          <ListRow
+            key={attempt.id}
+            icon={solved ? Check : RotateCcw}
+            tone={solved ? 'emerald' : 'rose'}
+            title={attempt.problem.title}
+            to={`/attempts/${attempt.id}`}
+            meta={
+              <span className="tabular-nums">
+                {dateLabel(attempt.studyDate)} · {enumLabel(attempt.outcome)} ·{' '}
+                {helpLabel(attempt.help)}
+                {attempt.scheduledReview ? ' · Scheduled review' : ''}
+              </span>
+            }
+          />
+        );
+      })}
+    </List>
+  ) : (
+    <EmptyState
+      icon={ListChecks}
+      title="No completed attempts"
+      description="No completed attempts this week yet."
+    />
   );
 }
 
-function ActivityStrip({ activity }: { activity: ActivityDay[] }) {
-  return (
-    <TooltipProvider>
-      <div className="activity-strip" role="list" aria-label="Completed attempts by study day">
-        {activity.map((day) => {
-          const label = `${dateLabel(day.date)}: ${day.completedAttempts} completed ${day.completedAttempts === 1 ? 'attempt' : 'attempts'}`;
-          return (
-            <Tooltip key={day.date}>
-              <TooltipTrigger asChild>
-                <span
-                  role="listitem"
-                  tabIndex={0}
-                  className={`activity-day intensity-${Math.min(3, day.completedAttempts)}`}
-                  aria-label={label}
-                />
-              </TooltipTrigger>
-              <TooltipContent>{label}</TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-    </TooltipProvider>
+function ScoreChanges({ recap }: { recap: Recap }) {
+  return recap.movements.length ? (
+    <List>
+      {recap.movements.map((movement) => {
+        const up = movement.newScore >= movement.oldScore;
+        return (
+          <ListRow
+            key={movement.id}
+            icon={up ? TrendingUp : TrendingDown}
+            tone={up ? 'emerald' : 'rose'}
+            title={`${movement.topicName}: ${movement.oldScore} → ${movement.newScore}`}
+            to={
+              movement.attemptId ? `/attempts/${movement.attemptId}` : `/topics/${movement.topicId}`
+            }
+            meta={dateLabel(movement.date)}
+          />
+        );
+      })}
+    </List>
+  ) : (
+    <EmptyState
+      icon={TrendingUp}
+      title="No score changes"
+      description="No recorded score changes this week."
+    />
   );
 }
 
-function SupportingRecords({ recap }: { recap: Recap }) {
-  if (recap.detailsHidden)
-    return (
-      <p className="small muted">
-        Finish your mixed practice to see supporting records and score changes.
-      </p>
-    );
-  return (
-    <>
-      <section className="recap-section">
-        <h3>Completed attempts</h3>
-        {recap.attempts.length ? (
-          <ul className="plain-list recap-records">
-            {recap.attempts.map((attempt) => (
-              <li key={attempt.id}>
-                <Link to={`/attempts/${attempt.id}`}>{attempt.problem.title}</Link>
-                <span className="small">
-                  {dateLabel(attempt.studyDate)} · {enumLabel(attempt.outcome)} ·{' '}
-                  {helpLabel(attempt.help)}
-                  {attempt.scheduledReview ? ' · Scheduled review' : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="small muted">No completed attempts this week yet.</p>
-        )}
-      </section>
-      <section className="recap-section">
-        <h3>Recorded score changes</h3>
-        {recap.movements.length ? (
-          <ul className="plain-list recap-records">
-            {recap.movements.map((movement) => (
-              <li key={movement.id}>
-                <Link
-                  to={
-                    movement.attemptId
-                      ? `/attempts/${movement.attemptId}`
-                      : `/topics/${movement.topicId}`
-                  }
-                >
-                  {movement.topicName}: {movement.oldScore} → {movement.newScore}
-                </Link>
-                <span className="small">{dateLabel(movement.date)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="small muted">No recorded score changes this week.</p>
-        )}
-      </section>
-      <p className="small muted recap-footnote">
-        Independent solves used no help. Scheduled reviews count attempts linked to a scheduled
-        review in a daily plan; unlinked historical reviews are excluded. Weeks use the study date
-        saved with each attempt.
-      </p>
-    </>
-  );
-}
-
-export function WeeklyRecap({
-  activity,
-  compact = false,
-}: {
-  activity: ActivityDay[];
-  compact?: boolean;
-}) {
+export function WeeklyRecap({ activity }: { activity: ActivityDay[] }) {
   const [week, setWeek] = useState('');
   const mountId = useId();
   const query = useQuery({
@@ -164,62 +111,18 @@ export function WeeklyRecap({
   const recap = query.data;
   const loading = query.isPending || query.isFetching;
   const ready = !loading && !query.isError && recap ? recap : undefined;
+  const status = loading ? (
+    <Loading />
+  ) : query.isError ? (
+    <ErrorNotice error={query.error} retry={() => void query.refetch()} />
+  ) : null;
 
-  if (compact)
-    return (
-      <Card className="panel weekly-recap">
-        <div className="section-heading">
-          <SectionTitle icon={ChartNoAxesCombined}>
-            {week ? 'Week in review' : 'This week'}
-          </SectionTitle>
-        </div>
-        {loading ? (
-          <Loading />
-        ) : query.isError ? (
-          <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-        ) : (
-          recap && (
-            <>
-              <p className="small muted">
-                {dateLabel(recap.weekStart)} – {dateLabel(recap.weekEnd)} · {recap.timezone}
-              </p>
-              <div className="recap-metrics">
-                <div>
-                  <strong>{recap.distinctQuestions}</strong>
-                  <span>questions practised</span>
-                </div>
-                <div>
-                  <strong>{recap.independentSolves}</strong>
-                  <span>independent solves</span>
-                </div>
-              </div>
-              <p className="small">
-                {recap.completedAttempts} completed attempts · {recap.scheduledReviews} scheduled
-                reviews completed
-              </p>
-            </>
-          )
-        )}
-        <div className="activity-section">
-          <div className="row between">
-            <h3>Last 28 days</h3>
-            <span className="small">Completed attempts</span>
-          </div>
-          <ActivityStrip activity={activity} />
-          <p className="small muted">Each square is one study day. Hover or focus for details.</p>
-        </div>
-        <Link className="small" to="/weekly-report">
-          View weekly report →
-        </Link>
-      </Card>
-    );
-
-  const pending = <span className="muted">–</span>;
+  const pending = <span className="text-muted-foreground">–</span>;
   const activeDays = activity.filter((day) => day.completedAttempts > 0).length;
   const attempts28 = activity.reduce((sum, day) => sum + day.completedAttempts, 0);
   return (
     <>
-      <PageTitle
+      <PageHeader
         title="Weekly report"
         description={
           recap
@@ -228,111 +131,139 @@ export function WeeklyRecap({
               ? 'Week in review'
               : 'This week'
         }
-      >
-        <div className="report-nav">
-          {week && (
-            <Button variant="ghost" size="sm" onClick={() => setWeek('')}>
-              Current week
+        actions={
+          <>
+            {week && (
+              <Button variant="ghost" size="sm" onClick={() => setWeek('')}>
+                Current week
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Previous week"
+              disabled={!recap}
+              onClick={() => recap && setWeek(shiftWeek(recap.weekStart, -7))}
+            >
+              <ChevronLeft aria-hidden="true" />
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Previous week"
-            disabled={!recap}
-            onClick={() => recap && setWeek(shiftWeek(recap.weekStart, -7))}
-          >
-            <Icon icon={ChevronLeft} />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Next week"
-            disabled={!recap}
-            onClick={() => recap && setWeek(shiftWeek(recap.weekStart, 7))}
-          >
-            <Icon icon={ChevronRight} />
-          </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Next week"
+              disabled={!recap}
+              onClick={() => recap && setWeek(shiftWeek(recap.weekStart, 7))}
+            >
+              <ChevronRight aria-hidden="true" />
+            </Button>
+          </>
+        }
+      />
+      <FillPage>
+        <div className={statRow}>
+          <StatTile
+            className={statTile}
+            label="Questions practised"
+            icon={BookOpenCheck}
+            tone="sky"
+            value={ready?.distinctQuestions ?? pending}
+            sub={ready ? 'Distinct questions' : ' '}
+          />
+          <StatTile
+            className={statTile}
+            label="Independent solves"
+            icon={Sparkles}
+            tone="emerald"
+            value={ready?.independentSolves ?? pending}
+            sub={
+              ready ? (
+                <>
+                  <span>
+                    <span className="font-medium text-up">No help</span> used
+                  </span>
+                </>
+              ) : (
+                ' '
+              )
+            }
+          />
+          <StatTile
+            className={statTile}
+            label="Completed attempts"
+            icon={ListChecks}
+            tone="solid"
+            value={ready?.completedAttempts ?? pending}
+            sub={ready ? 'Finished this week' : ' '}
+          />
+          <StatTile
+            className={statTile}
+            label="Scheduled reviews"
+            icon={CalendarCheck}
+            tone="amber"
+            value={ready?.scheduledReviews ?? pending}
+            sub={ready ? 'Completed from your plan' : ' '}
+          />
         </div>
-      </PageTitle>
-      <div className="desk-stats">
-        <StatTile
-          label="Questions practised"
-          icon={BookOpenCheck}
-          tone="sky"
-          value={ready?.distinctQuestions ?? pending}
-          sub={ready ? 'Distinct questions' : ' '}
-        />
-        <StatTile
-          label="Independent solves"
-          icon={Sparkles}
-          tone="emerald"
-          value={ready?.independentSolves ?? pending}
-          sub={
-            ready ? (
-              <>
-                <span className="up">No help</span> used
-              </>
-            ) : (
-              ' '
-            )
-          }
-        />
-        <StatTile
-          label="Completed attempts"
-          icon={ListChecks}
-          tone="solid"
-          value={ready?.completedAttempts ?? pending}
-          sub={ready ? 'Finished this week' : ' '}
-        />
-        <StatTile
-          label="Scheduled reviews"
-          icon={CalendarCheck}
-          tone="amber"
-          value={ready?.scheduledReviews ?? pending}
-          sub={ready ? 'Completed from your plan' : ' '}
-        />
-      </div>
-      <div className="report-grid fill-page">
-        <Card className="panel report-activity">
-          <div className="section-heading">
-            <h2 className="section-title">Last 28 days</h2>
-            <span className="desk-count">Completed attempts</span>
-          </div>
-          <div className="desk-activity-summary">
-            <div>
-              <strong>{activeDays}</strong>
-              <span>active days</span>
-            </div>
-            <div>
-              <strong>{attempts28}</strong>
-              <span>completed attempts</span>
-            </div>
-          </div>
-          <ActivityStrip activity={activity} />
-          <div className="activity-legend" aria-hidden="true">
-            <span>Less</span>
-            <i className="activity-day" />
-            <i className="activity-day intensity-1" />
-            <i className="activity-day intensity-2" />
-            <i className="activity-day intensity-3" />
-            <span>More</span>
-          </div>
-          <p className="small muted">Each square is one study day. Hover or focus for details.</p>
-        </Card>
-        <Card className="panel report-records">
-          <div className="section-heading">
-            <h2 className="section-title">Supporting records</h2>
-          </div>
-          {loading ? (
-            <Loading />
-          ) : query.isError ? (
-            <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-          ) : (
-            recap && <SupportingRecords recap={recap} />
-          )}
-        </Card>
-      </div>
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+          {/* Short windows scroll the column; tall ones let the score list fill and scroll. */}
+          <ScrollRegion className="flex flex-col gap-4 xl:*:shrink">
+            <Panel title="Last 28 days" icon={CalendarDays} meta="Completed attempts">
+              <ActivityFigures
+                items={[
+                  [activeDays, 'active days'],
+                  [attempts28, 'completed attempts'],
+                ]}
+              />
+              <ActivityStrip activity={activity} />
+            </Panel>
+            <Panel
+              title="Recorded score changes"
+              icon={TrendingUp}
+              meta={ready && !ready.detailsHidden ? ready.movements.length : undefined}
+              scroll
+              className="gap-2 xl:flex-1"
+              bodyClassName="gap-3"
+            >
+              {status ??
+                (recap &&
+                  (recap.detailsHidden ? (
+                    <p className="text-[0.8125rem] text-muted-foreground">
+                      Available after your mixed practice.
+                    </p>
+                  ) : (
+                    <ScoreChanges recap={recap} />
+                  )))}
+            </Panel>
+          </ScrollRegion>
+          <Panel
+            title={recap?.detailsHidden ? 'Supporting records' : 'Completed attempts'}
+            icon={History}
+            meta={ready && !ready.detailsHidden ? ready.attempts.length : undefined}
+            scroll
+            className="min-h-0 gap-2"
+            bodyClassName="gap-3"
+          >
+            {status ??
+              (recap &&
+                (recap.detailsHidden ? (
+                  <EmptyState
+                    icon={Lock}
+                    title="Supporting records are locked"
+                    description="Finish your mixed practice to see supporting records and score changes."
+                  />
+                ) : (
+                  <>
+                    <CompletedAttempts recap={recap} />
+                    <p className="mt-auto border-t pt-3 text-xs leading-relaxed text-muted-foreground">
+                      Independent solves used no help. Scheduled reviews count attempts linked to a
+                      scheduled review in a daily plan; unlinked historical reviews are excluded.
+                      Weeks use the study date saved with each attempt.
+                    </p>
+                  </>
+                )))}
+          </Panel>
+        </div>
+      </FillPage>
     </>
   );
 }

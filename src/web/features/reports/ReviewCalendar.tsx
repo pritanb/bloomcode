@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import {
+  ArrowRight,
+  CalendarCheck,
   CalendarClock,
   CalendarDays,
   CalendarRange,
@@ -12,11 +14,21 @@ import {
 import { Link } from 'react-router-dom';
 import type { ReviewTarget } from '../../../shared/contracts';
 import { api } from '../../app/api';
-import { Card } from '@/components/ui/card';
 import { Disclosure } from '@/components/disclosure';
-import { ReviewEditor } from '../library/Library';
-import { dateLabel, ErrorNotice, Icon, Loading, SectionTitle } from '../../components/ui';
-import { StatTile } from './WeeklyRecap';
+import { ReviewEditor } from '../library/ReviewEditor';
+import { dateLabel, ErrorNotice, Loading } from '../../components/ui';
+import {
+  EmptyState,
+  FillPage,
+  List,
+  ListRow,
+  Panel,
+  ScrollRegion,
+  SectionHeader,
+  StatTile,
+} from '../../components/kit';
+import { cn } from '@/lib/utils';
+import { statRow, statTile } from './stat-row';
 
 export function reviewWeek(timezone: string, now = new Date()): string[] {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -37,23 +49,29 @@ export function reviewWeek(timezone: string, now = new Date()): string[] {
 
 function ScheduledReview({ review }: { review: ReviewTarget }) {
   return (
-    <div className="review-calendar-entry">
-      <Link to={`/library/${review.problemId}`}>{review.problemTitle}</Link>
-      <span className="review-entry-meta">
-        {review.action === 'manual'
-          ? 'Chosen date'
-          : review.action === 'snooze'
-            ? 'Snoozed'
-            : 'Recommended'}{' '}
-        · {dateLabel(review.effectiveDate)}
-      </span>
-      <Disclosure title={`Reschedule ${review.problemTitle}`}>
-        <p className="small muted">
-          Changing this date keeps any question already assigned to your current plan.
-        </p>
-        <ReviewEditor key={`${review.id}-${review.version}`} review={review} />
+    <ListRow
+      title={review.problemTitle}
+      to={`/library/${review.problemId}`}
+      meta={
+        <>
+          {review.action === 'manual'
+            ? 'Chosen date'
+            : review.action === 'snooze'
+              ? 'Snoozed'
+              : 'Recommended'}{' '}
+          · {dateLabel(review.effectiveDate)}
+        </>
+      }
+    >
+      <Disclosure quiet title={`Reschedule ${review.problemTitle}`}>
+        <div className="mb-1 flex flex-col gap-3 rounded-2xl bg-muted p-4">
+          <p className="text-[0.8125rem] text-muted-foreground">
+            Changing this date keeps any question already assigned to your current plan.
+          </p>
+          <ReviewEditor key={`${review.id}-${review.version}`} review={review} />
+        </div>
       </Disclosure>
-    </div>
+    </ListRow>
   );
 }
 
@@ -86,7 +104,7 @@ export function ReviewCalendar({
     );
   const overdue = reviews.filter((review) => review.effectiveDate! < today);
   const nav = (
-    <div className="calendar-nav">
+    <div className="-mr-2 flex items-center gap-0.5 [&_[data-slot=button]]:text-muted-foreground [&_[data-slot=button]:hover]:text-foreground">
       <Button
         type="button"
         variant="ghost"
@@ -94,7 +112,7 @@ export function ReviewCalendar({
         aria-label="Previous week"
         onClick={() => setWeekOffset((value) => value - 1)}
       >
-        <Icon icon={ChevronLeft} />
+        <ChevronLeft aria-hidden="true" />
       </Button>
       <Button
         type="button"
@@ -114,34 +132,47 @@ export function ReviewCalendar({
         aria-label="Next week"
         onClick={() => setWeekOffset((value) => value + 1)}
       >
-        <Icon icon={ChevronRight} />
+        <ChevronRight aria-hidden="true" />
       </Button>
     </div>
   );
   const grid = (
-    <div className="review-calendar-grid">
+    <div className="grid shrink-0 grid-cols-7 gap-1 xl:gap-2">
       {days.map((day, index) => {
         const count = reviews.filter((review) => review.effectiveDate === day).length;
+        const selected = index === selectedIndex;
         return (
           <Button
             type="button"
-            variant={index === selectedIndex ? 'default' : 'outline'}
-            className="review-calendar-day"
+            variant={selected ? 'default' : 'ghost'}
+            className={cn(
+              'h-auto min-w-0 flex-col gap-1 px-0 py-2.5 font-normal tabular-nums',
+              selected ? 'hover:bg-primary' : 'bg-muted hover:bg-accent',
+            )}
             key={day}
-            aria-pressed={index === selectedIndex}
+            aria-pressed={selected}
             aria-controls="selected-review-day"
             aria-label={`${dateLabel(day)}, ${count} ${count === 1 ? 'review' : 'reviews'}`}
             onClick={() => setSelectedIndex(index)}
           >
-            <span>
+            <span className="text-xs">
               {day === today
                 ? 'Today'
                 : new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' }).format(
                     new Date(`${day}T12:00:00Z`),
                   )}
             </span>
-            <span>{Number(day.slice(-2))}</span>
-            <span className="small">{count}</span>
+            <span className="text-[1.0625rem] leading-6 font-semibold">
+              {Number(day.slice(-2))}
+            </span>
+            <span
+              className={cn(
+                'text-xs',
+                selected ? 'text-primary-foreground/70' : 'text-muted-foreground',
+              )}
+            >
+              {count}
+            </span>
           </Button>
         );
       })}
@@ -150,11 +181,7 @@ export function ReviewCalendar({
   const selected = reviews.filter((review) => review.effectiveDate === selectedDate);
   if (compact)
     return (
-      <Card className="panel stack review-calendar">
-        <div className="section-heading">
-          <SectionTitle icon={CalendarDays}>Review calendar</SectionTitle>
-          {nav}
-        </div>
+      <Panel title="Review calendar" icon={CalendarDays} actions={nav} className="shrink-0 gap-3.5">
         {query.isPending ? (
           <Loading />
         ) : query.isError ? (
@@ -162,32 +189,38 @@ export function ReviewCalendar({
         ) : (
           <>
             {grid}
-            <div id="selected-review-day" className="row between small" aria-live="polite">
+            <div
+              id="selected-review-day"
+              className="flex items-center justify-between gap-3 text-[0.8125rem] text-muted-foreground tabular-nums"
+              aria-live="polite"
+            >
               <span>
                 {dateLabel(selectedDate)} · {selected.length} reviews
               </span>
-              {overdue.length > 0 ? (
-                <Link to="/reviews">{overdue.length} overdue →</Link>
-              ) : (
-                <Link to="/reviews">All reviews →</Link>
-              )}
+              <Link
+                to="/reviews"
+                className={cn(
+                  'inline-flex items-center gap-1 font-medium',
+                  overdue.length ? 'text-warn' : 'text-foreground',
+                )}
+              >
+                {overdue.length > 0 ? `${overdue.length} overdue` : 'All reviews'}
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Link>
             </div>
           </>
         )}
-      </Card>
+      </Panel>
     );
   if (query.isPending || query.isError)
     return (
-      <Card className="panel stack review-calendar">
-        <div className="section-heading">
-          <SectionTitle icon={CalendarDays}>Review calendar</SectionTitle>
-        </div>
+      <Panel title="Review calendar" icon={CalendarDays}>
         {query.isPending ? (
           <Loading />
         ) : (
           <ErrorNotice error={query.error} retry={() => void query.refetch()} />
         )}
-      </Card>
+      </Panel>
     );
   const thisWeek = reviewWeek(timezone);
   const dueToday = reviews.filter((review) => review.effectiveDate === today).length;
@@ -195,18 +228,24 @@ export function ReviewCalendar({
     (review) => review.effectiveDate! >= today && review.effectiveDate! <= thisWeek[6],
   ).length;
   return (
-    <>
-      <div className="desk-stats">
+    <FillPage>
+      <div className={statRow}>
         <StatTile
+          className={statTile}
           label="Overdue"
           icon={CalendarX2}
           tone="rose"
           value={overdue.length}
           sub={
-            overdue.length ? <span className="warn">Reschedule or practise</span> : 'All caught up'
+            overdue.length ? (
+              <span className="font-medium text-warn">Reschedule or practise</span>
+            ) : (
+              'All caught up'
+            )
           }
         />
         <StatTile
+          className={statTile}
           label="Due today"
           icon={CalendarClock}
           tone="amber"
@@ -214,6 +253,7 @@ export function ReviewCalendar({
           sub={dateLabel(today)}
         />
         <StatTile
+          className={statTile}
           label="Next 7 days"
           icon={CalendarRange}
           tone="sky"
@@ -221,6 +261,7 @@ export function ReviewCalendar({
           sub="Including today"
         />
         <StatTile
+          className={statTile}
           label="Scheduled"
           icon={CalendarDays}
           tone="solid"
@@ -228,43 +269,59 @@ export function ReviewCalendar({
           sub="All review dates"
         />
       </div>
-      <div className="reviews-grid fill-page">
-        <Card className="panel stack review-calendar reviews-week">
-          <div className="section-heading">
-            <SectionTitle icon={CalendarDays}>Review calendar</SectionTitle>
-            {nav}
-          </div>
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <Panel title="Review calendar" icon={CalendarDays} actions={nav} className="min-h-0">
           {grid}
-          <section id="selected-review-day" className="stack reviews-agenda" aria-live="polite">
-            <div className="section-heading">
-              <h3>{dateLabel(selectedDate)}</h3>
-              <span className="desk-count">
-                {selected.length} {selected.length === 1 ? 'review' : 'reviews'}
-              </span>
-            </div>
-            {selected.length ? (
-              selected.map((review) => <ScheduledReview review={review} key={review.id} />)
-            ) : (
-              <p className="small muted">No reviews scheduled for this day.</p>
-            )}
+          <section
+            id="selected-review-day"
+            className="flex min-h-0 flex-1 flex-col gap-1"
+            aria-live="polite"
+          >
+            <SectionHeader
+              level={3}
+              title={dateLabel(selectedDate)}
+              meta={`${selected.length} ${selected.length === 1 ? 'review' : 'reviews'}`}
+              className="border-b pt-1 pb-3 [&_h3]:text-[0.9375rem]"
+            />
+            <ScrollRegion>
+              {selected.length ? (
+                <List>
+                  {selected.map((review) => (
+                    <ScheduledReview review={review} key={review.id} />
+                  ))}
+                </List>
+              ) : (
+                <p className="py-3.5 text-[0.8125rem] text-muted-foreground">
+                  No reviews scheduled for this day.
+                </p>
+              )}
+            </ScrollRegion>
           </section>
-        </Card>
-        <Card className="panel reviews-overdue">
-          <div className="section-heading">
-            <h2 className="section-title">Overdue</h2>
-            <span className="desk-count">{overdue.length}</span>
-          </div>
+        </Panel>
+        <Panel
+          title="Overdue"
+          icon={CalendarX2}
+          meta={overdue.length}
+          scroll
+          bodyClassName="gap-0"
+          className="min-h-0 gap-2"
+        >
           {overdue.length ? (
-            <div className="stack">
+            <List>
               {overdue.map((review) => (
                 <ScheduledReview review={review} key={review.id} />
               ))}
-            </div>
+            </List>
           ) : (
-            <p className="small muted">Nothing overdue. Reviews past their date appear here.</p>
+            <EmptyState
+              icon={CalendarCheck}
+              title="Nothing overdue"
+              description="Reviews past their date appear here."
+              className="mt-2"
+            />
           )}
-        </Card>
+        </Panel>
       </div>
-    </>
+    </FillPage>
   );
 }

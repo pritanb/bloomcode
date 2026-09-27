@@ -2,7 +2,6 @@ import { DropdownMenu } from 'radix-ui';
 import { enumLabel } from '../../lib/labels';
 import { DateField } from '@/components/date-field';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
   BookOpenCheck,
   CalendarClock,
@@ -11,14 +10,15 @@ import {
   Circle,
   CircleCheck,
   CirclePlay,
+  Flame,
+  History,
   ListChecks,
   Play,
   RotateCcw,
   Sparkles,
   Target,
-  type LucideIcon,
 } from 'lucide-react';
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import type {
@@ -30,20 +30,28 @@ import type {
   ReviewTarget,
   WeeklyRecap as Recap,
 } from '../../../shared/contracts';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { api } from '../../app/api';
 import { ReviewCalendar, reviewWeek } from '../reports/ReviewCalendar';
+import { ActivityFigures, ActivityStrip } from '../reports/ActivityStrip';
+import { dateLabel, duration, ErrorNotice, Field, Loading, useAction } from '../../components/ui';
 import {
-  Icon,
-  dateLabel,
-  duration,
-  Empty,
-  ErrorNotice,
-  Field,
-  Loading,
-  PageTitle,
-  useAction,
-} from '../../components/ui';
+  Callout,
+  EmptyState,
+  FillPage,
+  List,
+  ListRow,
+  Meter,
+  PageHeader,
+  Panel,
+  ScrollRegion,
+  StatTile,
+  ToneBadge,
+} from '../../components/kit';
+import { cn } from '@/lib/utils';
+import { statRow, statTile } from '../reports/stat-row';
+
+const quietLink = 'text-muted-foreground hover:text-foreground hover:no-underline';
+
 function CancelAttemptButton({ attemptId }: { attemptId: string }) {
   const request = useRef<{ version: number; key: string } | null>(null);
   const cancel = useAction(async () => {
@@ -69,6 +77,8 @@ function CancelAttemptButton({ attemptId }: { attemptId: string }) {
     </div>
   );
 }
+
+const actionRow = 'flex flex-wrap items-center gap-2 empty:hidden';
 
 type PlanChange = (plan: DailyPlan, item: PlanItem, action: string) => void;
 function PlanActions({
@@ -105,7 +115,7 @@ function PlanActions({
   const available = !['completed', 'skipped'].includes(item.status);
   return (
     <>
-      <div className="plan-actions">
+      <div className={cn(actionRow, 'mt-3.5')}>
         {item.attemptId && available ? (
           <>
             <Button asChild variant="default">
@@ -132,15 +142,18 @@ function PlanActions({
               <Button
                 variant="ghost"
                 size="icon"
-                className="plan-more"
                 disabled={action.isPending}
                 aria-label={`More actions for ${item.title}`}
               >
-                <Icon icon={ChevronDown} />
+                <ChevronDown aria-hidden="true" />
               </Button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
-              <DropdownMenu.Content className="plan-action-menu" align="start" sideOffset={5}>
+              <DropdownMenu.Content
+                className="z-50 flex min-w-44 flex-col rounded-2xl bg-popover p-1 text-popover-foreground shadow-[0_0_0_1px_var(--card-ring),0_8px_24px_rgb(0_0_0/0.12)] *:cursor-pointer *:rounded-xl *:px-3 *:py-2 *:text-sm *:outline-none *:data-highlighted:bg-muted"
+                align="start"
+                sideOffset={5}
+              >
                 <DropdownMenu.Item onSelect={() => action.mutate('swap')}>
                   Replace question
                 </DropdownMenu.Item>
@@ -155,7 +168,7 @@ function PlanActions({
       </div>
       {snoozing && (
         <form
-          className="row inset"
+          className="mt-3 flex flex-wrap items-end gap-3 rounded-2xl bg-card p-4 ring-1 ring-card-ring"
           onSubmit={(e) => {
             e.preventDefault();
             action.mutate('snooze');
@@ -184,18 +197,42 @@ function PlanRow({
   onChanged: PlanChange;
 }) {
   const done = item.status === 'completed';
+  const State = done ? CircleCheck : featured ? CirclePlay : Circle;
   return (
     <li
       data-plan-id={item.id}
-      className={`plan-row ${item.status}${featured ? ' plan-featured' : ''}`}
+      className={cn(
+        'relative flex items-start gap-3.5 rounded-2xl px-4 py-2.5',
+        featured &&
+          'bg-muted py-3 before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full before:bg-primary',
+      )}
     >
-      <span className="plan-state" aria-hidden="true">
-        <Icon icon={done ? CircleCheck : featured ? CirclePlay : Circle} />
+      <span
+        className={cn(
+          'grid h-6 shrink-0 place-items-center',
+          done ? 'text-up' : featured ? 'text-brand-text' : 'text-muted-foreground',
+        )}
+        aria-hidden="true"
+      >
+        <State className="size-[1.125rem]" />
       </span>
-      <div className="plan-content">
-        <div className="row between">
-          <h3>{item.title}</h3>
-          <span className="plan-meta">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-baseline justify-between gap-3">
+          <h3
+            className={cn(
+              'min-w-0 text-[0.9375rem] leading-6 font-medium tracking-[-0.005em] wrap-anywhere',
+              featured && 'font-heading text-[1.0625rem] font-semibold tracking-[-0.01em]',
+              done && 'text-muted-foreground line-through decoration-border',
+            )}
+          >
+            {item.title}
+          </h3>
+          <span
+            className={cn(
+              'shrink-0 text-[0.8125rem] text-muted-foreground tabular-nums',
+              featured && 'font-semibold text-foreground',
+            )}
+          >
             {featured
               ? item.attemptId
                 ? 'In progress'
@@ -207,7 +244,7 @@ function PlanRow({
                   : enumLabel(item.status)}
           </span>
         </div>
-        <p className="plan-reason" title={item.reason}>
+        <p className="text-[0.8125rem] text-muted-foreground" title={item.reason}>
           {item.reason.split(' · ')[0]}
         </p>
         {featured && <PlanActions item={item} featured={featured} onChanged={onChanged} />}
@@ -215,32 +252,39 @@ function PlanRow({
     </li>
   );
 }
+
 function RecentPractice({ items }: { items: Attempt[] }) {
   return items.length ? (
-    <ul className="plain-list desk-recent">
+    <List className="-mt-2">
       {items.slice(0, 4).map((attempt) => {
         const solved = attempt.outcome === 'solved';
         return (
-          <li key={attempt.id}>
-            <span className={`desk-recent-icon${solved ? ' solved' : ''}`} aria-hidden="true">
-              <Icon icon={solved ? Check : RotateCcw} />
-            </span>
-            <div>
-              <Link to={`/attempts/${attempt.id}`}>{attempt.problem.title}</Link>
-              <span>{dateLabel(attempt.finishedAt)}</span>
-            </div>
-            <div className="desk-recent-result">
-              <span className={solved ? 'up' : 'warn'}>
+          <ListRow
+            key={attempt.id}
+            icon={solved ? Check : RotateCcw}
+            tone={solved ? 'emerald' : 'rose'}
+            className="items-center py-2"
+            title={<span className="line-clamp-1 wrap-anywhere">{attempt.problem.title}</span>}
+            to={`/attempts/${attempt.id}`}
+            trailing={
+              <span className={cn('font-medium', solved ? 'text-up' : 'text-warn')}>
                 {enumLabel(attempt.outcome ?? 'unknown')}
               </span>
-              <span>{duration(attempt.activeSeconds)}</span>
-            </div>
-          </li>
+            }
+            meta={
+              <span className="flex justify-between gap-3 tabular-nums">
+                <span>{dateLabel(attempt.finishedAt)}</span>
+                <span>{duration(attempt.activeSeconds)}</span>
+              </span>
+            }
+          />
         );
       })}
-    </ul>
+    </List>
   ) : (
-    <p className="muted">Your completed attempts will appear here.</p>
+    <p className="text-[0.8125rem] text-muted-foreground">
+      Your completed attempts will appear here.
+    </p>
   );
 }
 
@@ -256,7 +300,7 @@ function PlanList({
   const items = plan.items;
   return (
     <>
-      <ol className="plan-list desk-plan">
+      <ol className="-mx-2 flex flex-col gap-0.5">
         {items
           .filter((item) => item.status !== 'skipped')
           .map((item) => (
@@ -269,17 +313,17 @@ function PlanList({
           ))}
       </ol>
       {items.some((item) => item.status === 'skipped') && (
-        <details className="plan-history">
-          <summary>
+        <details className="border-t text-[0.8125rem]">
+          <summary className="pb-1 text-muted-foreground hover:text-foreground">
             Plan changes ({items.filter((item) => item.status === 'skipped').length})
           </summary>
-          <ul className="plain-list">
+          <ul className="flex flex-col gap-2.5 pt-2 pb-1">
             {items
               .filter((item) => item.status === 'skipped')
               .map((item) => (
-                <li key={item.id} className="row between">
-                  <span>{item.title}</span>
-                  <span className="small muted">
+                <li key={item.id} className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0">{item.title}</span>
+                  <span className="shrink-0 text-muted-foreground">
                     {item.reason === 'swap'
                       ? 'Replaced'
                       : item.reason === 'snooze'
@@ -292,34 +336,6 @@ function PlanList({
         </details>
       )}
     </>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-  tone,
-}: {
-  label: string;
-  value: ReactNode;
-  sub: ReactNode;
-  icon: LucideIcon;
-  tone: 'solid' | 'sky' | 'emerald' | 'amber';
-}) {
-  return (
-    <Card className="panel stat-card">
-      <span
-        className={`stat-icon ${tone === 'solid' ? 'solid' : `tone-${tone}`}`}
-        aria-hidden="true"
-      >
-        <Icon icon={icon} />
-      </span>
-      <p className="stat-label">{label}</p>
-      <p className="stat-value">{value}</p>
-      <p className="stat-sub">{sub}</p>
-    </Card>
   );
 }
 
@@ -338,52 +354,24 @@ function ActivityCard({ activity }: { activity: ActivityDay[] }) {
   const streak = currentStreak(activity);
   const active = activity.filter((day) => day.completedAttempts > 0).length;
   return (
-    <Card className="panel desk-activity">
-      <div className="section-heading">
-        <h2 className="section-title">Activity</h2>
-        <Link className="desk-link" to="/weekly-report">
+    <Panel
+      title="Activity"
+      className="gap-3"
+      icon={Flame}
+      actions={
+        <Link className={quietLink} to="/weekly-report">
           Weekly report
         </Link>
-      </div>
-      <div className="desk-activity-summary">
-        <div>
-          <strong>{streak}</strong>
-          <span>day streak</span>
-        </div>
-        <div>
-          <strong>{active}</strong>
-          <span>active days in 28</span>
-        </div>
-      </div>
-      <TooltipProvider>
-        <div className="activity-strip" role="list" aria-label="Completed attempts by study day">
-          {activity.map((day) => {
-            const label = `${dateLabel(day.date)}: ${day.completedAttempts} completed ${day.completedAttempts === 1 ? 'attempt' : 'attempts'}`;
-            return (
-              <Tooltip key={day.date}>
-                <TooltipTrigger asChild>
-                  <span
-                    role="listitem"
-                    tabIndex={0}
-                    className={`activity-day intensity-${Math.min(3, day.completedAttempts)}`}
-                    aria-label={label}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>{label}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      </TooltipProvider>
-      <div className="activity-legend" aria-hidden="true">
-        <span>Less</span>
-        <i className="activity-day" />
-        <i className="activity-day intensity-1" />
-        <i className="activity-day intensity-2" />
-        <i className="activity-day intensity-3" />
-        <span>More</span>
-      </div>
-    </Card>
+      }
+    >
+      <ActivityFigures
+        items={[
+          [streak, 'day streak'],
+          [active, 'active days in 28'],
+        ]}
+      />
+      <ActivityStrip activity={activity} />
+    </Panel>
   );
 }
 
@@ -432,171 +420,184 @@ export function Dashboard() {
   const overdue = scheduled.filter((review) => review.effectiveDate! < today).length;
   const dueToday = scheduled.filter((review) => review.effectiveDate === today).length;
   const perDay = d.settings.questionsPerDay ?? d.settings.primaryCount + d.settings.optionalCount;
-  const pending = <span className="muted">–</span>;
+  const pending = <span className="text-muted-foreground">–</span>;
+  // Each column scrolls on its own when the window is short; the last card takes the spare height.
+  const column = 'flex flex-col gap-4 lg:[&>*:last-child]:grow';
 
   return (
     <>
-      <PageTitle
+      <PageHeader
         title={greeting()}
         description={
           total
             ? `${Math.max(0, total - completed)} of ${total} questions left today · ${dateLabel(d.plan?.date ?? null)}`
             : dateLabel(d.plan?.date ?? null)
         }
-      >
-        <Button asChild variant="outline">
-          <Link to="/settings">
-            <Icon icon={ListChecks} />
-            {perDay} per day
-          </Link>
-        </Button>
-      </PageTitle>
-      <div className="desk-stats">
-        <StatCard
-          label="Today's plan"
-          icon={Target}
-          tone="solid"
-          value={
-            <>
-              {completed}
-              <span> / {total}</span>
-            </>
-          }
-          sub={
-            total ? (
-              <span className="stat-progress">
-                <i style={{ width: `${(completed / total) * 100}%` }} />
-              </span>
-            ) : (
-              'No plan today'
-            )
-          }
-        />
-        <StatCard
-          label="Practised this week"
-          icon={BookOpenCheck}
-          tone="sky"
-          value={recap.data?.distinctQuestions ?? pending}
-          sub={recap.data ? `${recap.data.completedAttempts} completed attempts` : ' '}
-        />
-        <StatCard
-          label="Independent solves"
-          icon={Sparkles}
-          tone="emerald"
-          value={recap.data?.independentSolves ?? pending}
-          sub={
-            recap.data ? (
-              <>
-                <span className="up">No help</span> used this week
-              </>
-            ) : (
-              ' '
-            )
-          }
-        />
-        <StatCard
-          label="Reviews due"
-          icon={CalendarClock}
-          tone="amber"
-          value={reviews.data ? overdue + dueToday : pending}
-          sub={
-            reviews.data ? (
-              overdue ? (
-                <Link to="/reviews" className="warn">
-                  {overdue} overdue
-                </Link>
-              ) : (
-                `${dueToday} due today`
-              )
-            ) : (
-              ' '
-            )
-          }
-        />
-      </div>
-      <div className="desk-grid fill-page">
-        <div className="desk-column">
-          <Card className="panel plan-panel">
-            <div className="section-heading">
-              <h2 className="section-title">Today's plan</h2>
-              <span className="desk-count">
-                {completed}/{total}
-              </span>
-            </div>
-            {d.activeAttempt && !featured && (
-              <div className="plan-active-attempt">
-                <span className="next-label">
-                  <Icon icon={Play} />
-                  Continue studying
-                </span>
-                <h3>{d.activeAttempt.problem.title}</h3>
-                <div className="plan-actions">
-                  <Button asChild>
-                    <Link to={`/attempts/${d.activeAttempt.id}`}>Resume attempt</Link>
-                  </Button>
-                  <CancelAttemptButton attemptId={d.activeAttempt.id} />
-                </div>
-              </div>
-            )}
-            {planNotice && (
-              <p className="small plan-change-notice" role="status">
-                {planNotice}
-              </p>
-            )}
-            {d.plan?.items.length ? (
-              <PlanList
-                key={`${d.plan.id}-${d.plan.version}`}
-                plan={d.plan}
-                featuredId={featured?.id}
-                onChanged={(updated, previous, action) => {
-                  const replacement = updated.items.find(
-                    (item) => !d.plan?.items.some((old) => old.id === item.id),
-                  );
-                  setPlanNotice(
-                    action === 'swap' && replacement
-                      ? `Replaced “${previous.title}” with “${replacement.title}”. The new question is in your plan below.`
-                      : action === 'snooze'
-                        ? `“${previous.title}” postponed. Its review date has been updated.`
-                        : action === 'skip'
-                          ? `Skipped “${previous.title}” for today.`
-                          : 'Plan updated.',
-                  );
-                }}
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/settings">
+              <ListChecks aria-hidden="true" />
+              {perDay} per day
+            </Link>
+          </Button>
+        }
+      />
+      <FillPage>
+        <div className={statRow}>
+          <StatTile
+            className={statTile}
+            label="Today's plan"
+            icon={Target}
+            tone="solid"
+            value={completed}
+            unit={`/ ${total}`}
+            sub={total ? undefined : 'No plan today'}
+          >
+            {total > 0 && (
+              <Meter
+                label="Today's plan progress"
+                valueText={`${completed} of ${total} questions done`}
+                value={completed}
+                max={total}
               />
-            ) : (
-              <Empty>
-                <h3>No eligible questions in this plan</h3>
-                <p>
-                  Your selected list, completion policy or review dates may leave no questions
-                  available. Topic progression waits for completion; it does not skip a snoozed
-                  topic. No questions are pulled from outside your selected list.
-                </p>
-                <div className="row">
-                  <Button asChild>
-                    <Link to="/settings">Review recommendation settings</Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link to="/library">Open library</Link>
-                  </Button>
-                </div>
-              </Empty>
             )}
-          </Card>
-          <ReviewCalendar timezone={d.settings.timezone} compact />
+          </StatTile>
+          <StatTile
+            className={statTile}
+            label="Practised this week"
+            icon={BookOpenCheck}
+            tone="sky"
+            value={recap.data?.distinctQuestions ?? pending}
+            sub={recap.data ? `${recap.data.completedAttempts} completed attempts` : ' '}
+          />
+          <StatTile
+            className={statTile}
+            label="Independent solves"
+            icon={Sparkles}
+            tone="emerald"
+            value={recap.data?.independentSolves ?? pending}
+            sub={
+              recap.data ? (
+                <>
+                  <span>
+                    <span className="font-medium text-up">No help</span> used this week
+                  </span>
+                </>
+              ) : (
+                ' '
+              )
+            }
+          />
+          <StatTile
+            className={statTile}
+            label="Reviews due"
+            icon={CalendarClock}
+            tone="amber"
+            value={reviews.data ? overdue + dueToday : pending}
+            sub={
+              reviews.data ? (
+                overdue ? (
+                  <Link to="/reviews" className="font-medium text-warn">
+                    {overdue} overdue
+                  </Link>
+                ) : (
+                  `${dueToday} due today`
+                )
+              ) : (
+                ' '
+              )
+            }
+          />
         </div>
-        <div className="desk-column">
-          <ActivityCard activity={d.activity} />
-          <Card className="panel recent-practice">
-            <div className="section-heading">
-              <h2 className="section-title">Recent practice</h2>
-              <Link className="desk-link" to="/topics">
-                Topic progress
-              </Link>
-            </div>
-            <RecentPractice items={d.recentAttempts} />
-          </Card>
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+          <ScrollRegion className={column}>
+            <Panel
+              title="Today's plan"
+              icon={Target}
+              meta={`${completed}/${total}`}
+              className="gap-3"
+            >
+              {d.activeAttempt && !featured && (
+                <div className="flex flex-col gap-2 border-b pb-4">
+                  <ToneBadge tone="brand">
+                    <Play aria-hidden="true" />
+                    Continue studying
+                  </ToneBadge>
+                  <h3 className="font-heading text-[1.0625rem] font-semibold tracking-[-0.01em] wrap-anywhere">
+                    {d.activeAttempt.problem.title}
+                  </h3>
+                  <div className={cn(actionRow, 'mt-1')}>
+                    <Button asChild>
+                      <Link to={`/attempts/${d.activeAttempt.id}`}>Resume attempt</Link>
+                    </Button>
+                    <CancelAttemptButton attemptId={d.activeAttempt.id} />
+                  </div>
+                </div>
+              )}
+              {planNotice && (
+                <div role="status">
+                  <Callout tone="brand" className="text-[0.8125rem]">
+                    {planNotice}
+                  </Callout>
+                </div>
+              )}
+              {d.plan?.items.length ? (
+                <PlanList
+                  key={`${d.plan.id}-${d.plan.version}`}
+                  plan={d.plan}
+                  featuredId={featured?.id}
+                  onChanged={(updated, previous, action) => {
+                    const replacement = updated.items.find(
+                      (item) => !d.plan?.items.some((old) => old.id === item.id),
+                    );
+                    setPlanNotice(
+                      action === 'swap' && replacement
+                        ? `Replaced “${previous.title}” with “${replacement.title}”. The new question is in your plan below.`
+                        : action === 'snooze'
+                          ? `“${previous.title}” postponed. Its review date has been updated.`
+                          : action === 'skip'
+                            ? `Skipped “${previous.title}” for today.`
+                            : 'Plan updated.',
+                    );
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  icon={ListChecks}
+                  title="No eligible questions in this plan"
+                  description="Your selected list, completion policy or review dates may leave no questions available. Topic progression waits for completion; it does not skip a snoozed topic. No questions are pulled from outside your selected list."
+                  action={
+                    <>
+                      <Button asChild>
+                        <Link to="/settings">Review recommendation settings</Link>
+                      </Button>
+                      <Button asChild variant="outline">
+                        <Link to="/library">Open library</Link>
+                      </Button>
+                    </>
+                  }
+                />
+              )}
+            </Panel>
+            <ReviewCalendar timezone={d.settings.timezone} compact />
+          </ScrollRegion>
+          <ScrollRegion className={column}>
+            <ActivityCard activity={d.activity} />
+            <Panel
+              title="Recent practice"
+              className="gap-3"
+              icon={History}
+              actions={
+                <Link className={quietLink} to="/topics">
+                  Topic progress
+                </Link>
+              }
+            >
+              <RecentPractice items={d.recentAttempts} />
+            </Panel>
+          </ScrollRegion>
         </div>
-      </div>
+      </FillPage>
     </>
   );
 }
