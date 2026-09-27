@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import Counter
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -36,22 +37,50 @@ def summarize_attempts(data: dict) -> dict:
     }
 
 
-async def _read_snapshot(config_file: Path) -> dict:
+@asynccontextmanager
+async def platform_session(config_file: Path, data_dir: Path | None = None):
     config = tomllib.loads(config_file.read_text())["mcp_servers"]["bloomcode"]
+    env = dict(config["env"])
+    if data_dir is not None:
+        env["DATA_DIR"] = str(data_dir)
     server = StdioServerParameters(
         command=config["command"], args=config["args"],
-        cwd=config["cwd"], env=config["env"],
+        cwd=config["cwd"], env=env,
     )
-    async with asyncio.timeout(20):
+    async with asyncio.timeout(30):
         async with stdio_client(server) as (reader, writer):
             async with ClientSession(reader, writer) as session:
                 await session.initialize()
-                result = await session.call_tool("get_recent_attempts", {"limit": 10})
-                data = json.loads(result.content[0].text)
-                if result.isError:
-                    error = data["error"]
-                    return {"status": "blocked" if error.get("status") == 403 else "unavailable"}
-                return summarize_attempts(data)
+                yield session
+
+
+async def _read_snapshot(config_file: Path) -> dict:
+    async with platform_session(config_file) as session:
+        result = await session.call_tool("get_recent_attempts", {"limit": 10})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            error = data["error"]
+            return {"status": "blocked" if error.get("status") == 403 else "unavailable"}
+        snapshot = summarize_attempts(data)
+        result = await session.call_tool("get_topic_scores", {"limit": 20})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            # Access may have changed since the first read. Drop all
+            # records if a mixed assessment has started in between.
+            if data["error"].get("status") == 403:
+                return {"status": "blocked"}
+            snapshot["topicScores"] = {"status": "unavailable"}
+        else:
+            snapshot["topicScores"] = {"status": "available", **data}
+        result = await session.call_tool("get_learning_goals", {})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            if data["error"].get("status") == 403:
+                return {"status": "blocked"}
+            snapshot["goals"] = {"status": "unavailable"}
+        else:
+            snapshot["goals"] = {"status": "available", **data}
+        return snapshot
 
 
 def load_snapshot(config_file: Path) -> dict:
@@ -62,3 +91,14 @@ def load_snapshot(config_file: Path) -> dict:
         # or adapter output into the conversation.
         snapshot = {"status": "unavailable"}
     return {"retrievedAt": datetime.now(timezone.utc).isoformat(), **snapshot}
+
+
+async def save_confirmed_goal(config_file: Path, host_data: Path, change: dict,
+                              conversation: str, key: str) -> dict:
+    async with platform_session(config_file, host_data) as session:
+        result = await session.call_tool("confirm_learning_goal", {
+            "change": change, "sourceConversation": conversation, "idempotencyKey": key,
+        })
+        if result.isError:
+            raise RuntimeError("Goal was not confirmed. Retry /confirm; if the goal changed, request a fresh proposal.")
+        return json.loads(result.content[0].text)

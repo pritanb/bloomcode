@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { missing } from './errors.js';
-import { SCHEMA } from './schema.js';
+import { SCHEMA, GOAL_SCHEMA } from './schema.js';
 
 export type Db = Database.Database;
 type Param = string | number | bigint | null | Buffer;
@@ -40,7 +40,7 @@ export function openDb(path: string): Db {
   if (!version)
     db.transaction(() => {
       db.exec(SCHEMA);
-      db.pragma('user_version = 8');
+      db.pragma('user_version = 9');
     })();
   // One-off: version 7 kept unused minute budgets. Delete once the live database is at 8.
   else if (version === 7)
@@ -48,6 +48,11 @@ export function openDb(path: string): Db {
       db.exec(`ALTER TABLE settings DROP COLUMN budgetMinutes;
         ALTER TABLE plan_items DROP COLUMN suggestedMinutes;`);
       db.pragma('user_version = 8');
+    })();
+  if (db.pragma('user_version', { simple: true }) === 8)
+    db.transaction(() => {
+      db.exec(GOAL_SCHEMA);
+      db.pragma('user_version = 9');
     })();
   db.prepare(
     `INSERT OR IGNORE INTO settings (id, timezone, primaryCount, optionalCount, onboardingComplete)

@@ -5,10 +5,10 @@ import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, writeFileSyn
 import { dirname, join } from 'node:path';
 import { ApiError } from '../db/errors.js';
 /** Local capabilities never enter the browser session response or logs. */
-export function loadToken(dataDir: string): string {
+export function loadToken(dataDir: string, filename = 'api-token'): string {
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   chmodSync(dataDir, 0o700);
-  const path = join(dataDir, 'api-token');
+  const path = join(dataDir, filename);
   if (!existsSync(path)) {
     try {
       writeFileSync(path, randomBytes(32).toString('hex') + '\n', { mode: 0o600, flag: 'wx' });
@@ -28,6 +28,10 @@ export function loadToken(dataDir: string): string {
 /** In-memory databases (tests) get a throwaway token; real ones keep it beside the database. */
 export const tokenFor = (dbPath: string) =>
   dbPath === ':memory:' ? randomBytes(32).toString('hex') : loadToken(dirname(dbPath));
+export const tutorTokenFor = (dbPath: string) =>
+  dbPath === ':memory:'
+    ? randomBytes(32).toString('hex')
+    : loadToken(dirname(dbPath), 'tutor-token');
 
 const safeEqual = (a: string, b: string) => {
   const left = Buffer.from(a),
@@ -52,9 +56,10 @@ export async function registerLocalAuth(
   app: FastifyInstance,
   {
     token,
+    tutorToken,
     clock,
     serveStatic,
-  }: { token: string; clock: () => Date; serveStatic?: boolean | string },
+  }: { token: string; tutorToken: string; clock: () => Date; serveStatic?: boolean | string },
 ) {
   const sessions = new Map<string, { csrf: string; expires: number }>();
   await app.register(cookie);
@@ -76,7 +81,27 @@ export async function registerLocalAuth(
     const isWebAsset =
       serveStatic && !req.url.startsWith('/api/') && ['GET', 'HEAD'].includes(req.method);
     if (PUBLIC_PATHS.includes(path) || isWebAsset) return;
+    if (bearerMatches(req.headers.authorization, tutorToken)) {
+      const allowed =
+        req.method === 'GET'
+          ? [
+              '/api/attempts',
+              '/api/insights',
+              '/api/topics/scores',
+              '/api/learning-goals',
+            ].includes(path) || /^\/api\/attempts\/[a-zA-Z0-9_-]+\/context$/.test(path)
+          : req.method === 'POST' && path === '/api/insights/retrieve';
+      if (!allowed)
+        throw new ApiError(403, 'TUTOR_SCOPE', 'This tutor credential cannot perform that action');
+      return;
+    }
     if (bearerMatches(req.headers.authorization, token)) return;
+    if (path === '/api/learning-goals' && req.method === 'POST')
+      throw new ApiError(
+        403,
+        'BEARER_REQUIRED',
+        'Goal confirmation requires the local host credential',
+      );
     if (BEARER_ONLY_PATHS.includes(path))
       throw new ApiError(
         403,

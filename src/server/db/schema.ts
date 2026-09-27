@@ -1,5 +1,19 @@
 /** The whole schema, created once in a new, empty database. */
-export const SCHEMA = `
+export const GOAL_SCHEMA = `
+CREATE TABLE learning_goals (
+  id TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('active', 'completed', 'abandoned')),
+  version INTEGER NOT NULL,
+  createdAt TEXT NOT NULL,
+  updatedAt TEXT NOT NULL,
+  sourceConversation TEXT NOT NULL
+);
+CREATE UNIQUE INDEX active_goal_text ON learning_goals(lower(trim(text))) WHERE state = 'active';
+`;
+export const SCHEMA =
+  GOAL_SCHEMA +
+  `
 CREATE TABLE settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   timezone TEXT NOT NULL,

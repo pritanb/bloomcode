@@ -12,7 +12,7 @@ import { registerLocalAuth } from './auth.js';
  */
 export async function registerHttp(
   app: FastifyInstance,
-  options: { token: string; clock: () => Date; serveStatic?: boolean | string },
+  options: { token: string; tutorToken: string; clock: () => Date; serveStatic?: boolean | string },
 ) {
   registerErrorHandler(app);
   registerSecurityHeaders(app);

@@ -6,6 +6,7 @@ import { registerCatalogue } from '../catalogue/catalogue.js';
 import { registerImport } from '../catalogue/import.js';
 import { registerAttempts } from '../attempts/attempts.js';
 import { registerTopics } from '../topics/topics.js';
+import { registerLearningGoals } from '../topics/learning-goals.js';
 import { registerStudyTools } from '../topics/study-tools.js';
 import { registerScoring } from '../scoring/scoring.js';
 import { registerPlans } from '../plans/plans.js';
@@ -34,6 +35,7 @@ export function registerStudyRoutes(
   registerImport(app, db, clock);
   registerAttempts(app, db, clock);
   registerTopics(app, db);
+  registerLearningGoals(app, db, clock);
   registerScoring(app, db, clock);
   registerPlans(app, db, clock);
   registerStudyTools(app, db, clock);

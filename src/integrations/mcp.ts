@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { pathToFileURL } from 'node:url';
 import { LocalApi, ApiError } from './local-api.js';
+import { goalChange, confirmedGoalChange } from '../shared/learning-goals.js';
 const id = z
   .string()
   .min(1)
@@ -18,6 +19,12 @@ const key = z
 const date = z.iso.date();
 const action = z.enum(['recommended', 'manual', 'none']);
 const schemas = {
+  get_learning_goals: z.strictObject({
+    state: z.enum(['active', 'completed', 'abandoned', 'all']).optional(),
+  }),
+  propose_learning_goal: z.strictObject({ change: goalChange }),
+  confirm_learning_goal: confirmedGoalChange.extend({ idempotencyKey: key }),
+  get_topic_scores: z.strictObject({ limit: z.number().int().min(1).max(50).optional() }),
   get_recent_attempts: z.strictObject({
     problem: z.string().trim().max(200).optional(),
     limit: z.number().int().min(1).max(20).optional(),
@@ -94,6 +101,14 @@ const schemas = {
   }),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  get_learning_goals:
+    'Read up to 20 saved learning goals (active by default). Includes versions and source conversation. Hidden during mixed assessments.',
+  propose_learning_goal:
+    'Propose a goal or state change for the learner to review. This does NOT save anything. The host will ask for explicit confirmation. Never claim a proposal is saved. For state changes use the current goal ID and version.',
+  confirm_learning_goal:
+    'Host-only: commit a change AFTER explicit learner confirmation. Requires full host credential; unavailable to the conversational tutor. Retry uncertain writes with the SAME idempotency key and payload.',
+  get_topic_scores:
+    'Read topic scores, lowest scored topics first and unscored topics last. Limit 1–50 (default 20). Includes provisional flags, coverage counts and hasMore; null scores mean unknown, not weak. No notes or attempt history. Hidden during mixed assessments.',
   get_recent_attempts:
     'Find completed attempts newest first, optionally filtered by problem title substring. Returns IDs, titles, dates, outcomes and help usage. Use returned IDs with get_attempt_context; do not ask the learner to look up IDs. Limit 1–20 (default 10); hasMore indicates older matches. Hidden during mixed assessments.',
   get_learning_insights:
@@ -119,6 +134,9 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
   inputSchema: z.toJSONSchema(schema) as { type: 'object' },
   annotations: {
     readOnlyHint: [
+      'get_learning_goals',
+      'propose_learning_goal',
+      'get_topic_scores',
       'get_recent_attempts',
       'search_questions',
       'get_attempt_context',
@@ -132,7 +150,18 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
 export async function callTool(api: LocalApi, name: string, args: unknown) {
   try {
     let result: unknown;
-    if (name === 'get_recent_attempts') {
+    if (name === 'get_learning_goals') {
+      const { state = 'active' } = schemas.get_learning_goals.parse(args);
+      result = await api.request('GET', `/api/learning-goals?state=${state}`);
+    } else if (name === 'propose_learning_goal') {
+      result = { proposal: schemas.propose_learning_goal.parse(args).change, saved: false };
+    } else if (name === 'confirm_learning_goal') {
+      const { idempotencyKey, ...body } = schemas.confirm_learning_goal.parse(args);
+      result = await api.request('POST', '/api/learning-goals', body, idempotencyKey);
+    } else if (name === 'get_topic_scores') {
+      const { limit = 20 } = schemas.get_topic_scores.parse(args);
+      result = await api.request('GET', `/api/topics/scores?limit=${limit}`);
+    } else if (name === 'get_recent_attempts') {
       const input = schemas.get_recent_attempts.parse(args);
       const params = new URLSearchParams();
       if (input.problem !== undefined) params.set('q', input.problem);

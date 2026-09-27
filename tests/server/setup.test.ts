@@ -158,6 +158,7 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   const old = openDb(dbPath);
   old.exec(`ALTER TABLE settings ADD COLUMN budgetMinutes INTEGER NOT NULL DEFAULT 40;
     ALTER TABLE plan_items ADD COLUMN suggestedMinutes INTEGER NOT NULL DEFAULT 13;`);
+  old.exec('DROP TABLE learning_goals');
   old.pragma('user_version = 7');
   old.close();
   const app = await createApp({ dbPath, token: 'setup-test' });
@@ -182,7 +183,7 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   const db = openDb(dbPath);
   const columns = (table: string) =>
     (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name);
-  expect(db.pragma('user_version', { simple: true })).toBe(8);
+  expect(db.pragma('user_version', { simple: true })).toBe(9);
   expect(columns('settings')).not.toContain('budgetMinutes');
   expect(columns('plan_items')).not.toContain('suggestedMinutes');
   db.close();

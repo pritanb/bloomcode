@@ -21,6 +21,20 @@ try {
   });
   const url = await app.listen({ port: 0, host: '127.0.0.1' });
   const api = new LocalApi({ dataDir: dir, baseUrl: url });
+  await api.request('POST', '/api/import', {
+    importId: 'snapshot-topics',
+    dryRun: false,
+    source: { retrievedAt: '2026-09-27T00:00:00Z' },
+    problems: [],
+    attempts: [],
+    movements: [],
+    records: [],
+    topics: [
+      { name: 'Arrays', score: 3.5, provisional: false, notes: 'Private topic note' },
+      { name: 'Stacks', score: 1.5, provisional: true, notes: '' },
+      { name: 'Graphs', score: null, provisional: false, notes: '' },
+    ],
+  });
   const problem = await api.request('POST', '/api/problems', {
     title: 'Two Sum',
     url: 'https://leetcode.com/problems/two-sum/',
@@ -64,6 +78,7 @@ try {
     'get_recent_attempts',
     'get_attempt_context',
     'get_learning_insights',
+    'get_topic_scores',
     'retrieve_learning_evidence',
   ]) {
     assert.equal(tools.find((t) => t.name === name)?.annotations?.readOnlyHint, true);
@@ -73,6 +88,19 @@ try {
     assert.notEqual(result.isError, true, JSON.stringify(result));
     return JSON.parse(result.content[0].text);
   };
+  const scores = data(await call('get_topic_scores', { limit: 1 }));
+  assert.equal(scores.total, 3);
+  assert.equal(scores.unscoredCount, 1);
+  assert.equal(scores.hasMore, true);
+  assert.equal(scores.topics[0].name, 'Stacks');
+  assert.equal(scores.topics[0].provisional, true);
+  assert.equal('notes' in scores.topics[0], false);
+  const allScores = data(await call('get_topic_scores'));
+  assert.deepEqual(
+    allScores.topics.map((t) => t.score),
+    [1.5, 3.5, null],
+  );
+  assert.equal((await call('get_topic_scores', { limit: 51 })).isError, true);
   const recent = data(await call('get_recent_attempts', { problem: 'two SUM', limit: 1 }));
   assert.equal(recent.attempts[0].id, completed[1]);
   assert.equal(recent.hasMore, true);
@@ -162,6 +190,11 @@ try {
   assert.equal(state.status, 'available');
   assert.equal(state.attemptCount, 3);
   assert.equal(state.distinctProblems, 2);
+  assert.equal(state.topicScores.status, 'available');
+  assert.deepEqual(
+    state.topicScores.topics.map((t) => t.score),
+    [1.5, 3.5, null],
+  );
   assert.deepEqual(state.helpUsage, { major: 1, none: 1, small: 1 });
   assert.deepEqual(state.outcomes, { not_solved: 1, solved: 2 });
   console.log('PASS: Python snapshot computes facts through the real MCP server');
@@ -179,7 +212,7 @@ from tutor import open_tutor
 with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN'])) as tutor:
     config = tomllib.loads((tutor.session_file.parent / 'codex-home/config.toml').read_text())
     assert set(config['mcp_servers']['bloomcode']['enabled_tools']) == {
-        'get_recent_attempts', 'get_attempt_context', 'get_learning_insights', 'retrieve_learning_evidence'}
+        'get_recent_attempts', 'get_attempt_context', 'get_learning_insights', 'retrieve_learning_evidence', 'get_topic_scores', 'get_learning_goals', 'propose_learning_goal'}
     activity = []
     def report(message):
         activity.append(message)
@@ -216,9 +249,52 @@ with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST
     );
     console.log(stdout.trim());
   }
+  if (process.argv.includes('--live-goals')) {
+    const { stdout } = await promisify(execFile)(
+      resolve('python/.venv/bin/python'),
+      [
+        '-c',
+        `
+import os
+from pathlib import Path
+from tutor import open_tutor
+from learner_state import load_snapshot
+options = dict(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN']), new=True)
+text = 'Solve two distinct sliding-window problems without hints'
+with open_tutor(**options) as tutor:
+    print(tutor.reply('Please propose this exact learning goal for me to confirm: ' + text), flush=True)
+    assert len(tutor.pending_goals) == 1, tutor.pending_goals
+    assert load_snapshot(tutor.context_config)['goals']['goals'] == []
+    proposal = tutor.pending_goals[0]
+    assert proposal['change'] == {'action': 'create', 'text': text}, proposal
+    saved = tutor.confirm_goal(proposal, True)
+    assert saved['text'] == text and saved['sourceConversation'] == tutor.thread.id
+    first_id = tutor.thread.id
+with open_tutor(**options) as tutor:
+    assert tutor.thread.id != first_id
+    answer = tutor.reply('List the exact text of my saved active learning goal.')
+    assert text.lower() in answer.lower(), answer
+    print('New conversation:', answer, flush=True)
+print('PASS: live proposal stayed unsaved until host confirmation and a fresh conversation recalled it')
+`,
+      ],
+      {
+        env: {
+          ...process.env,
+          PYTHONPATH: resolve('python'),
+          TEST_URL: url,
+          TEST_TOKEN: join(dir, 'api-token'),
+        },
+        timeout: 180000,
+      },
+    );
+    console.log(stdout.trim());
+  }
   await api.request('POST', '/api/attempts', { problemId: problem.id, context: 'mixed' });
   for (const [name, args] of [
     ['get_recent_attempts', {}],
+    ['get_topic_scores', {}],
+    ['get_learning_goals', {}],
     ['get_attempt_context', { attemptId: completed[1] }],
     ['retrieve_learning_evidence', { query: 'stack', limit: 5 }],
   ]) {
@@ -234,7 +310,7 @@ with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST
   const blocked = await snapshot();
   assert.equal(blocked.status, 'blocked');
   assert.equal('attempts' in blocked, false);
-  console.log('PASS: all four tools and Python snapshot respect hidden-assessment restrictions');
+  console.log('PASS: learning tools and Python snapshot respect hidden-assessment restrictions');
 } finally {
   await client.close();
   if (app) await app.close();

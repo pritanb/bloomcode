@@ -64,7 +64,7 @@ distinct from an empty history, and every turn replaces the previous snapshot.
 The learner message and snapshot are sent together as a JSON envelope. Teaching
 instructions identify the snapshot as untrusted evidence, not instructions.
 The MCP client starts a short-lived instance of the existing server per snapshot,
-using the tutor's generated configuration and a 20-second timeout. This adds a
+using the tutor's generated configuration and a 30-second timeout. This adds a
 local process startup each turn; it does not make an extra model request.
 
 For broader recommendations, the tutor can also read `get_learning_insights` and
@@ -75,13 +75,41 @@ budget; existing attempt contexts can include full histories.
 It should cite records, distinguish repeated practice from evidence across
 problems, and acknowledge missing or stale analysis. When Insights is unavailable,
 it can still make provisional suggestions from attempt records. Topic scores
-come from selected contexts; this is not a complete overview of every topic.
+are also included directly in the snapshot through `get_topic_scores`. It returns
+up to twenty topics, lowest recorded scores first and unscored topics last,
+plus total/unscored counts and a truncation flag. Provisional scores remain
+marked, and null means unknown. No topic notes or attempt histories are fetched
+for this step. A denied score read discards the snapshot; an ordinary API error
+marks topic scores unavailable while retaining the recent-attempt summary.
 
-Only those four tools are allowlisted for this tutor; the shared server's write
-tools are not exposed. General-purpose Codex tools and web search are disabled.
-The API still enforces authentication and assessment visibility. The MCP process
-holds the existing broad local API credential; server-side scoped credentials
-remain production hardening work. User MCP configuration is not modified.
+The tutor also has `get_learning_goals` and `propose_learning_goal`. Only these
+seven tools are allowlisted. Proposals do not write to the database. General-purpose
+Codex tools and web search are disabled. The model's MCP process uses `tutor-token`,
+a restricted credential accepted only for the specific learning reads and evidence
+search. It cannot mutate goals, scores, schedules, settings or study work, even if
+a write tool is accidentally exposed. Restart the updated backend once to create
+this credential beside `api-token`. User MCP configuration is not modified.
+
+## Learning goals
+
+Ask: **"Propose a goal to solve two distinct sliding-window problems without hints."**
+The tutor prepares a proposal; Python displays the exact change after the answer.
+Type `yes` to save it, or press Enter to discard it. Ordinary conversational agreement
+does not bypass this confirmation. The host uses the full local credential only
+for the confirmed change; the model does not receive that credential.
+
+Goals live in BloomCode's SQLite database with state, version, timestamps and the
+originating Codex conversation ID. Active goals load into every learner snapshot,
+including after `--new`. Ask to complete or abandon a goal to propose a state change;
+those changes also require confirmation. No automatic progress assessment is added yet.
+
+Retries use the same idempotency key, equivalent active goals are deduplicated,
+and stale state changes are rejected. If confirmation fails, `/confirm` retries
+the pending change safely or lets you discard it. Pending proposals last only for
+the current Python process; confirmed goals survive restarts. Goals are included
+in native database backups; their source conversation reference does not include
+the conversation transcript. Uninstalling or resetting conversation storage does
+not remove the saved goals.
 
 ## Saved conversations
 
@@ -102,7 +130,7 @@ credential symlinks. BloomCode's database-only backup does not include these
 conversation files. Back up the tutor storage separately if needed. Resume
 errors are reported rather than silently starting a replacement chat.
 
-Persistent learner goals across chats, answer-text streaming, context budgeting and
+Automatic goal-progress evidence, answer-text streaming, context budgeting and
 teaching-quality evaluations remain later work.
 
 ## Verify
@@ -125,3 +153,11 @@ python/.venv/bin/python python/check_resume.py
 ```
 
 This is a live Codex check and consumes signed-in account usage.
+
+To verify a real goal proposal, host confirmation and recall in a fresh conversation:
+
+```sh
+node --import tsx tests/integrations/python-context.mjs --live-goals
+```
+
+This also uses disposable data and signed-in account usage.
