@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bot } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Disclosure } from '@/components/disclosure';
@@ -15,7 +14,9 @@ import {
   type TutorTestResult,
 } from '../../../shared/tutor';
 import { api } from '../../app/api';
-import { ErrorNotice, Field, Loading, SectionTitle, useAction } from '../../components/ui';
+import { ErrorNotice, Field, Loading, useAction } from '../../components/ui';
+import { Panel } from '../../components/kit';
+import { Help } from './settings-parts';
 
 const jobLabels: Record<TutorJobKind, string> = {
   review: 'Tutor report',
@@ -31,15 +32,15 @@ export function TutorSettings() {
   });
   if (query.isPending)
     return (
-      <Card className="panel">
+      <Panel>
         <Loading />
-      </Card>
+      </Panel>
     );
   if (query.isError)
     return (
-      <Card className="panel">
+      <Panel>
         <ErrorNotice error={query.error} retry={() => void query.refetch()} />
-      </Card>
+      </Panel>
     );
   return <TutorForm saved={query.data.settings} status={query.data.status} />;
 }
@@ -53,14 +54,13 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
   const test = useAction(() => api.send<TutorTestResult>('/tutor/test', 'POST', settings));
   const codex = draft.provider === 'codex';
   return (
-    <Card className="panel tutor-settings">
-      <SectionTitle icon={Bot}>AI tutor</SectionTitle>
-      <p className="settings-help">
+    <Panel title="AI tutor" icon={Bot}>
+      <Help>
         Writes tutor reports, learning insights and topic picks. Practice and saving work without
         it.
-      </p>
+      </Help>
       <form
-        className="stack"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           save.mutate();
@@ -79,10 +79,10 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
         </Field>
         {codex && (
           <>
-            <p className="settings-help">
+            <Help>
               The app runs Codex on this Mac for each job, isolated with no tools. Usage counts
               toward your ChatGPT plan limits.
-            </p>
+            </Help>
             <Field label="Model">
               <Input
                 required
@@ -90,34 +90,36 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
                 onChange={(e) => setDraft({ ...draft, model: e.target.value })}
               />
             </Field>
-            <Disclosure title="Advanced">
-              <Field label="Codex path">
-                <Input
-                  value={path}
-                  placeholder={status.codexPath ?? 'Detected automatically'}
-                  onChange={(e) => setPath(e.target.value)}
-                />
-              </Field>
-              {TUTOR_JOB_KINDS.map((kind) => (
-                <Field key={kind} label={`${jobLabels[kind]} reasoning`}>
-                  <SelectField
-                    value={draft.effort[kind]}
-                    onValueChange={(effort) =>
-                      setDraft({ ...draft, effort: { ...draft.effort, [kind]: effort } })
-                    }
-                  >
-                    {TUTOR_EFFORTS.map((effort) => (
-                      <SelectOption key={effort} value={effort}>
-                        {effort}
-                      </SelectOption>
-                    ))}
-                  </SelectField>
+            <Disclosure quiet title="Advanced">
+              <div className="flex flex-col gap-4 pb-1">
+                <Field label="Codex path">
+                  <Input
+                    value={path}
+                    placeholder={status.codexPath ?? 'Detected automatically'}
+                    onChange={(e) => setPath(e.target.value)}
+                  />
                 </Field>
-              ))}
+                {TUTOR_JOB_KINDS.map((kind) => (
+                  <Field key={kind} label={`${jobLabels[kind]} reasoning`}>
+                    <SelectField
+                      value={draft.effort[kind]}
+                      onValueChange={(effort) =>
+                        setDraft({ ...draft, effort: { ...draft.effort, [kind]: effort } })
+                      }
+                    >
+                      {TUTOR_EFFORTS.map((effort) => (
+                        <SelectOption key={effort} value={effort}>
+                          {effort}
+                        </SelectOption>
+                      ))}
+                    </SelectField>
+                  </Field>
+                ))}
+              </div>
             </Disclosure>
           </>
         )}
-        <div className="row">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={!unsaved || save.isPending}>
             {save.isPending ? 'Saving…' : 'Save tutor settings'}
           </Button>
@@ -135,19 +137,19 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
         <ErrorNotice error={save.error ?? test.error} />
         {test.data &&
           (test.data.ok ? (
-            <p className="positive" role="status">
+            <p className="text-[0.9375rem] font-semibold" role="status">
               Codex replied in {(test.data.ms / 1000).toFixed(1)} s using {test.data.model}
               {test.data.version ? ` (${test.data.version})` : ''}.
             </p>
           ) : (
-            <p role="alert">{test.data.error?.message}</p>
+            <p className="text-[0.9375rem]" role="alert">
+              {test.data.error?.message}
+            </p>
           ))}
         {codex && !test.data && status.lastError && (
-          <p className="small muted" role="status">
-            Last problem: {status.lastError.message}
-          </p>
+          <Help role="status">Last problem: {status.lastError.message}</Help>
         )}
       </form>
-    </Card>
+    </Panel>
   );
 }

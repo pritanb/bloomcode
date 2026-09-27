@@ -190,15 +190,13 @@ small,
   margin-bottom: 1.5rem;
   min-width: 0;
 }
-.management-grid,
-.settings-grid {
+.management-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
   align-items: start;
 }
-.management-grid > .panel,
-.settings-grid > .panel {
+.management-grid > .panel {
   margin: 0;
 }
 .plan-panel,
@@ -383,20 +381,6 @@ small,
 .review-editor p {
   margin-top: 0.75rem;
 }
-.data-status > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.data-status dt {
-  color: var(--muted-foreground);
-}
-.data-status dd {
-  text-align: right;
-  overflow-wrap: anywhere;
-}
 .attempt-workspace {
   width: 100%;
   min-width: 0;
@@ -526,8 +510,7 @@ small,
     display: flex;
     flex-direction: row;
   }
-  .management-grid,
-  .settings-grid {
+  .management-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1239,10 +1222,6 @@ small,
 .pagination-size [data-slot='select-trigger'] {
   width: 4.75rem;
 }
-.settings-side > .panel {
-  margin: 0;
-  flex-shrink: 0;
-}
 .problem-detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1346,13 +1325,11 @@ small,
   }
 
   /* Two-column pages: each column scrolls on its own. */
-  .settings-grid.fill-page,
   .management-grid.fill-page,
   .notebook-layout.fill-page {
     align-items: stretch;
     grid-template-rows: minmax(0, 1fr);
   }
-  .settings-grid.fill-page > *,
   .topic-detail-layout.fill-page > .panel,
   .problem-detail-side,
   .problem-history,

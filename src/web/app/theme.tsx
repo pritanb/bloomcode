@@ -146,18 +146,19 @@ export function AccentPicker() {
   const [draft, setDraft] = useState(shown);
   useEffect(() => setDraft(shown), [shown]);
   return (
-    <div className="accent-settings">
-      <div className="accent-picker">
-        <label className="accent-well" style={{ background: 'var(--brand)' }}>
+    <div className="flex flex-col gap-3.5">
+      <div className="flex items-center gap-2.5">
+        <label className="relative size-10 shrink-0 cursor-pointer rounded-xl bg-brand shadow-[inset_0_0_0_1px_rgb(0_0_0/0.12)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring">
           <input
             type="color"
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
             value={shown || '#0a0a0b'}
             onChange={(event) => setAccent(event.target.value)}
             aria-label="Accent colour"
           />
         </label>
         <Input
-          className="accent-hex"
+          className="w-30 font-mono lowercase"
           value={draft}
           maxLength={7}
           spellCheck={false}
@@ -180,7 +181,7 @@ export function AccentPicker() {
           Reset
         </Button>
       </div>
-      <div className="accent-quick" role="radiogroup" aria-label="Quick accent colours">
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Quick accent colours">
         {quickAccents.map((item) => (
           <button
             key={item.value}
@@ -189,6 +190,7 @@ export function AccentPicker() {
             aria-checked={current === item.value}
             aria-label={item.label}
             title={item.label}
+            className="size-7 cursor-pointer rounded-full border-0 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.12)] transition-transform duration-120 outline-none hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card aria-checked:shadow-[0_0_0_2px_var(--card),0_0_0_4px_var(--foreground)] motion-reduce:transition-none"
             style={{
               background:
                 item.value === monoAccent
