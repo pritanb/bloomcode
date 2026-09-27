@@ -6,8 +6,25 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-display);
+  --font-sans: var(--font-ui);
+  /* App tokens as Tailwind colours: bg-brand-soft, text-brand-text, ring-card-ring,
+     text-up, text-warn, bg-tone-sky-soft text-tone-sky, … (see components/kit.tsx). */
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-text: var(--brand-text);
+  --color-card-ring: var(--card-ring);
+  --color-up: var(--up);
+  --color-warn: var(--warn);
+  --color-tone-sky: var(--tone-sky);
+  --color-tone-sky-soft: var(--tone-sky-bg);
+  --color-tone-emerald: var(--tone-emerald);
+  --color-tone-emerald-soft: var(--tone-emerald-bg);
+  --color-tone-amber: var(--tone-amber);
+  --color-tone-amber-soft: var(--tone-amber-bg);
+  --color-tone-rose: var(--tone-rose);
+  --color-tone-rose-soft: var(--tone-rose-bg);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -183,122 +200,6 @@
   border-bottom: 1px solid var(--border);
   text-align: center;
   font-size: 0.875rem;
-}
-
-/* Learning reports keep evidence secondary but directly inspectable. */
-.insight-progress {
-  gap: 0.75rem;
-}
-.insight-progress progress::-moz-progress-bar {
-  background: var(--primary);
-}
-.insight-progress span {
-  min-width: 3ch;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.insight-action {
-  border-left: 3px solid currentColor;
-  padding: 0.25rem 1rem;
-  margin: 1rem 0;
-}
-.insight-action p {
-  margin: 0.5rem 0;
-}
-.insight-details {
-  margin: 1rem 0;
-}
-.insight-evidence {
-  padding: 1rem 0;
-}
-
-.insight-generating {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.insight-spinner {
-  animation: insight-spin 1s linear infinite;
-}
-@keyframes insight-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .insight-spinner {
-    animation: none;
-  }
-}
-.insight-tile:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-}
-.insight-panel-explanation {
-  line-height: 1.7;
-}
-.insight-auto-control p {
-  margin: 0.25rem 0 0;
-}
-.insight-auto-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-.insight-switch {
-  width: 2.75rem;
-  height: 1.5rem;
-  padding: 3px;
-  border: 1px solid var(--muted-foreground);
-  border-radius: 999px;
-  background: var(--muted);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-}
-.insight-switch span {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 50%;
-  background: var(--muted-foreground);
-  transition: transform 0.15s ease;
-}
-.insight-switch[aria-checked='true'] {
-  background: var(--primary);
-  border-color: var(--primary);
-}
-.insight-switch[aria-checked='true'] span {
-  transform: translateX(1.25rem);
-  background: var(--primary-foreground);
-}
-.insight-switch:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-}
-.insight-switch:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-@media (prefers-reduced-motion: reduce) {
-  .insight-switch span {
-    transition: none;
-  }
-}
-.insight-grid-heading {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.insight-topics {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-}
-.insight-panel-topics {
-  margin-bottom: 1.5rem;
 }
 
 /* Rank sits beside the name so the score chart below keeps its room. */

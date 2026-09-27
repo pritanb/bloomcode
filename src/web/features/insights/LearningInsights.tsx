@@ -1,16 +1,39 @@
 import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { BookOpen, Check, Focus, Lightbulb, Repeat, Sparkles, X } from 'lucide-react';
-import { Dialog } from 'radix-ui';
+import { BookOpen, Check, Focus, Lightbulb, Lock, Repeat, Sparkles } from 'lucide-react';
 import type { Finding, InsightStatus, Observation } from '../../../shared/insights';
 import { AnalysisStatus } from './AnalysisStatus';
 import { api } from '../../app/api';
-import { PageTitle, Loading, ErrorNotice, Empty, Field, dateLabel } from '../../components/ui';
+import { Loading, ErrorNotice, Field, dateLabel } from '../../components/ui';
+import { Disclosure } from '../../components/disclosure';
+import {
+  Callout,
+  EmptyState,
+  FillPage,
+  IconTile,
+  List,
+  ListRow,
+  Meter,
+  PageHeader,
+  Panel,
+  ScrollRegion,
+  SectionHeader,
+  SidePanel,
+  SidePanelContent,
+  SidePanelDescription,
+  SidePanelTitle,
+  SidePanelTrigger,
+  Subheading,
+  Tile,
+  TileGrid,
+  TileTitle,
+  ToneBadge,
+  type Tone,
+} from '../../components/kit';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+
 const evidenceLabels = {
   learner_reported: 'You reported',
   code_inferred: 'Inferred from code',
@@ -34,20 +57,24 @@ function Evidence({
     },
   });
   return (
-    <li className="insight-evidence">
-      <div className="row between">
-        <Link to={`/attempts/${observation.attemptId}`}>{observation.problemTitle}</Link>
-        <span className="small muted">{dateLabel(observation.studyDate)}</span>
-      </div>
-      <p>
-        <Badge variant="secondary">{evidenceLabels[observation.evidenceType]}</Badge>{' '}
+    <ListRow
+      title={observation.problemTitle}
+      to={`/attempts/${observation.attemptId}`}
+      trailing={dateLabel(observation.studyDate)}
+    >
+      <p className="text-[0.9375rem]">
+        <ToneBadge className="mr-1.5 align-middle">
+          {evidenceLabels[observation.evidenceType]}
+        </ToneBadge>
         {observation.summary}
       </p>
-      <blockquote className="insight-excerpt preserve">{observation.excerpt}</blockquote>
-      <span className="small muted">Source: {observation.sourceField}</span>
+      <blockquote className="my-1.5 max-h-56 overflow-auto rounded-xl bg-muted p-3 whitespace-pre-wrap wrap-anywhere">
+        {observation.excerpt}
+      </blockquote>
+      <span className="text-xs text-muted-foreground">Source: {observation.sourceField}</span>
       {editing ? (
         <form
-          className="stack"
+          className="mt-2 flex flex-col gap-3"
           onSubmit={(event) => {
             event.preventDefault();
             mutation.mutate();
@@ -62,10 +89,10 @@ function Evidence({
               required
             />
           </Field>
-          <p className="small muted">
+          <p className="text-xs text-muted-foreground">
             Your correction is kept and used in future analysis. This evidence will be excluded.
           </p>
-          <div className="row">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={!reason.trim() || mutation.isPending}>
               Dismiss observation
             </Button>
@@ -76,11 +103,16 @@ function Evidence({
           {mutation.isError && <ErrorNotice error={mutation.error} />}
         </form>
       ) : (
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+        <Button
+          className="-ml-2 self-start"
+          variant="ghost"
+          size="sm"
+          onClick={() => setEditing(true)}
+        >
           Correct this observation
         </Button>
       )}
-    </li>
+    </ListRow>
   );
 }
 const findingLabels = {
@@ -89,7 +121,7 @@ const findingLabels = {
   single_problem: 'On one problem',
   focus: 'Focus area',
 };
-const findingTiles = {
+const findingTiles: Record<Finding['kind'], { icon: typeof Repeat; tone: Tone }> = {
   recurring: { icon: Repeat, tone: 'rose' },
   improvement: { icon: Check, tone: 'emerald' },
   single_problem: { icon: Lightbulb, tone: 'sky' },
@@ -104,7 +136,7 @@ function InsightCard({
   data: InsightStatus;
   refresh: () => void;
 }) {
-  const { icon: Icon, tone } = findingTiles[finding.kind];
+  const { icon, tone } = findingTiles[finding.kind];
   const topics = [
     ...new Map(
       data.observations
@@ -113,99 +145,212 @@ function InsightCard({
         .map((topic) => [topic.toLowerCase(), topic]),
     ).values(),
   ].sort((a, b) => a.localeCompare(b));
+  const topicBadges = (list: string[]) =>
+    list.map((topic) => (
+      <ToneBadge tone="muted" wrap key={topic}>
+        {topic}
+      </ToneBadge>
+    ));
   return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>
-        <button className="insight-tile" aria-label={`Inspect insight: ${finding.title}`}>
-          <span className="insight-tile-head">
-            <span className={`nb-tile tone-${tone}`} aria-hidden="true">
-              <Icon className="icon" />
-            </span>
-            <Badge variant="secondary">{findingLabels[finding.kind]}</Badge>
+    <SidePanel>
+      <SidePanelTrigger asChild>
+        <Tile aria-label={`Inspect insight: ${finding.title}`}>
+          <span className="flex items-center justify-between gap-3">
+            <IconTile icon={icon} tone={tone} />
+            <ToneBadge>{findingLabels[finding.kind]}</ToneBadge>
           </span>
-          <span className="insight-tile-title">{finding.title}</span>
+          <TileTitle>{finding.title}</TileTitle>
           {topics.length > 0 && (
-            <span className="insight-topics" aria-label="Topics from supporting questions">
-              {topics.slice(0, 3).map((topic) => (
-                <Badge className="insight-topic" variant="outline" key={topic}>
-                  {topic}
-                </Badge>
-              ))}
-              {topics.length > 3 && <span className="small muted">+{topics.length - 3} more</span>}
-            </span>
-          )}
-          <span className="insight-next-step">
-            <span className="insight-next-label">Next time</span>
-            <span>{finding.action}</span>
-          </span>
-        </button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="insight-panel-overlay" />
-        <Dialog.Content className="insight-side-panel">
-          <div className="row between">
-            <Badge variant="secondary">{findingLabels[finding.kind]}</Badge>
-            <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" aria-label="Close insight">
-                <X className="icon" aria-hidden="true" />
-              </Button>
-            </Dialog.Close>
-          </div>
-          <Dialog.Title className="insight-panel-title">{finding.title}</Dialog.Title>
-          {topics.length > 0 && (
-            <div
-              className="insight-topics insight-panel-topics"
+            <span
+              className="flex flex-wrap items-center gap-1.5"
               aria-label="Topics from supporting questions"
             >
-              <span className="small muted">Topics</span>
-              {topics.map((topic) => (
-                <Badge className="insight-topic" variant="outline" key={topic}>
-                  {topic}
-                </Badge>
-              ))}
-            </div>
+              {topicBadges(topics.slice(0, 3))}
+              {topics.length > 3 && (
+                <span className="text-xs text-muted-foreground">+{topics.length - 3} more</span>
+              )}
+            </span>
           )}
-          <h3>Why</h3>
-          <Dialog.Description className="insight-panel-explanation">
-            {finding.explanation}
-          </Dialog.Description>
-          <div className="insight-action">
-            <h3>Next time</h3>
-            <p>{finding.action}</p>
+          <Callout label="Next time" className="mt-auto">
+            {finding.action}
+          </Callout>
+        </Tile>
+      </SidePanelTrigger>
+      <SidePanelContent
+        closeLabel="Close insight"
+        eyebrow={
+          <span className="flex items-center gap-2.5">
+            <IconTile icon={icon} tone={tone} size="sm" />
+            <ToneBadge>{findingLabels[finding.kind]}</ToneBadge>
+          </span>
+        }
+      >
+        <SidePanelTitle className="mt-1">{finding.title}</SidePanelTitle>
+        {topics.length > 0 && (
+          <div
+            className="flex flex-wrap items-center gap-1.5"
+            aria-label="Topics from supporting questions"
+          >
+            <span className="mr-1 text-xs text-muted-foreground">Topics</span>
+            {topicBadges(topics)}
           </div>
-          {finding.caveat && <p className="small muted">{finding.caveat}</p>}
-          <details className="insight-details">
-            <summary>Inspect evidence ({finding.evidenceIds.length})</summary>
-            <ul className="movement-list">
-              {finding.evidenceIds.map((id) => {
-                const observation = data.observations.find((o) => o.id === id);
-                return observation ? (
-                  <Evidence key={id} observation={observation} onDismiss={refresh} />
-                ) : null;
-              })}
-            </ul>
-          </details>
-          {finding.suggestions.length > 0 && (
-            <section className="stack">
-              <h3 className="row">
-                <BookOpen className="icon" aria-hidden="true" /> Optional targeted practice
-              </h3>
+        )}
+        <div className="flex flex-col gap-1.5">
+          <Subheading>Why</Subheading>
+          <SidePanelDescription className="text-[0.9375rem] leading-relaxed">
+            {finding.explanation}
+          </SidePanelDescription>
+        </div>
+        <Callout tone="brand" label="Next time">
+          {finding.action}
+        </Callout>
+        {finding.caveat && <p className="text-xs text-muted-foreground">{finding.caveat}</p>}
+        <Disclosure quiet title={`Inspect evidence (${finding.evidenceIds.length})`}>
+          <List>
+            {finding.evidenceIds.map((id) => {
+              const observation = data.observations.find((o) => o.id === id);
+              return observation ? (
+                <Evidence key={id} observation={observation} onDismiss={refresh} />
+              ) : null;
+            })}
+          </List>
+        </Disclosure>
+        {finding.suggestions.length > 0 && (
+          <section className="flex flex-col gap-1">
+            <SectionHeader level={3} icon={BookOpen} title="Optional targeted practice" />
+            <List>
               {finding.suggestions.map((s) => {
                 const problem = data.suggestions.find((p) => p.id === s.problemId);
                 return problem ? (
-                  <p key={s.problemId}>
-                    <Link to={`/library/${s.problemId}`}>{problem.title}</Link>
-                    <span className="small muted"> — {s.reason}</span>
-                  </p>
+                  <ListRow
+                    key={s.problemId}
+                    title={problem.title}
+                    to={`/library/${s.problemId}`}
+                    meta={s.reason}
+                  />
                 ) : null;
               })}
-            </section>
-          )}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+            </List>
+          </section>
+        )}
+      </SidePanelContent>
+    </SidePanel>
   );
 }
+
+function StatusPanel({
+  data,
+  mountId,
+  action,
+}: {
+  data: InsightStatus;
+  mountId: string;
+  action: ReturnType<typeof useInsightAction>;
+}) {
+  const progress = data.total
+    ? Math.min(100, Math.max(0, Math.floor((data.analyzed / data.total) * 100)))
+    : 0;
+  return (
+    <Panel className="shrink-0 gap-4 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-8">
+      <div className="flex min-w-0 items-start gap-4">
+        <IconTile icon={Sparkles} tone="brand" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+          {!data.enabled ? (
+            <>
+              <p className="pt-2 leading-6 font-medium">
+                {data.report
+                  ? 'Automatic analysis is off. Your saved report is still available below.'
+                  : 'Connect lessons across your saved attempts, with evidence you can inspect and correct.'}
+              </p>
+              <p className="text-muted-foreground">
+                {data.report
+                  ? 'Turn it on to analyze new completed attempts and updated reflections automatically.'
+                  : 'Enabling downloads a small search model to your computer. Your connected MCP tutor analyzes saved code and reflections through its model provider. All completed history is processed, then new attempts update automatically.'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="flex min-h-10 items-baseline gap-1.5 tabular-nums">
+                <strong className="text-[1.75rem] leading-none font-semibold tracking-[-0.035em]">
+                  {data.analyzed}
+                </strong>
+                <span className="text-muted-foreground">of {data.total} attempts analyzed</span>
+              </p>
+              {data.total > 0 && (
+                <div className="flex items-center gap-3">
+                  <Meter
+                    label="Attempts analyzed"
+                    valueText={`${data.analyzed} of ${data.total} attempts analyzed`}
+                    max={data.total}
+                    value={data.analyzed}
+                  />
+                  <span className="min-w-[3ch] text-right text-xs text-muted-foreground tabular-nums">
+                    {progress}%
+                  </span>
+                </div>
+              )}
+              <AnalysisStatus data={data} />
+              {data.total === 0 && (
+                <p className="text-muted-foreground">
+                  Save a completed attempt to start building your learning memory.
+                </p>
+              )}
+              {(data.failed > 0 || data.embeddingStatus === 'failed') && (
+                <div role="alert">
+                  <Button
+                    variant="outline"
+                    disabled={action.isPending}
+                    onClick={() => action.mutate({ path: 'retry', body: {} })}
+                  >
+                    Retry analysis
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-6 border-t pt-4 md:min-w-68 md:self-stretch md:border-t-0 md:border-l md:py-1 md:pl-8">
+        <div>
+          <label htmlFor={`${mountId}-automatic`} className="cursor-pointer font-medium">
+            Automatic analysis
+          </label>
+          <p id={`${mountId}-automatic-description`} className="mt-1 text-xs text-muted-foreground">
+            {data.enabled
+              ? 'Analyze new attempts and updated reflections.'
+              : 'Off — saved insights are kept.'}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {action.isPending ? 'Saving…' : data.enabled ? 'On' : 'Off'}
+          </span>
+          <Switch
+            id={`${mountId}-automatic`}
+            aria-describedby={`${mountId}-automatic-description`}
+            checked={data.enabled}
+            disabled={action.isPending}
+            onCheckedChange={(enabled) => action.mutate({ path: 'enable', body: { enabled } })}
+          />
+        </div>
+      </div>
+      {action.isError && (
+        <div className="md:col-span-2">
+          <ErrorNotice error={action.error} />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function useInsightAction(refresh: () => void) {
+  return useMutation({
+    mutationFn: ({ path, body }: { path: string; body: object }) =>
+      api.send(`/insights/${path}`, 'POST', body),
+    onSuccess: refresh,
+  });
+}
+
 export function LearningInsights() {
   const mountId = useId(),
     cache = useQueryClient();
@@ -219,18 +364,12 @@ export function LearningInsights() {
   const refresh = () => {
     void cache.invalidateQueries({ queryKey: ['learning-insights'] });
   };
-  const action = useMutation({
-    mutationFn: ({ path, body }: { path: string; body: object }) =>
-      api.send(`/insights/${path}`, 'POST', body),
-    onSuccess: refresh,
-  });
+  const action = useInsightAction(refresh);
   const data = query.data;
-  const progress = data?.total
-    ? Math.min(100, Math.max(0, Math.floor((data.analyzed / data.total) * 100)))
-    : 0;
+  const findings = data?.report?.findings ?? [];
   return (
     <>
-      <PageTitle
+      <PageHeader
         title="Learning insights"
         description="Pick one habit to practise on your next problem."
       />
@@ -239,169 +378,83 @@ export function LearningInsights() {
       ) : query.isError ? (
         <ErrorNotice error={query.error} retry={() => void query.refetch()} />
       ) : data?.hidden ? (
-        <Card className="panel insight-locked">
-          <Empty>
-            <h3>Insights unlock after your assessment</h3>
-            <p>Finish your mixed assessment to see learning patterns and practice suggestions.</p>
-          </Empty>
-        </Card>
+        <Panel>
+          <EmptyState
+            icon={Lock}
+            title="Insights unlock after your assessment"
+            description="Finish your mixed assessment to see learning patterns and practice suggestions."
+          />
+        </Panel>
       ) : (
         data && (
-          <div className="stack insights-page">
-            <Card className="panel insight-status-card">
-              <div className="insight-status-main">
-                <span className="nb-tile tone-brand" aria-hidden="true">
-                  <Sparkles className="icon" />
-                </span>
-                <div className="stack">
-                  {!data.enabled ? (
-                    <>
-                      <p className="insight-status-lead">
-                        {data.report
-                          ? 'Automatic analysis is off. Your saved report is still available below.'
-                          : 'Connect lessons across your saved attempts, with evidence you can inspect and correct.'}
-                      </p>
-                      <p className="muted">
-                        {data.report
-                          ? 'Turn it on to analyze new completed attempts and updated reflections automatically.'
-                          : 'Enabling downloads a small search model to your computer. Your connected MCP tutor analyzes saved code and reflections through its model provider. All completed history is processed, then new attempts update automatically.'}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="insight-coverage">
-                        <strong>{data.analyzed}</strong>
-                        <span> of {data.total} attempts analyzed</span>
-                      </p>
-                      {data.total > 0 && (
-                        <div className="insight-progress row">
-                          <progress
-                            aria-label="Attempts analyzed"
-                            aria-valuetext={`${data.analyzed} of ${data.total} attempts analyzed`}
-                            max={data.total}
-                            value={Math.min(data.analyzed, data.total)}
-                          />
-                          <span className="small muted">{progress}%</span>
-                        </div>
-                      )}
-                      <AnalysisStatus data={data} />
-                      {data.total === 0 && (
-                        <p className="muted">
-                          Save a completed attempt to start building your learning memory.
-                        </p>
-                      )}
-                      {(data.failed > 0 || data.embeddingStatus === 'failed') && (
-                        <div role="alert">
-                          <Button
-                            variant="outline"
-                            disabled={action.isPending}
-                            onClick={() => action.mutate({ path: 'retry', body: {} })}
-                          >
-                            Retry analysis
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="insight-auto-control">
-                <div>
-                  <label htmlFor={`${mountId}-automatic`} className="insight-auto-label">
-                    Automatic analysis
-                  </label>
-                  <p id={`${mountId}-automatic-description`} className="small muted">
-                    {data.enabled
-                      ? 'Analyze new attempts and updated reflections.'
-                      : 'Off — saved insights are kept.'}
-                  </p>
-                </div>
-                <div className="insight-auto-toggle">
-                  <span className="small muted">
-                    {action.isPending ? 'Saving…' : data.enabled ? 'On' : 'Off'}
-                  </span>
-                  <button
-                    id={`${mountId}-automatic`}
-                    type="button"
-                    role="switch"
-                    aria-checked={data.enabled}
-                    aria-describedby={`${mountId}-automatic-description`}
-                    className="insight-switch"
-                    disabled={action.isPending}
-                    onClick={() =>
-                      action.mutate({ path: 'enable', body: { enabled: !data.enabled } })
-                    }
-                  >
-                    <span aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-              {action.isError && <ErrorNotice error={action.error} />}
-            </Card>
+          <FillPage>
+            <StatusPanel data={data} mountId={mountId} action={action} />
             {data.report ? (
-              <>
-                <div className="insight-grid-header">
-                  <div className="section-heading">
-                    <h2 className="section-title insight-grid-heading">Try on your next attempt</h2>
-                    {data.report.findings.length > 0 && (
-                      <span className="desk-count">
-                        {data.report.findings.length}{' '}
-                        {data.report.findings.length === 1 ? 'habit' : 'habits'}
-                      </span>
-                    )}
-                  </div>
-                  {data.stale && (
-                    <p className="small muted">
-                      Updating your report. These actions are from the previous report.
-                    </p>
-                  )}
-                </div>
-                {data.report.findings.length ? (
-                  <div className="insight-grid">
-                    {data.report.findings.map((finding) => (
-                      <InsightCard
-                        key={`${data.report!.id}-${finding.title}-${finding.evidenceIds.join(',')}`}
-                        finding={finding}
-                        data={data}
-                        refresh={refresh}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <Card className="panel">
-                    <Empty>
-                      <h3>No patterns to show yet</h3>
-                      <p>More attempts or detailed reflections may provide useful evidence.</p>
-                    </Empty>
-                  </Card>
+              <section className="flex min-h-0 flex-1 flex-col gap-3">
+                <SectionHeader
+                  className="mt-2"
+                  title="Try on your next attempt"
+                  meta={
+                    findings.length > 0 &&
+                    `${findings.length} ${findings.length === 1 ? 'habit' : 'habits'}`
+                  }
+                />
+                {data.stale && (
+                  <p className="-mt-1 text-xs text-muted-foreground">
+                    Updating your report. These actions are from the previous report.
+                  </p>
                 )}
-                <details className="insight-details small muted">
-                  <summary>About this report</summary>
-                  <p>
-                    Updated {new Date(data.report.createdAt).toLocaleString()} ·{' '}
-                    {data.report.analyzed} attempts covered
-                  </p>
-                  <p>{data.report.limitation}</p>
-                  <p>
-                    Findings describe saved evidence, not every step you took while solving.
-                    Practice suggestions leave your study schedule unchanged.
-                  </p>
-                </details>
-              </>
+                <ScrollRegion className="flex flex-col gap-2">
+                  {findings.length ? (
+                    <TileGrid>
+                      {findings.map((finding) => (
+                        <InsightCard
+                          key={`${data.report!.id}-${finding.title}-${finding.evidenceIds.join(',')}`}
+                          finding={finding}
+                          data={data}
+                          refresh={refresh}
+                        />
+                      ))}
+                    </TileGrid>
+                  ) : (
+                    <Panel>
+                      <EmptyState
+                        icon={Lightbulb}
+                        title="No patterns to show yet"
+                        description="More attempts or detailed reflections may provide useful evidence."
+                      />
+                    </Panel>
+                  )}
+                  <div>
+                    <Disclosure quiet title="About this report">
+                      <div className="flex flex-col gap-2 pb-2 text-[0.8125rem] text-muted-foreground">
+                        <p>
+                          Updated {new Date(data.report.createdAt).toLocaleString()} ·{' '}
+                          {data.report.analyzed} attempts covered
+                        </p>
+                        <p>{data.report.limitation}</p>
+                        <p>
+                          Findings describe saved evidence, not every step you took while solving.
+                          Practice suggestions leave your study schedule unchanged.
+                        </p>
+                      </div>
+                    </Disclosure>
+                  </div>
+                </ScrollRegion>
+              </section>
             ) : (
               data.enabled && (
-                <Card className="panel">
-                  <Empty>
-                    <h3>Your first report is on its way</h3>
-                    <p>
-                      It appears once your tutor analyzes saved attempts. Keep practising while it
-                      works.
-                    </p>
-                  </Empty>
-                </Card>
+                <Panel>
+                  <EmptyState
+                    icon={Sparkles}
+                    tone="brand"
+                    title="Your first report is on its way"
+                    description="It appears once your tutor analyzes saved attempts. Keep practising while it works."
+                  />
+                </Panel>
               )
             )}
-          </div>
+          </FillPage>
         )
       )}
     </>
