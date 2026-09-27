@@ -120,8 +120,6 @@
   --tone-rose: #ea580c;
   --font-ui: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'DM Sans Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-  --surface-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 4px 12px -4px rgb(16 24 40 / 0.08);
-  --page-glow: color-mix(in srgb, var(--brand) 6%, transparent);
 }
 
 .dark {
@@ -174,8 +172,6 @@
   --tone-amber: #fcd34d;
   --tone-rose-bg: rgb(249 115 22 / 0.15);
   --tone-rose: #fdba74;
-  --surface-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 10px 30px -18px rgb(0 0 0 / 0.7);
-  --page-glow: color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 @layer base {
@@ -184,73 +180,12 @@
   }
   body {
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
   }
-}
-
-/* Rank sits beside the name so the score chart below keeps its room. */
-.focus-tile {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: 'rank name' 'score score' 'reason reason' 'link link';
-  align-items: center;
-  height: 100%;
-  color: var(--foreground);
-  text-decoration: none;
-}
-.focus-tile:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-}
-.focus-tile > div {
-  grid-area: score;
-}
-.focus-meter > i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--primary);
-}
-/* Marks the 4/5 readiness target. */
-@media (prefers-reduced-motion: reduce) {
-  .focus-tile {
-    transition: none;
-  }
-}
-
-/* Visual polish: depth, clearer hierarchy and a recognisable identity. */
-.app {
-  background:
-    radial-gradient(900px 420px at 30% -120px, var(--page-glow), transparent 70%), var(--background);
-}
-.sidebar nav a {
-  position: relative;
-}
-.sidebar-collapsed .sidebar nav a.active::before {
-  display: none;
-}
-.panel .empty h3 {
-  color: var(--foreground);
-  font-size: 0.9375rem;
-}
-.panel.fill-page > .empty {
-  flex: 1;
-}
-.filter-count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.375rem;
-  border-radius: 999px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }

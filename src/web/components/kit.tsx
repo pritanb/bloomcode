@@ -34,8 +34,7 @@
  * - Callout         inset note ("Next time" …), neutral or brand with an accent bar.
  * - SidePanel*      right-hand sheet built on Radix Dialog for inspecting one item.
  * Existing helpers stay in components/ui.tsx (Field, Loading, ErrorNotice, dateLabel …) and
- * shadcn primitives in components/ui/*. ui.tsx's PageTitle, SectionTitle and Empty are the old
- * CSS-backed versions; migrate screens to PageHeader, Panel/SectionHeader and EmptyState.
+ * shadcn primitives in components/ui/*.
  */
 import type { ComponentProps, CSSProperties, ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';

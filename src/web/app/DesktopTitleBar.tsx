@@ -45,7 +45,7 @@ export function DesktopTitleBar({
             aria-controls="sidebar-navigation"
             onClick={toggleSidebar}
           >
-            <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
+            <Icon className="size-[18px]" icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
           </Button>
         )}
         <Button
@@ -56,7 +56,7 @@ export function DesktopTitleBar({
           disabled={!navigation.back}
           onClick={() => window.tutorDesktop?.navigate('back')}
         >
-          <Icon icon={ChevronLeft} />
+          <Icon className="size-[18px]" icon={ChevronLeft} />
         </Button>
         <Button
           variant="ghost"
@@ -66,7 +66,7 @@ export function DesktopTitleBar({
           disabled={!navigation.forward}
           onClick={() => window.tutorDesktop?.navigate('forward')}
         >
-          <Icon icon={ChevronRight} />
+          <Icon className="size-[18px]" icon={ChevronRight} />
         </Button>
       </div>
       <div className="desktop-theme-action">

@@ -5,7 +5,6 @@ import { App } from './App';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/dm-sans';
 import '../styles/styles.css';
-import '../styles/theme.css';
 
 import './theme';
 

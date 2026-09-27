@@ -26,7 +26,7 @@ export function DateField({
       ? parsed
       : undefined;
   return (
-    <div className="date-field">
+    <div className="flex items-center gap-2">
       <Input
         {...props}
         disabled={disabled}
