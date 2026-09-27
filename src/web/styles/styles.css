@@ -193,15 +193,6 @@
   }
 }
 
-.demo-banner {
-  padding: 0.625rem 1rem;
-  background: var(--accent);
-  color: var(--accent-foreground);
-  border-bottom: 1px solid var(--border);
-  text-align: center;
-  font-size: 0.875rem;
-}
-
 /* Rank sits beside the name so the score chart below keeps its room. */
 .focus-tile {
   display: grid;
@@ -262,63 +253,4 @@
   font-size: 0.6875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.accent-picker {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-.accent-well {
-  position: relative;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
-  border-radius: 0.75rem;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
-  cursor: pointer;
-}
-.accent-well input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-.accent-well:focus-within {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.accent-hex {
-  width: 7.5rem;
-  font-family: ui-monospace, monospace;
-  text-transform: lowercase;
-}
-.accent-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-.accent-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-.accent-quick button {
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
-  transition: transform 120ms ease;
-}
-.accent-quick button:hover {
-  transform: scale(1.1);
-}
-.accent-quick button[aria-checked='true'] {
-  box-shadow:
-    0 0 0 2px var(--card),
-    0 0 0 4px var(--foreground);
 }
