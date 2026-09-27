@@ -76,6 +76,11 @@ retrieves context, and whether each tool call completes or fails. These updates
 come from SDK events and contain no tool arguments or study records. The final
 answer appears once the turn completes.
 
+## Architecture
+
+See the [architecture diagrams](../docs/architecture/README.md#bloom-ai-tutor) for
+the app-to-Python flow, evidence retrieval, coaching loop and storage boundaries.
+
 ## Follow the code
 
 - `chat.py`: terminal input and output.

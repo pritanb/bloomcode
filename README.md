@@ -68,7 +68,7 @@ Screenshots use sample records. Tutor feedback is illustrative; connecting an AI
 - Versioned question packs, validated imports and SQLite backups support moving and extending your study records.
 - Tests cover critical functions and a browser save/reload flow, with [automated GitHub checks](.github/workflows/checks.yml).
 
-See the [backend notes](src/server/README.md) for architecture details.
+See the [architecture diagrams](docs/architecture/README.md) for the platform and AI tutor flows, and the [backend notes](src/server/README.md) for implementation details.
 
 ## Your workspace
 
