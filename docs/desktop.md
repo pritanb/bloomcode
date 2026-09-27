@@ -4,7 +4,7 @@ BloomCode uses Electron to package its interface, local server and runtime in on
 
 ## Install and open
 
-1. Download the Apple silicon ZIP from the [v0.1.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0), unzip it and move the app to Applications. v0.1.0 still ships as **LeetCode Tutor.app**; the next release ships as **BloomCode.app**.
+1. Download the Apple silicon ZIP from the [v0.2.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.2.0), unzip it and move the app to Applications. The application is named **BloomCode.app**.
 2. Open it, then drag its icon to the Dock for one-click access.
 3. For a new workspace, choose your timezone, daily target and starter question list.
 

@@ -21,9 +21,9 @@ Your practice history is stored on your computer. Practice tracking and review s
 
 ## Get started
 
-**[Download the v0.1.0 preview for Apple silicon Macs](https://github.com/pritanb/bloomcode/releases/tag/v0.1.0)**
+**[Download the v0.2.0 preview for Apple silicon Macs](https://github.com/pritanb/bloomcode/releases/tag/v0.2.0)**
 
-Unzip the download, move the app to Applications and open it, then choose your timezone, daily target and a starter list. v0.1.0 ships as **LeetCode Tutor.app**; the next release ships as **BloomCode.app**.
+Unzip the download, move the app to Applications and open it, then choose your timezone, daily target and a starter list. The application is named **BloomCode.app**.
 
 The app is not yet signed or notarized, so macOS may block it; see [installation](docs/desktop.md). Intel Macs, Windows and Linux are not supported yet.
 
