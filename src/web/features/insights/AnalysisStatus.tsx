@@ -2,11 +2,13 @@ import { LoaderCircle } from 'lucide-react';
 import type { InsightStatus } from '../../../shared/insights';
 import { analysisStatus } from './analysis-status';
 
+const statusClass = 'flex items-center gap-2 text-xs text-muted-foreground';
+
 export function AnalysisStatus({ data }: { data: InsightStatus }) {
   const status = analysisStatus(data);
   if ('blocked' in status)
     return (
-      <div className="small muted insight-generating" role="status">
+      <div className={statusClass} role="status">
         <span>
           <strong>{status.title}.</strong> {status.detail}
         </span>
@@ -26,9 +28,12 @@ export function AnalysisStatus({ data }: { data: InsightStatus }) {
         ? 'Complete a practice attempt to get recommendations.'
         : 'Waiting for your tutor…';
   return (
-    <div className="small muted insight-generating" role="status">
+    <div className={statusClass} role="status">
       {status.busy && !failed && (
-        <LoaderCircle className="icon insight-spinner" aria-hidden="true" />
+        <LoaderCircle
+          className="size-4 shrink-0 animate-spin motion-reduce:animate-none"
+          aria-hidden="true"
+        />
       )}
       <span>{message}</span>
     </div>
