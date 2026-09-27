@@ -141,7 +141,7 @@ test('version 8 workspaces migrate without losing study records', async () => {
   await app.close();
   const path = join(dir, 'study.sqlite');
   const old = openDb(path);
-  old.exec('DROP TABLE learning_goals');
+  old.exec('DROP TABLE learning_goals; DROP TABLE tutor_preferences');
   old.pragma('user_version = 8');
   old.close();
   app = await createApp({ dbPath: path, token: 'host' });
@@ -149,4 +149,77 @@ test('version 8 workspaces migrate without losing study records', async () => {
     'Preserved',
   );
   expect((await request('GET', '/api/learning-goals')).json().goals).toEqual([]);
+});
+
+test('preferences require host confirmation, reject stale corrections, and survive backup/restart', async () => {
+  const initial = (await request('GET', '/api/tutor-preferences', undefined, scoped)).json();
+  expect(initial).toMatchObject({
+    explanationDepth: 'concise',
+    hintStyle: 'progressive',
+    version: 0,
+    sourceConversation: null,
+  });
+  const first = {
+    change: { explanationDepth: 'detailed', hintStyle: 'questions', expectedVersion: 0 },
+    sourceConversation: 'first-chat',
+  };
+  expect((await request('POST', '/api/tutor-preferences', first, scoped, 'prefs')).statusCode).toBe(
+    403,
+  );
+  const saved = (await request('POST', '/api/tutor-preferences', first, 'host', 'prefs')).json();
+  expect(saved).toMatchObject({ explanationDepth: 'detailed', hintStyle: 'questions', version: 1 });
+  expect((await request('POST', '/api/tutor-preferences', first, 'host', 'prefs')).json()).toEqual(
+    saved,
+  );
+  const correction = {
+    change: { explanationDepth: 'concise', hintStyle: 'direct', expectedVersion: 1 },
+    sourceConversation: 'correction-chat',
+  };
+  const corrected = (
+    await request('POST', '/api/tutor-preferences', correction, 'host', 'correction')
+  ).json();
+  expect(corrected).toMatchObject({
+    explanationDepth: 'concise',
+    hintStyle: 'direct',
+    version: 2,
+    sourceConversation: 'correction-chat',
+  });
+  expect(
+    (await request('POST', '/api/tutor-preferences', first, 'host', 'stale-prefs')).statusCode,
+  ).toBe(409);
+  expect(
+    (
+      await request(
+        'POST',
+        '/api/tutor-preferences',
+        { ...correction, diagnosis: 'weak memory' },
+        'host',
+        'invalid-prefs',
+      )
+    ).statusCode,
+  ).toBe(400);
+  const backup = (await request('POST', '/api/backup', {})).json();
+  const copy = openDb(backup.path);
+  expect(copy.prepare('SELECT hintStyle FROM tutor_preferences').get()).toEqual({
+    hintStyle: 'direct',
+  });
+  copy.close();
+  await app.close();
+  app = await createApp({ dbPath: join(dir, 'study.sqlite'), token: 'host' });
+  expect((await request('GET', '/api/tutor-preferences', undefined, scoped)).json()).toEqual(
+    corrected,
+  );
+});
+
+test('version 9 migration adds preferences while retaining agreed goals', async () => {
+  const goal = (await request('POST', '/api/learning-goals', create)).json();
+  await app.close();
+  const path = join(dir, 'study.sqlite'),
+    old = openDb(path);
+  old.exec('DROP TABLE tutor_preferences');
+  old.pragma('user_version = 9');
+  old.close();
+  app = await createApp({ dbPath: path, token: 'host' });
+  expect((await request('GET', '/api/learning-goals')).json().goals).toEqual([goal]);
+  expect((await request('GET', '/api/tutor-preferences')).json().version).toBe(0);
 });

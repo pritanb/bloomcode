@@ -43,6 +43,7 @@ try {
   });
   const completed = [];
   for (let i = 0; i < 2; i++) {
+    now = new Date(now.getTime() + 60_000);
     const attempt = await api.request('POST', '/api/attempts', {
       problemId: problem.id,
       context: 'targeted',
@@ -204,6 +205,9 @@ try {
   assert.equal(state.status, 'available');
   assert.equal(state.attemptCount, 3);
   assert.equal(state.distinctProblems, 2);
+  assert.equal(state.preferences.explanationDepth, 'concise');
+  assert.equal(state.preferences.hintStyle, 'progressive');
+  assert.equal(state.preferences.sourceConversation, null);
   assert.equal(state.goalProgress[0].goalId, progressGoal.id);
   assert.equal(state.goalProgress[0].attemptCount, 1);
   assert.equal(state.goalProgress[0].distinctProblems, 1);
@@ -285,7 +289,7 @@ from tutor import open_tutor
 with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN'])) as tutor:
     config = tomllib.loads((tutor.session_file.parent / 'codex-home/config.toml').read_text())
     assert set(config['mcp_servers']['bloomcode']['enabled_tools']) == {
-        'get_recent_attempts', 'get_attempt_context', 'get_learning_insights', 'retrieve_learning_evidence', 'get_topic_scores', 'get_learning_goals', 'propose_learning_goal'}
+        'get_recent_attempts', 'get_attempt_context', 'get_learning_insights', 'retrieve_learning_evidence', 'get_topic_scores', 'get_learning_goals', 'propose_learning_goal', 'get_tutor_preferences', 'propose_tutor_preferences'}
     activity = []
     def report(message):
         activity.append(message)
@@ -363,11 +367,56 @@ print('PASS: live proposal stayed unsaved until host confirmation and a fresh co
     );
     console.log(stdout.trim());
   }
+  if (process.argv.includes('--live-preferences')) {
+    const { stdout } = await promisify(execFile)(
+      resolve('python/.venv/bin/python'),
+      [
+        '-c',
+        `
+import os
+from pathlib import Path
+from tutor import open_tutor
+from learner_state import load_snapshot
+options = dict(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN']))
+with open_tutor(**options, new=True) as tutor:
+    print(tutor.reply('Please remember that I prefer detailed explanations and question-based hints. Propose those settings for confirmation.'), flush=True)
+    assert len(tutor.pending_preferences) == 1, tutor.pending_preferences
+    assert load_snapshot(tutor.context_config)['preferences']['version'] == 0
+    first = tutor.confirm_preferences(tutor.pending_preferences[0], True)
+    assert first['explanationDepth'] == 'detailed' and first['hintStyle'] == 'questions', first
+    print(tutor.reply('Correction: please remember concise explanations and direct hints instead. Propose the corrected preferences.'), flush=True)
+    assert len(tutor.pending_preferences) == 1, tutor.pending_preferences
+    corrected = tutor.confirm_preferences(tutor.pending_preferences[0], True)
+    assert corrected['explanationDepth'] == 'concise' and corrected['hintStyle'] == 'direct', corrected
+    original_id = tutor.thread.id
+with open_tutor(**options, new=True) as tutor:
+    assert tutor.thread.id != original_id
+    answer = tutor.reply('What are my current saved teaching preferences? Then give a short direct hint for Two Sum.')
+    assert 'concise' in answer.lower() and 'direct' in answer.lower(), answer
+    assert not tutor.pending_preferences
+    print('Fresh conversation:', answer, flush=True)
+print('PASS: confirmed preferences were corrected and the fresh chat used the latest values')
+`,
+      ],
+      {
+        env: {
+          ...process.env,
+          PYTHONPATH: resolve('python'),
+          TEST_URL: url,
+          TEST_TOKEN: join(dir, 'api-token'),
+        },
+        timeout: 180000,
+      },
+    );
+    console.log(stdout.trim());
+  }
+
   await api.request('POST', '/api/attempts', { problemId: problem.id, context: 'mixed' });
   for (const [name, args] of [
     ['get_recent_attempts', {}],
     ['get_topic_scores', {}],
     ['get_learning_goals', {}],
+    ['get_tutor_preferences', {}],
     ['get_attempt_context', { attemptId: completed[1] }],
     ['retrieve_learning_evidence', { query: 'stack', limit: 5 }],
   ]) {

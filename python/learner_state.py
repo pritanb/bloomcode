@@ -63,6 +63,14 @@ async def _read_snapshot(config_file: Path) -> dict:
             error = data["error"]
             return {"status": "blocked" if error.get("status") == 403 else "unavailable"}
         snapshot = summarize_attempts(data)
+        result = await session.call_tool("get_tutor_preferences", {})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            if data["error"].get("status") == 403:
+                return {"status": "blocked"}
+            snapshot["preferences"] = {"status": "unavailable"}
+        else:
+            snapshot["preferences"] = {"status": "available", **data}
         result = await session.call_tool("get_topic_scores", {"limit": 20})
         data = json.loads(result.content[0].text)
         if result.isError:
@@ -110,12 +118,12 @@ def load_snapshot(config_file: Path) -> dict:
     return {"retrievedAt": datetime.now(timezone.utc).isoformat(), **snapshot}
 
 
-async def save_confirmed_goal(config_file: Path, host_data: Path, change: dict,
-                              conversation: str, key: str) -> dict:
+async def save_confirmed_change(config_file: Path, host_data: Path, change: dict,
+                              conversation: str, key: str, *, tool: str) -> dict:
     async with platform_session(config_file, host_data) as session:
-        result = await session.call_tool("confirm_learning_goal", {
+        result = await session.call_tool(tool, {
             "change": change, "sourceConversation": conversation, "idempotencyKey": key,
         })
         if result.isError:
-            raise RuntimeError("Goal was not confirmed. Retry /confirm; if the goal changed, request a fresh proposal.")
+            raise RuntimeError("Change was not confirmed. Retry /confirm; if the record changed, request a fresh proposal.")
         return json.loads(result.content[0].text)

@@ -5,6 +5,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { pathToFileURL } from 'node:url';
 import { LocalApi, ApiError } from './local-api.js';
 import { goalChange, confirmedGoalChange } from '../shared/learning-goals.js';
+import { preferenceChange, confirmedPreferenceChange } from '../shared/tutor-preferences.js';
 const id = z
   .string()
   .min(1)
@@ -19,6 +20,9 @@ const key = z
 const date = z.iso.date();
 const action = z.enum(['recommended', 'manual', 'none']);
 const schemas = {
+  get_tutor_preferences: z.strictObject({}),
+  propose_tutor_preferences: z.strictObject({ change: preferenceChange }),
+  confirm_tutor_preferences: confirmedPreferenceChange.extend({ idempotencyKey: key }),
   get_learning_goals: z.strictObject({
     state: z.enum(['active', 'completed', 'abandoned', 'all']).optional(),
   }),
@@ -102,6 +106,12 @@ const schemas = {
   }),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  get_tutor_preferences:
+    'Read the current explanation depth, hint style and version. A null sourceConversation means defaults, not learner-confirmed preferences.',
+  propose_tutor_preferences:
+    'Propose explicit teaching preferences for host confirmation; does not save. Include BOTH current-or-requested values and the current version. Preserve any preference the learner did not ask to change. Depth: concise, balanced, detailed. Hint style: questions, progressive hints, or direct guidance. Do not infer preferences from learner performance.',
+  confirm_tutor_preferences:
+    'Host-only: save preferences AFTER explicit confirmation using the full credential. Retry uncertain writes with the SAME key and payload.',
   get_learning_goals:
     'Read up to 20 saved learning goals (active by default). Includes versions and source conversation. Hidden during mixed assessments.',
   propose_learning_goal:
@@ -135,6 +145,8 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
   inputSchema: z.toJSONSchema(schema) as { type: 'object' },
   annotations: {
     readOnlyHint: [
+      'get_tutor_preferences',
+      'propose_tutor_preferences',
       'get_learning_goals',
       'propose_learning_goal',
       'get_topic_scores',
@@ -151,7 +163,15 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
 export async function callTool(api: LocalApi, name: string, args: unknown) {
   try {
     let result: unknown;
-    if (name === 'get_learning_goals') {
+    if (name === 'get_tutor_preferences') {
+      schemas.get_tutor_preferences.parse(args);
+      result = await api.request('GET', '/api/tutor-preferences');
+    } else if (name === 'propose_tutor_preferences') {
+      result = { proposal: schemas.propose_tutor_preferences.parse(args).change, saved: false };
+    } else if (name === 'confirm_tutor_preferences') {
+      const { idempotencyKey, ...body } = schemas.confirm_tutor_preferences.parse(args);
+      result = await api.request('POST', '/api/tutor-preferences', body, idempotencyKey);
+    } else if (name === 'get_learning_goals') {
       const { state = 'active' } = schemas.get_learning_goals.parse(args);
       result = await api.request('GET', `/api/learning-goals?state=${state}`);
     } else if (name === 'propose_learning_goal') {

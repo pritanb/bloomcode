@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox, Thread
-from learner_state import load_snapshot, save_confirmed_goal
+from learner_state import load_snapshot, save_confirmed_change
 
 
 TUTOR_INSTRUCTIONS = """You are BloomCode's supportive DSA tutor.
@@ -20,7 +20,19 @@ Help the learner reason about algorithms and choose useful practice.
 Use the conversation so far to follow up on their goals and difficulties.
 Offer a small hint or a focused question before revealing a full solution,
 unless the learner explicitly requests a full explanation.
-Keep replies concise. Distinguish what the learner reports from verified facts.
+Use the current snapshot's preferences as teaching defaults. Concise means short
+focused answers; balanced adds a worked step; detailed adds reasoning and examples.
+Questions means ask a focused diagnostic question; progressive means reveal one
+hint at a time; direct means give direct guidance without requiring a quiz.
+A request for this answer overrides a saved default for this turn without saving.
+If preferences are unavailable, do not claim old conversation preferences are current.
+Snapshot preferences supersede older history, including previously rejected styles.
+A null sourceConversation means application defaults, not confirmed preferences.
+For an explicit request to remember or correct preferences, call propose_tutor_preferences
+with the current version and both values, preserving the value not being changed.
+The host asks for confirmation. Never claim the change is saved from the proposal alone.
+Do not infer preferences or diagnoses from performance. We store only the two explicit
+teaching preferences. Distinguish what the learner reports from verified facts.
 Use get_recent_attempts to find attempts by problem name or recency; do not
 ask the learner to look up internal IDs. For "latest", choose the newest match.
 If the request is ambiguous, ask using problem titles and completion dates.
@@ -90,6 +102,8 @@ TOOL_ACTIVITY = {
     "get_attempt_context": ("Retrieving attempt context…", "Context retrieval"),
     "get_learning_insights": ("Reading learning insights…", "Learning insights"),
     "get_topic_scores": ("Reading topic scores…", "Topic scores"),
+    "get_tutor_preferences": ("Reading teaching preferences…", "Teaching preferences"),
+    "propose_tutor_preferences": ("Preparing preference changes…", "Preference proposal"),
     "get_learning_goals": ("Reading learning goals…", "Learning goals"),
     "propose_learning_goal": ("Preparing a goal proposal…", "Goal proposal"),
     "retrieve_learning_evidence": ("Finding supporting evidence…", "Evidence search"),
@@ -105,17 +119,24 @@ class TutorSession:
     context_config: Path | None = None
     host_data: Path | None = None
     pending_goals: list[dict] = field(default_factory=list)
+    pending_preferences: list[dict] = field(default_factory=list)
 
     def confirm_goal(self, proposal: dict, approved: bool) -> dict | None:
-        if proposal not in self.pending_goals:
+        return self._confirm(proposal, approved, self.pending_goals, "confirm_learning_goal")
+
+    def confirm_preferences(self, proposal: dict, approved: bool) -> dict | None:
+        return self._confirm(proposal, approved, self.pending_preferences, "confirm_tutor_preferences")
+
+    def _confirm(self, proposal: dict, approved: bool, pending: list[dict], tool: str) -> dict | None:
+        if proposal not in pending:
             raise ValueError("This proposal is no longer pending.")
         saved = None
         if approved:
             if not self.context_config or not self.host_data:
-                raise RuntimeError("Goal confirmation requires platform access.")
-            saved = asyncio.run(save_confirmed_goal(self.context_config, self.host_data,
-                proposal["change"], self.thread.id, proposal["key"]))
-        self.pending_goals.remove(proposal)
+                raise RuntimeError("Confirmation requires platform access.")
+            saved = asyncio.run(save_confirmed_change(self.context_config, self.host_data,
+                proposal["change"], self.thread.id, proposal["key"], tool=tool))
+        pending.remove(proposal)
         return saved
 
     def reply(self, message: str, *, on_activity: Callable[[str], None] | None = None) -> str:
@@ -136,15 +157,16 @@ class TutorSession:
                 if event.method in {"item/started", "item/completed"}:
                     item = event.payload.item.root
                     if (event.method == "item/completed" and item.type == "mcpToolCall"
-                            and item.server == "bloomcode" and item.tool == "propose_learning_goal"
+                            and item.server == "bloomcode" and item.tool in {"propose_learning_goal", "propose_tutor_preferences"}
                             and item.error is None and item.result is not None):
                         for content in item.result.content:
                             if content.get("type") == "text":
                                 data = json.loads(content["text"])
                                 if "proposal" in data:
                                     change = data["proposal"]
-                                    if not any(p["change"] == change for p in self.pending_goals):
-                                        self.pending_goals.append({"change": change, "key": str(uuid4())})
+                                    pending = self.pending_goals if item.tool == "propose_learning_goal" else self.pending_preferences
+                                    if not any(p["change"] == change for p in pending):
+                                        pending.append({"change": change, "key": str(uuid4())})
                     if (item.type == "mcpToolCall" and item.server == "bloomcode"
                             and item.tool in TOOL_ACTIVITY and on_activity):
                         started, label = TOOL_ACTIVITY[item.tool]

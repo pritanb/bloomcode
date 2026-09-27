@@ -14,14 +14,22 @@ def show_activity(message: str) -> None:
     print(f"Tutor: {message}", flush=True)
 
 
-def review_goals(tutor) -> None:
-    for proposal in list(tutor.pending_goals):
-        print("\nProposed goal change (not saved):")
+def review_changes(tutor) -> None:
+    for label, pending, confirm in [
+        ("goal", tutor.pending_goals, tutor.confirm_goal),
+        ("preferences", tutor.pending_preferences, tutor.confirm_preferences),
+    ]:
+        _review_proposals(label, pending, confirm)
+
+
+def _review_proposals(label, pending, confirm) -> None:
+    for proposal in list(pending):
+        print(f"\nProposed {label} change (not saved):")
         print(json.dumps(proposal["change"], indent=2))
         approved = input('Save this exact change? Type "yes" to confirm; Enter to discard: ').strip().lower() == "yes"
         try:
-            saved = tutor.confirm_goal(proposal, approved)
-            print(f"Goal saved ({saved['state']})." if saved else "Proposal discarded.")
+            saved = confirm(proposal, approved)
+            print(f"Saved {label}." if saved else "Proposal discarded.")
         except Exception:
             print("Could not confirm the save. Use /confirm to retry the same change safely, or discard it.")
 
@@ -46,19 +54,19 @@ def main() -> int:
                 print("Attempt tools enabled. Try: Let's discuss my latest attempt.")
             if args.attempt:
                 print(f"\nTutor: {tutor.reply(f'Help me reflect on attempt {args.attempt}.', on_activity=show_activity)}", flush=True)
-                review_goals(tutor)
+                review_changes(tutor)
             while True:
                 message = input("\nYou: ").strip()
                 if message == "/quit":
                     return 0
                 if message == "/confirm":
-                    review_goals(tutor)
+                    review_changes(tutor)
                     continue
                 if not message:
                     continue
                 print("Tutor: thinking…", flush=True)
                 print(f"\nTutor: {tutor.reply(message, on_activity=show_activity)}", flush=True)
-                review_goals(tutor)
+                review_changes(tutor)
     except (EOFError, KeyboardInterrupt):
         print("\nConversation ended.")
         return 0

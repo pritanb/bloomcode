@@ -82,8 +82,8 @@ marked, and null means unknown. No topic notes or attempt histories are fetched
 for this step. A denied score read discards the snapshot; an ordinary API error
 marks topic scores unavailable while retaining the recent-attempt summary.
 
-The tutor also has `get_learning_goals` and `propose_learning_goal`. Only these
-seven tools are allowlisted. Proposals do not write to the database. General-purpose
+The tutor also has goal and teaching-preference read/proposal tools. Only these
+nine tools are allowlisted. Proposals do not write to the database. General-purpose
 Codex tools and web search are disabled. The model's MCP process uses `tutor-token`,
 a restricted credential accepted only for the specific learning reads and evidence
 search. It cannot mutate goals, scores, schedules, settings or study work, even if
@@ -120,6 +120,29 @@ the current Python process; confirmed goals survive restarts. Goals are included
 in native database backups; their source conversation reference does not include
 the conversation transcript. Uninstalling or resetting conversation storage does
 not remove the saved goals.
+
+## Teaching preferences and corrections
+
+Ask **"Remember that I prefer detailed explanations and question-based hints."**
+Review the proposed values and type `yes` to save. Supported values are:
+
+- Explanation depth: `concise`, `balanced`, or `detailed`.
+- Hint style: `questions`, `progressive`, or `direct`.
+
+`questions` uses focused diagnostic questions, `progressive` reveals hints one at
+a time, and `direct` gives guidance without requiring a quiz. Defaults are concise
+and progressive; they are not labelled as learner-confirmed until you save them.
+
+To correct a preference, say **"Remember concise explanations and direct hints instead."**
+Every snapshot loads the latest values from SQLite, including in resumed or new
+conversations. Current values supersede older chat history. A request such as
+"be brief for this answer" only overrides the current turn. A preference you did
+not ask to change should be preserved in the proposal shown for confirmation.
+
+Preferences share the goal confirmation safeguards: the model cannot save them,
+retries are duplicate-safe, stale changes are rejected, and `/confirm` retries a
+pending save. They are included in database backups with the source conversation
+and update time. This stores explicit teaching choices, not inferred diagnoses.
 
 ## Saved conversations
 
@@ -169,6 +192,7 @@ To verify a real goal proposal, host confirmation and recall in a fresh conversa
 ```sh
 node --import tsx tests/integrations/python-context.mjs --live-goals
 node --import tsx tests/integrations/python-context.mjs --live-progress
+node --import tsx tests/integrations/python-context.mjs --live-preferences
 ```
 
 This also uses disposable data and signed-in account usage.
