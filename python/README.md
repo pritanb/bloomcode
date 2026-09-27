@@ -101,7 +101,17 @@ for the confirmed change; the model does not receive that credential.
 Goals live in BloomCode's SQLite database with state, version, timestamps and the
 originating Codex conversation ID. Active goals load into every learner snapshot,
 including after `--new`. Ask to complete or abandon a goal to propose a state change;
-those changes also require confirmation. No automatic progress assessment is added yet.
+those changes also require confirmation.
+
+Ask **"How am I progressing on my goal?"** Python retrieves up to twenty completed
+attempts begun since the original agreement for each of the three most recently
+updated active goals. It computes distinct problems, recorded outcomes, help usage,
+and distinct problems recorded as solved without help. Repeats count once; unknown
+help does not count as independent work. Earlier starts and uncertain timestamps
+are excluded, and truncated evidence is flagged. These are activity facts, not a
+completion verdict: the tutor still needs evidence that the problems match the
+goal's topic and conditions. It should ask when that cannot be established. This
+does not change scores, schedules or goal state automatically.
 
 Retries use the same idempotency key, equivalent active goals are deduplicated,
 and stale state changes are rejected. If confirmation fails, `/confirm` retries
@@ -130,7 +140,7 @@ credential symlinks. BloomCode's database-only backup does not include these
 conversation files. Back up the tutor storage separately if needed. Resume
 errors are reported rather than silently starting a replacement chat.
 
-Automatic goal-progress evidence, answer-text streaming, context budgeting and
+Structured goal criteria, answer-text streaming, context budgeting and
 teaching-quality evaluations remain later work.
 
 ## Verify
@@ -158,6 +168,7 @@ To verify a real goal proposal, host confirmation and recall in a fresh conversa
 
 ```sh
 node --import tsx tests/integrations/python-context.mjs --live-goals
+node --import tsx tests/integrations/python-context.mjs --live-progress
 ```
 
 This also uses disposable data and signed-in account usage.

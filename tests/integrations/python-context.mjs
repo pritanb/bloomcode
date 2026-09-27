@@ -14,9 +14,11 @@ import { LocalApi } from '../../src/integrations/local-api.ts';
 const dir = await mkdtemp(join(tmpdir(), 'bloomcode-python-test-'));
 const client = new Client({ name: 'tutor-integration', version: '1' });
 let app;
+let now = new Date('2026-09-27T12:00:00Z');
 try {
   app = await createApp({
     dbPath: join(dir, 'leetcode.sqlite'),
+    clock: () => now,
     embed: async (texts) => texts.map(() => [1, 0]),
   });
   const url = await app.listen({ port: 0, host: '127.0.0.1' });
@@ -125,6 +127,18 @@ try {
     'cancel-test',
   );
 
+  now = new Date('2026-09-27T13:00:00Z');
+  const progressGoal = await api.request(
+    'POST',
+    '/api/learning-goals',
+    {
+      change: { action: 'create', text: 'Practise two distinct problems without help' },
+      sourceConversation: 'progress-fixture',
+    },
+    'progress-goal',
+  );
+  now = new Date('2026-09-27T14:00:00Z');
+
   // A different problem provides conflicting evidence: improvement on Two Sum
   // must not become a claim of independence across all problems.
   const otherProblem = await api.request('POST', '/api/problems', {
@@ -190,6 +204,17 @@ try {
   assert.equal(state.status, 'available');
   assert.equal(state.attemptCount, 3);
   assert.equal(state.distinctProblems, 2);
+  assert.equal(state.goalProgress[0].goalId, progressGoal.id);
+  assert.equal(state.goalProgress[0].attemptCount, 1);
+  assert.equal(state.goalProgress[0].distinctProblems, 1);
+  assert.equal(state.goalProgress[0].distinctSolvedWithoutHelp, 0);
+  assert.equal(state.goalProgress[0].attempts[0].id, other.id);
+  const since = data(await call('get_recent_attempts', { startedAfter: progressGoal.createdAt }));
+  assert.deepEqual(
+    since.attempts.map((a) => a.id),
+    [other.id],
+  );
+  assert.equal((await call('get_recent_attempts', { startedAfter: 'invalid' })).isError, true);
   assert.equal(state.topicScores.status, 'available');
   assert.deepEqual(
     state.topicScores.topics.map((t) => t.score),
@@ -198,6 +223,54 @@ try {
   assert.deepEqual(state.helpUsage, { major: 1, none: 1, small: 1 });
   assert.deepEqual(state.outcomes, { not_solved: 1, solved: 2 });
   console.log('PASS: Python snapshot computes facts through the real MCP server');
+
+  if (process.argv.includes('--live-progress')) {
+    const { stdout } = await promisify(execFile)(
+      resolve('python/.venv/bin/python'),
+      [
+        '-c',
+        `
+import os
+from pathlib import Path
+from tutor import open_tutor
+with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN']), new=True) as tutor:
+    answer = tutor.reply('How am I progressing on my active learning goal? Use only practice since I agreed to it.')
+    assert os.environ['TEST_ATTEMPT'] in answer, answer
+    assert not tutor.pending_goals, tutor.pending_goals
+    print(answer)
+print('PASS: goal follow-up cites subsequent evidence without proposing unsupported completion')
+`,
+      ],
+      {
+        env: {
+          ...process.env,
+          PYTHONPATH: resolve('python'),
+          TEST_URL: url,
+          TEST_TOKEN: join(dir, 'api-token'),
+          TEST_ATTEMPT: other.id,
+        },
+        timeout: 120000,
+      },
+    );
+    console.log(stdout.trim());
+    assert.equal(data(await call('get_learning_goals')).goals[0].state, 'active');
+  }
+
+  await api.request(
+    'POST',
+    '/api/learning-goals',
+    {
+      change: {
+        action: 'set_state',
+        goalId: progressGoal.id,
+        text: progressGoal.text,
+        expectedVersion: progressGoal.version,
+        state: 'abandoned',
+      },
+      sourceConversation: 'progress-fixture',
+    },
+    'abandon-progress-goal',
+  );
 
   if (process.argv.includes('--live')) {
     const { stdout } = await promisify(execFile)(

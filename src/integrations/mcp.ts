@@ -26,6 +26,7 @@ const schemas = {
   confirm_learning_goal: confirmedGoalChange.extend({ idempotencyKey: key }),
   get_topic_scores: z.strictObject({ limit: z.number().int().min(1).max(50).optional() }),
   get_recent_attempts: z.strictObject({
+    startedAfter: z.iso.datetime({ offset: true }).optional(),
     problem: z.string().trim().max(200).optional(),
     limit: z.number().int().min(1).max(20).optional(),
   }),
@@ -110,7 +111,7 @@ const descriptions: Record<keyof typeof schemas, string> = {
   get_topic_scores:
     'Read topic scores, lowest scored topics first and unscored topics last. Limit 1–50 (default 20). Includes provisional flags, coverage counts and hasMore; null scores mean unknown, not weak. No notes or attempt history. Hidden during mixed assessments.',
   get_recent_attempts:
-    'Find completed attempts newest first, optionally filtered by problem title substring. Returns IDs, titles, dates, outcomes and help usage. Use returned IDs with get_attempt_context; do not ask the learner to look up IDs. Limit 1–20 (default 10); hasMore indicates older matches. Hidden during mixed assessments.',
+    'Find completed attempts newest first, optionally filtered by problem title substring. Returns IDs, titles, dates, outcomes and help usage. Use returned IDs with get_attempt_context; do not ask the learner to look up IDs. Limit 1–20 (default 10); hasMore indicates older matches. Optional startedAfter is an ISO timestamp (inclusive) for practice begun since a goal was agreed. Hidden during mixed assessments.',
   get_learning_insights:
     'Read the current learning report and coverage. Hidden during mixed assessments.',
   retrieve_learning_evidence:
@@ -165,6 +166,7 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
       const input = schemas.get_recent_attempts.parse(args);
       const params = new URLSearchParams();
       if (input.problem !== undefined) params.set('q', input.problem);
+      if (input.startedAfter !== undefined) params.set('startedAfter', input.startedAfter);
       if (input.limit !== undefined) params.set('limit', String(input.limit));
       result = await api.request('GET', `/api/attempts?${params}`);
     } else if (name === 'get_learning_insights') {

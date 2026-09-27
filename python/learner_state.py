@@ -10,6 +10,7 @@ import tomllib
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from goal_progress import goal_progress
 
 
 def summarize_attempts(data: dict) -> dict:
@@ -80,6 +81,22 @@ async def _read_snapshot(config_file: Path) -> dict:
             snapshot["goals"] = {"status": "unavailable"}
         else:
             snapshot["goals"] = {"status": "available", **data}
+            # Bound both API calls and context size. Other active goals remain
+            # visible, but have no computed progress in this snapshot.
+            snapshot["goalProgress"] = []
+            snapshot["goalProgressHasMore"] = len(data["goals"]) > 3 or data["hasMore"]
+            for goal in data["goals"][:3]:
+                result = await session.call_tool("get_recent_attempts", {
+                    "startedAfter": goal["createdAt"], "limit": 20,
+                })
+                evidence = json.loads(result.content[0].text)
+                if result.isError:
+                    if evidence["error"].get("status") == 403:
+                        return {"status": "blocked"}
+                    progress = {"goalId": goal["id"], "status": "unavailable"}
+                else:
+                    progress = goal_progress(goal, evidence)
+                snapshot["goalProgress"].append(progress)
         return snapshot
 
 
