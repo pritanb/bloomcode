@@ -25,6 +25,8 @@ class State(TypedDict, total=False):
     decisions: list[dict]
     receipts: dict
     status: str
+    expanded: bool
+    expand: bool
 
 
 class CoachingGraph:
@@ -36,14 +38,22 @@ class CoachingGraph:
         graph.add_node('evidence', self._evidence)
         graph.add_node('teach', self._teach)
         graph.add_node('wait', self._wait)
+        graph.add_node('broaden', self._broaden)
         graph.add_edge(START, 'evidence')
         graph.add_edge('evidence', 'teach')
-        graph.add_conditional_edges('teach', lambda s: END if s['status'] == 'completed' else 'wait')
+        graph.add_conditional_edges('teach', self._after_teaching)
+        graph.add_edge('broaden', 'teach')
         graph.add_edge('wait', 'evidence')
         self.graph = graph.compile(checkpointer=SqliteSaver(self.db))
         self.active = json.loads(self.pointer.read_text()) if self.pointer.exists() else None
         if self.active and self.active.get('version') != 1:
             raise RuntimeError('Unsupported coaching state. Start a new conversation to recover.')
+
+    @staticmethod
+    def _after_teaching(state):
+        if state.get('expand'):
+            return 'broaden'
+        return END if state['status'] == 'completed' else 'wait'
 
     def close(self):
         self.db.close()
@@ -57,17 +67,38 @@ class CoachingGraph:
         temp.replace(self.pointer)
 
     def _evidence(self, state):
-        fresh = self.evidence(state['attempt_id'])
+        focused = bool(state.get('decisions')) and hasattr(self.evidence, 'followup')
+        fresh = (self.evidence.followup if focused else self.evidence)(state['attempt_id'])
         old = state.get('evidence', {})
         fresh['changed'] = bool(old and old.get('fingerprint') != fresh.get('fingerprint'))
-        return {'evidence': fresh}
+        return {'evidence': fresh, 'expand': False, 'expanded': not focused}
+
+    def _broaden(self, state):
+        fresh = self.evidence(state['attempt_id'])
+        fresh['changed'] = state['evidence'].get('changed', False) or fresh.get('fingerprint') != state['evidence'].get('fingerprint')
+        return {'evidence': fresh, 'expand': False, 'expanded': True}
 
     def _teach(self, state):
         decision = self.model(Teaching, TEACHING, {
             'evidence': state['evidence'], 'message': state['request']['message'],
-            'messages': state.get('messages', [])[-20:],
-            'previous_decisions': state.get('decisions', [])[-6:],
+            'context_attempt_id': state['request'].get('context_attempt_id'),
+            'messages': state.get('messages', [])[-4:],
+            'focus': state.get('decisions', [{}])[-1].get('focus') if state.get('decisions') else None,
+            'hints_given': [d['response'][:800] for d in state.get('decisions', []) if d['action'] == 'hint'],
+            'exchange_count': len(state.get('decisions', [])),
+            'broader_evidence_available': not state.get('expanded', True),
         }).model_dump()
+        if decision['action'] == 'broaden':
+            if state.get('expanded', True):
+                raise RuntimeError('Cannot repeatedly expand coaching evidence')
+            return {'expand': True}
+        if decision['action'] in ('chat', 'leave', 'reroute'):
+            if hasattr(self.evidence, 'check_access'):
+                self.evidence.check_access()
+            request = state['request']
+            return {'receipts': {**state.get('receipts', {}), request['id']: {
+                'message': request['message'], 'response': '', 'handoff': decision['action']}},
+                'expand': False}
         if len(state.get('decisions', [])) >= 6 and decision['action'] != 'finish':
             decision['action'] = 'finish'
             decision['response'] += '\nWe can pause here; start another coaching session when you want to continue.'
@@ -88,7 +119,7 @@ class CoachingGraph:
         }
 
     def _wait(self, state):
-        request = interrupt({'question': state['messages'][-1]['text']})
+        request = interrupt({'question': state['messages'][-1]['text'] if state.get('messages') else ''})
         return {'request': request}
 
     def state(self):

@@ -57,6 +57,29 @@ class Evidence:
                                'date': a['finishedAt']} for a in rows]
         return asyncio.run(read())
 
+    def followup(self, id):
+        """Fresh access, selected attempt and preferences; no broad history or insights."""
+        async def read():
+            async with platform_session(self.config) as session:
+                access = await call(session, 'get_tutor_access', {})
+                if not access['allowed']:
+                    raise PermissionError('Finish or cancel active practice before coaching.')
+                context = await call(session, 'get_attempt_context', {'attemptId': id})
+                if context['attempt']['status'] != 'completed':
+                    raise PermissionError('Coaching requires a completed attempt.')
+                chosen = compact(context)
+                preferences = {'status': 'unavailable'}
+                try:
+                    preferences = {'status': 'available', **await call(session, 'get_tutor_preferences', {})}
+                except PermissionError:
+                    raise
+                except RuntimeError:
+                    pass
+                return {'records': [chosen], 'preferences': preferences, 'ids': [id],
+                        'scope': 'Selected completed attempt only; request broader evidence for comparisons',
+                        'fingerprint': hashlib.sha256(json.dumps(chosen, sort_keys=True).encode()).hexdigest()}
+        return asyncio.run(read())
+
     def __call__(self, id):
         self.check_access()
         snapshot = load_snapshot(self.config)

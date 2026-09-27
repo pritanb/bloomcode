@@ -35,7 +35,12 @@ class Coaching:
             self.evidence.check_access()
         if action == 'pause': self.graph.pause()
         elif action == 'resume': self.graph.resume()
-        elif action == 'retry': self.graph.retry()
+        elif action == 'retry':
+            result = self.graph.retry()
+            receipt = result.get('receipts', {}).get(result['request']['id'], {})
+            if receipt.get('handoff'):
+                self.graph.pause()
+                self.notice = 'Coaching is paused. Send your request in ordinary chat to continue.'
         elif action == 'clear':
             self.graph.clear()
             self.candidates = []
@@ -45,13 +50,30 @@ class Coaching:
     def reply(self, message, request_id=None, context_id=None, on_activity=None):
         self.notice = None
         self.save_routing()
-        request = {'id': request_id or str(uuid4()), 'message': message}
+        request = {'id': request_id or str(uuid4()), 'message': message, 'context_attempt_id': context_id}
         self.evidence.check_access()
         current = self.graph.state()
+        view = self.view()
+        receipt = None
         if current and request['id'] in current.get('receipts', {}):
             result = self.graph.reply(request)
-            return result['receipts'][request['id']]['response']
-        view = self.view()
+            receipt = result['receipts'][request['id']]
+        elif view and view['status'] == 'active':
+            if on_activity: on_activity('Preparing your next coaching response…')
+            result = self.graph.reply(request)
+            receipt = result['receipts'][request['id']]
+        if receipt is not None:
+            handoff = receipt.get('handoff')
+            if not handoff:
+                return receipt['response']
+            self.graph.pause()
+            if handoff == 'chat':
+                return None
+            if handoff == 'leave':
+                self.notice = 'Coaching is paused. You can resume it whenever you want.'
+                self.save_routing()
+                return self.notice
+            # A different-attempt request still needs the normal attempt resolver.
         if on_activity: on_activity('Choosing the right kind of help…')
         route = self.model(Route, ROUTING, {
             'message': message, 'context_attempt_id': context_id,
@@ -90,4 +112,7 @@ class Coaching:
         self.save_routing()
         if on_activity: on_activity('Preparing a question from your recorded attempt…')
         result = self.graph.start(id, request)
+        if result['receipts'][request['id']].get('handoff'):
+            self.graph.pause()
+            return None
         return result['messages'][-1]['text']

@@ -85,7 +85,7 @@ passes a returned ID to `get_attempt_context`, which returns the existing
 platform context, including code, history and topic scores. Ambiguous requests
 can be clarified using titles and dates rather than internal IDs.
 
-Before each turn with platform tools enabled, Python loads up to ten completed
+For ordinary chat turns with platform tools enabled, Python loads up to ten completed
 attempts and calculates attempt count, distinct problem count, outcomes and help
 usage. Unknown help stays unknown. The snapshot includes source IDs, dates,
 short titles and a `hasMore` flag; it omits code and notes. It describes a recent
@@ -262,6 +262,18 @@ The graph owns teaching state. Codex calls use ephemeral threads and validated
 structured output, with model tools disabled. Python gathers the selected attempt,
 up to two earlier attempts on the same problem, current preferences and the
 bounded learner snapshot. Learning Insights is supplementary and can be absent.
+Once coaching is active, one structured call both interprets the message and
+chooses the teaching response. Goal/preference requests and unrelated questions
+hand back to ordinary chat, preserving the pending coaching question. Starting or
+switching attempts still uses the separate resolver.
+
+Routine follow-ups retrieve only fresh access status, the selected attempt and
+current preferences. The model sees recent dialogue, the current focus and prior
+hints. It can request one bounded expansion to broader learner history and
+Learning Insights when a comparison needs them. Access is checked again before
+committing a response. This reduces input and sequential model calls without
+caching access permissions or preferences.
+
 Activity appears while coaching runs; the answer appears after schema and
 reference validation. General chat continues to stream tokens as before.
 

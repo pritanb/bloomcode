@@ -99,15 +99,116 @@ class RoutingTests(unittest.TestCase):
             StructuredCodex(codex, {})(Teaching, 'test', {'evidence': {'ids': ['real']}})
         self.assertEqual(thread.count, 2)
 
-    def test_answer_can_reference_the_already_selected_attempt(self):
+    def test_active_answer_uses_teaching_without_router(self):
         from coaching import Coaching
-        from coaching_model import Route
-        from types import SimpleNamespace
         with tempfile.TemporaryDirectory() as directory:
-            coach = Coaching(Path(directory), lambda *a: Route(intent='answer', attempt_id='selected', problem=None, latest=False), None)
-            coach.evidence = SimpleNamespace(check_access=lambda: None)
-            original = coach.graph
-            coach.graph = SimpleNamespace(state=lambda: {}, view=lambda: {'attemptId':'selected','status':'active','messages':[]},
-                reply=lambda request: {'messages':[{'text':'Adapted response'}]})
-            self.assertEqual(coach.reply('My answer'), 'Adapted response')
-            original.close()
+            calls = []
+            def model(schema, instructions, data):
+                calls.append(schema.__name__)
+                return Teaching(action='hint', focus='invariant', response='Adapted response', evidence_ids=['selected'])
+            coach = Coaching(Path(directory), model, None)
+            class FakeEvidence:
+                def check_access(self): pass
+                def __call__(self, id): return {'ids': [id], 'fingerprint': '1'}
+                def followup(self, id): return self(id)
+            coach.evidence = coach.graph.evidence = FakeEvidence()
+            coach.graph.start('selected', {'id':'first', 'message':'coach'})
+            calls.clear()
+            self.assertIn('Adapted response', coach.reply('My answer'))
+            self.assertEqual(calls, ['Teaching'])
+            coach.close()
+
+    def test_goal_request_hands_off_once_without_consuming_the_question(self):
+        from coaching import Coaching
+        with tempfile.TemporaryDirectory() as directory:
+            calls = []
+            def model(schema, instructions, data):
+                calls.append(schema.__name__)
+                if data['message'] == 'save a goal':
+                    return Teaching(action='chat', focus='invariant', response='Hand off', evidence_ids=[])
+                return Teaching(action='question', focus='invariant', response='What stays true?', evidence_ids=['a'])
+            coach = Coaching(Path(directory), model, None)
+            class FakeEvidence:
+                def check_access(self): pass
+                def __call__(self, id): return {'ids':[id], 'fingerprint':'1'}
+                def followup(self, id): return self(id)
+            coach.evidence = coach.graph.evidence = FakeEvidence()
+            coach.graph.start('a', {'id':'1','message':'coach'})
+            self.assertIsNone(coach.reply('save a goal', request_id='2'))
+            self.assertEqual(coach.view()['status'], 'paused')
+            self.assertEqual(len(coach.view()['messages']), 2)
+            self.assertIsNone(coach.reply('save a goal', request_id='2'))
+            self.assertEqual(len(calls), 2)
+            coach.control('resume')
+            coach.reply('answer', request_id='3')
+            self.assertEqual(len(coach.view()['messages']), 4)
+            coach.close()
+
+    def test_followup_omits_broad_data_and_expands_only_when_requested(self):
+        class FakeEvidence:
+            broad_calls = 0
+            focused_calls = 0
+            def __call__(self, id):
+                self.broad_calls += 1
+                return {'ids':[id], 'fingerprint':'1', 'snapshot': {'large':'history'}}
+            def followup(self, id):
+                self.focused_calls += 1
+                return {'ids':[id], 'fingerprint':'1', 'preferences': {'hintStyle':'direct'}}
+        with tempfile.TemporaryDirectory() as directory:
+            provider = FakeEvidence()
+            payloads = []
+            def model(schema, instructions, data):
+                payloads.append(data)
+                action = 'broaden' if data['message'] == 'compare history' and data['broader_evidence_available'] else 'question'
+                return Teaching(action=action, focus='x', response='Question', evidence_ids=[])
+            graph = CoachingGraph(Path(directory), model, provider)
+            graph.start('a', {'id':'1','message':'coach'})
+            graph.reply({'id':'2','message':'answer'})
+            self.assertNotIn('snapshot', payloads[-1]['evidence'])
+            self.assertEqual(payloads[-1]['evidence']['preferences']['hintStyle'], 'direct')
+            self.assertNotIn('previous_decisions', payloads[-1])
+            graph.reply({'id':'3','message':'compare history'})
+            self.assertEqual(provider.broad_calls, 2)
+            self.assertEqual(provider.focused_calls, 2)
+            self.assertEqual(len(graph.view()['messages']), 6)
+            self.assertEqual(len(payloads), 4)
+            graph.close()
+
+class FocusedEvidenceTests(unittest.TestCase):
+    def test_followup_reads_fresh_access_attempt_and_preferences_only(self):
+        from contextlib import asynccontextmanager
+        from unittest.mock import patch
+        from coaching_evidence import Evidence
+        calls = []
+        @asynccontextmanager
+        async def session(config):
+            yield object()
+        async def call(client, tool, args):
+            calls.append(tool)
+            return {
+                'get_tutor_access': {'allowed': True},
+                'get_attempt_context': {'attempt': {'id':'a', 'status':'completed', 'version':2, 'code':'new code'}, 'history':[{'id':'old'}]},
+                'get_tutor_preferences': {'hintStyle':'direct', 'version':3},
+            }[tool]
+        with patch('coaching_evidence.platform_session', session), patch('coaching_evidence.call', call):
+            result = Evidence(None).followup('a')
+        self.assertEqual(calls, ['get_tutor_access', 'get_attempt_context', 'get_tutor_preferences'])
+        self.assertEqual(result['records'][0]['attempt']['version'], 2)
+        self.assertEqual(result['preferences']['version'], 3)
+        self.assertEqual(result['ids'], ['a'])
+        self.assertNotIn('snapshot', result)
+        self.assertNotIn('insights', result)
+
+    def test_denied_followup_does_not_read_records(self):
+        from contextlib import asynccontextmanager
+        from unittest.mock import patch
+        from coaching_evidence import Evidence
+        calls = []
+        @asynccontextmanager
+        async def session(config): yield object()
+        async def call(client, tool, args):
+            calls.append(tool)
+            return {'allowed': False}
+        with patch('coaching_evidence.platform_session', session), patch('coaching_evidence.call', call):
+            with self.assertRaises(PermissionError): Evidence(None).followup('a')
+        self.assertEqual(calls, ['get_tutor_access'])
