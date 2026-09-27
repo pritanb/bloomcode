@@ -9,7 +9,6 @@ import '../styles/theme.css';
 import '../features/library/library.css';
 import '../features/topics/topics.css';
 import '../features/settings/settings-reports.css';
-import '../features/practice/attempt.css';
 
 import './theme';
 

@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import type { Attempt } from '../../../shared/contracts';
 import { api } from '../../app/api';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ChevronDown } from 'lucide-react';
-import { dateLabel, duration, ErrorNotice, Icon, Loading } from '../../components/ui';
+import { ChevronDown, GitCompareArrows } from 'lucide-react';
+import { dateLabel, duration, ErrorNotice, Loading } from '../../components/ui';
+import { Callout, IconTile, panelClass, Subheading } from '../../components/kit';
+import { cn } from '@/lib/utils';
 import { enumLabel, helpLabel, languageLabel } from '../../lib/labels';
 
 export function previousAttempt(current: Attempt, history: Attempt[]): Attempt | undefined {
@@ -35,59 +36,75 @@ export function AttemptComparison({ attempt }: { attempt: Attempt }) {
   if (attempt.status !== 'completed') return null;
   const previous = query.data && previousAttempt(attempt, query.data.history);
   return (
-    <Card className="panel attempt-comparison">
+    <section className={cn(panelClass, 'gap-0 p-2')}>
       <Button
         type="button"
         variant="ghost"
-        className="comparison-toggle"
+        className="group h-auto w-full justify-between rounded-2xl px-4 py-3.5 font-heading text-[1.0625rem] font-semibold tracking-[-0.01em]"
         aria-expanded={open}
         aria-controls={`comparison-${attempt.id}`}
         onClick={() => setOpen((value) => !value)}
       >
-        Compare with previous attempt
-        <Icon icon={ChevronDown} />
+        <span className="flex items-center gap-2.5">
+          <IconTile icon={GitCompareArrows} size="sm" />
+          Compare with previous attempt
+        </span>
+        <ChevronDown
+          className="text-muted-foreground transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none"
+          aria-hidden="true"
+          focusable="false"
+        />
       </Button>
       {open && (
-        <div id={`comparison-${attempt.id}`}>
+        <div id={`comparison-${attempt.id}`} className="px-4 pt-2 pb-4">
           {query.isPending || query.isFetching ? (
             <Loading />
           ) : query.isError ? (
             <ErrorNotice error={query.error} retry={() => void query.refetch()} />
           ) : previous ? (
-            <div className="attempt-comparison-grid">
+            <div className="grid gap-6 md:grid-cols-2">
               {[previous, attempt].map((item, index) => (
                 <section
-                  className="stack"
+                  className="flex min-w-0 flex-col gap-3"
                   key={item.id}
                   aria-label={index ? 'This attempt' : 'Previous attempt'}
                 >
-                  <h3>{index ? 'This attempt' : 'Previous attempt'}</h3>
-                  <p className="small muted">
-                    {dateLabel(item.finishedAt ?? item.startedAt)} · {enumLabel(item.outcome)}
-                  </p>
-                  <p>
+                  <div className="flex flex-col gap-0.5">
+                    <Subheading>{index ? 'This attempt' : 'Previous attempt'}</Subheading>
+                    <p className="text-[0.8125rem] text-muted-foreground">
+                      {dateLabel(item.finishedAt ?? item.startedAt)} · {enumLabel(item.outcome)}
+                    </p>
+                  </div>
+                  <p className="font-medium tabular-nums">
                     {duration(item.activeSeconds)} · {helpLabel(item.help)}
                   </p>
-                  <p className="preserve">{item.notes || 'No notes recorded.'}</p>
+                  <p className="whitespace-pre-wrap wrap-anywhere">
+                    {item.notes || 'No notes recorded.'}
+                  </p>
                   {item.feedback && (
-                    <div className="feedback preserve">
-                      <strong className="small">Tutor note</strong>
-                      <br />
+                    <Callout label="Tutor note" className="whitespace-pre-wrap wrap-anywhere">
                       {item.feedback}
-                    </div>
+                    </Callout>
                   )}
-                  <p className="small muted">{languageLabel(item.language)}</p>
-                  <pre className="comparison-code" tabIndex={0}>
+                  <p className="text-[0.8125rem] text-muted-foreground">
+                    {languageLabel(item.language)}
+                  </p>
+                  <pre
+                    className="max-h-104 overflow-auto rounded-2xl bg-muted p-4 font-mono text-[0.8125rem] leading-relaxed"
+                    tabIndex={0}
+                  >
                     <code>{item.code || 'No code recorded.'}</code>
                   </pre>
                 </section>
               ))}
             </div>
           ) : (
-            <p className="muted">This is your first completed attempt for this question.</p>
+            <p className="text-muted-foreground">
+              This is your first completed attempt for this question.
+            </p>
           )}
         </div>
       )}
-    </Card>
+    </section>
   );
 }

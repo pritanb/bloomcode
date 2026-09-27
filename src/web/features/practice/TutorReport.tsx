@@ -4,7 +4,7 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Attempt, AutoReviewStatus } from '../../../shared/contracts';
 import { api } from '../../app/api';
-import { Icon } from '../../components/ui';
+import { cn } from '@/lib/utils';
 const working = (s?: AutoReviewStatus['status']) => s === 'pending' || s === 'generating';
 /** The tutor report for a finished attempt: shown once saved, with progress while the connected tutor writes it. */
 export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: () => void }) {
@@ -24,10 +24,15 @@ export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: (
   useEffect(() => {
     if (state === 'done' && !attempt.feedback) onReady();
   }, [state, attempt.feedback, onReady]);
-  if (attempt.feedback) return <div className="feedback preserve">{attempt.feedback}</div>;
+  if (attempt.feedback)
+    return (
+      <div className="text-[0.9375rem] leading-[1.7] whitespace-pre-wrap wrap-anywhere">
+        {attempt.feedback}
+      </div>
+    );
   if (working(state))
     return (
-      <p className="small muted" role="status">
+      <p className="text-[0.9375rem] text-muted-foreground" role="status">
         {state === 'generating'
           ? 'Your tutor is writing a report on this attempt…'
           : status.data?.tutorConnected
@@ -36,18 +41,21 @@ export function TutorReport({ attempt, onReady }: { attempt: Attempt; onReady: (
       </p>
     );
   return (
-    <div className="stack">
-      <p className={state === 'failed' ? 'small negative' : 'small muted'}>
+    <div className="flex flex-col items-start gap-3">
+      <p
+        className={cn(
+          'text-[0.9375rem]',
+          state === 'failed' ? 'text-destructive' : 'text-muted-foreground',
+        )}
+      >
         {state === 'failed'
           ? `The tutor could not write a report: ${status.data?.error ?? 'unknown error'}`
           : 'No tutor report for this attempt yet.'}
       </p>
-      <div className="row">
-        <Button variant="outline" disabled={request.isPending} onClick={() => request.mutate()}>
-          <Icon icon={RefreshCw} />
-          {state === 'failed' ? 'Try again' : 'Ask tutor for a report'}
-        </Button>
-      </div>
+      <Button variant="outline" disabled={request.isPending} onClick={() => request.mutate()}>
+        <RefreshCw aria-hidden="true" focusable="false" />
+        {state === 'failed' ? 'Try again' : 'Ask tutor for a report'}
+      </Button>
     </div>
   );
 }

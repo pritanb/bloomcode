@@ -8,8 +8,7 @@ body {
 }
 
 body,
-.app,
-.attempt-workspace {
+.app {
   background: var(--background);
 }
 
