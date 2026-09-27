@@ -340,11 +340,7 @@ export function TutorChat({
                   <p id="tutor-message-help" className="text-xs text-muted-foreground">
                     Enter to send · Shift+Enter for a new line
                   </p>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs text-muted-foreground">
-                      Uses your Codex sign-in. Advice is based on recorded evidence and can be
-                      incomplete.
-                    </p>
+                  <div className="flex justify-end gap-3">
                     {busy ? (
                       <Button
                         type="button"
