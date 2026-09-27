@@ -14,5 +14,6 @@ export function useCatalogue() {
   return { tags, lists };
 }
 
-export const outcomeTone = (outcome: string | null | undefined) =>
-  outcome === 'solved' ? 'up' : outcome === 'not_solved' ? 'warn' : '';
+/** Text colour for a submission outcome: solved reads as up, not solved as a warning. */
+export const outcomeText = (outcome: string | null | undefined) =>
+  outcome === 'solved' ? 'text-up' : outcome === 'not_solved' ? 'text-warn' : 'text-foreground';

@@ -1,27 +1,27 @@
-import { tagColour } from '../../lib/tag-colour';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, CalendarDays, ExternalLink, History, Pencil, Play } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarDays, ExternalLink, FileText, History, Pencil, Play } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { Problem, Attempt, ReviewTarget } from '../../../shared/contracts';
 import { api } from '../../app/api';
+import { dateLabel, ErrorNotice, Loading, useAction } from '../../components/ui';
 import {
-  Icon,
-  SectionTitle,
-  dateLabel,
-  Empty,
-  ErrorNotice,
-  Loading,
-  PageTitle,
-  useAction,
-} from '../../components/ui';
+  EmptyState,
+  FillPage,
+  PageHeader,
+  Panel,
+  ScrollRegion,
+  ToneBadge,
+} from '../../components/kit';
+import { BackLink } from '../../components/back-link';
 import { AttemptHistory } from './AttemptHistory';
 import { useCatalogue } from './library-utils';
 import { ProblemForm } from './ProblemForm';
 import { ReviewEditor } from './ReviewEditor';
+import { DifficultyBadge, TagBadge } from './tags';
+
+const quiet = 'text-[0.8125rem] text-muted-foreground';
 
 // Tutor notes are appended to the question notes over time, each led by its date.
 const notedEntry = /^(\d{4}-\d{2}-\d{2}) tutor note:\s*/;
@@ -30,21 +30,33 @@ function QuestionNotes({ notes }: { notes: string }) {
     .split(/\n\s*\n/)
     .map((entry) => entry.trim())
     .filter(Boolean);
-  if (!entries.length) return <p className="small muted">No question notes yet.</p>;
+  if (!entries.length) return <p className={quiet}>No question notes yet.</p>;
   return (
-    <div className="question-notes">
+    <div className="flex flex-col divide-y">
       {entries.map((entry, index) => {
         const dated = notedEntry.exec(entry);
         return (
-          <div key={index}>
-            {dated && <p className="small muted">Tutor note · {dateLabel(dated[1])}</p>}
-            <p className="preserve">{dated ? entry.slice(dated[0].length) : entry}</p>
+          <div key={index} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+            {dated && <p className={quiet}>Tutor note · {dateLabel(dated[1])}</p>}
+            <p className="whitespace-pre-wrap wrap-anywhere">
+              {dated ? entry.slice(dated[0].length) : entry}
+            </p>
           </div>
         );
       })}
     </div>
   );
 }
+
+function Fact({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0">
+      <h3 className="text-[0.8125rem] font-medium text-muted-foreground">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 export function ProblemDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -76,111 +88,123 @@ export function ProblemDetail() {
   if (query.isPending) return <Loading />;
   if (query.isError) return <ErrorNotice error={query.error} retry={() => void query.refetch()} />;
   const p = query.data.problem;
+  const attempts = query.data.attempts.length;
   return (
     <>
-      <Link className="back-link" to="/library">
-        <Icon icon={ArrowLeft} />
-        Back to library
-      </Link>
-      <PageTitle
+      <BackLink to="/library">Back to library</BackLink>
+      <PageHeader
         title={p.title}
         description="Library-selected practice is targeted, not a hidden assessment."
-      >
-        <div className="row">
-          <Button variant="outline" onClick={() => setEditing(!editing)}>
-            <Icon icon={Pencil} />
-            Edit question
-          </Button>
-          <Button variant="default" disabled={start.isPending} onClick={() => start.mutate()}>
-            <Icon icon={Play} />
-            Start targeted practice
-          </Button>
-        </div>
-      </PageTitle>
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setEditing(!editing)}>
+              <Pencil aria-hidden="true" />
+              Edit question
+            </Button>
+            <Button variant="default" disabled={start.isPending} onClick={() => start.mutate()}>
+              <Play aria-hidden="true" />
+              Start targeted practice
+            </Button>
+          </>
+        }
+      />
       <ErrorNotice error={start.error} />
-      <div className="problem-detail-layout fill-page">
-        <div className="problem-detail-side">
-          <Card className="panel problem-summary">
-            <div className="row between">
-              <a className="problem-source" href={p.url} target="_blank" rel="noreferrer">
-                <Icon icon={ExternalLink} />
-                Open in LeetCode
-              </a>
-              <Badge variant="secondary" className={`level ${p.difficulty?.toLowerCase()}`}>
-                {p.difficulty ?? 'Unknown difficulty'}
-              </Badge>
+      <FillPage className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <ScrollRegion className="flex flex-col gap-4">
+          <Panel
+            title="Question"
+            icon={FileText}
+            tone="sky"
+            actions={<DifficultyBadge difficulty={p.difficulty} unknown="Unknown difficulty" />}
+          >
+            <a
+              className="-mt-1 inline-flex items-center gap-2 self-start font-medium text-foreground"
+              href={p.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="size-4 text-muted-foreground" aria-hidden="true" />
+              Open in LeetCode
+            </a>
+            <div className="border-t pt-4">
+              {editing ? (
+                <ProblemForm
+                  key={p.id}
+                  problem={p}
+                  tags={tags.data ?? []}
+                  lists={lists.data ?? []}
+                  onSave={(data) => edit.mutate(data)}
+                  onCancel={() => setEditing(false)}
+                  pending={edit.isPending}
+                  error={edit.error ?? tags.error ?? lists.error}
+                />
+              ) : (
+                <div className="flex flex-col divide-y text-[0.9375rem]">
+                  <Fact title="Question notes">
+                    <QuestionNotes notes={p.notes} />
+                  </Fact>
+                  <Fact title="LeetCode topics">
+                    {p.leetcodeTopics?.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {p.leetcodeTopics.map((topic) => (
+                          <ToneBadge key={topic} tone="muted" wrap>
+                            {topic}
+                          </ToneBadge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className={quiet}>No additional topics recorded.</p>
+                    )}
+                  </Fact>
+                  <Fact title="Tags">
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.tags.map((t) => (
+                        <TagBadge key={t.id} tag={t} />
+                      ))}
+                      {!p.tags.length && <p className={quiet}>No tags assigned.</p>}
+                    </div>
+                  </Fact>
+                  <Fact title="Lists">
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.lists.map((l) => (
+                        <ToneBadge key={l.id}>{l.name}</ToneBadge>
+                      ))}
+                    </div>
+                  </Fact>
+                </div>
+              )}
             </div>
-            {editing ? (
-              <ProblemForm
-                key={p.id}
-                problem={p}
-                tags={tags.data ?? []}
-                lists={lists.data ?? []}
-                onSave={(data) => edit.mutate(data)}
-                onCancel={() => setEditing(false)}
-                pending={edit.isPending}
-                error={edit.error ?? tags.error ?? lists.error}
-              />
-            ) : (
-              <>
-                <div className="problem-fact">
-                  <h3>Question notes</h3>
-                  <QuestionNotes notes={p.notes} />
-                </div>
-                <div className="problem-fact">
-                  <h3>LeetCode topics</h3>
-                  <p>{p.leetcodeTopics?.join(', ') || 'No additional topics recorded.'}</p>
-                </div>
-                <div className="problem-fact">
-                  <h3>Tags</h3>
-                  <div className="chips">
-                    {p.tags.map((t) => (
-                      <Badge
-                        variant="secondary"
-                        key={t.id}
-                        style={tagColour(t)}
-                        className="tag-colour chip"
-                      >
-                        <Link to={`/patterns?tag=${encodeURIComponent(t.id)}`}>{t.name}</Link>
-                      </Badge>
-                    ))}
-                    {!p.tags.length && <p className="small muted">No tags assigned.</p>}
-                  </div>
-                </div>
-                <div className="problem-fact">
-                  <h3>Lists</h3>
-                  <div className="chips">
-                    {p.lists.map((l) => (
-                      <Badge variant="secondary" className="badge" key={l.id}>
-                        {l.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </Card>
-          <Card className="panel">
-            <SectionTitle icon={CalendarDays}>Review schedule</SectionTitle>
+          </Panel>
+          <Panel title="Review schedule" icon={CalendarDays} tone="amber">
             {query.data.reviews.length ? (
-              query.data.reviews.map((r) => (
-                <ReviewEditor key={`${r.id}-${r.version}`} review={r} />
-              ))
+              <div className="flex flex-col divide-y">
+                {query.data.reviews.map((r) => (
+                  <div key={`${r.id}-${r.version}`} className="py-4 first:pt-0 last:pb-0">
+                    <ReviewEditor review={r} />
+                  </div>
+                ))}
+              </div>
             ) : (
-              <Empty>No review scheduled. You can choose a date when finishing an attempt.</Empty>
+              <EmptyState
+                className="py-6"
+                icon={CalendarDays}
+                title="No review scheduled"
+                description="You can choose a date when finishing an attempt."
+              />
             )}
-          </Card>
-        </div>
-        <Card className="panel problem-history">
-          <div className="section-heading">
-            <SectionTitle icon={History}>Practice history</SectionTitle>
-            <span className="desk-count">
-              {query.data.attempts.length} attempt{query.data.attempts.length === 1 ? '' : 's'}
-            </span>
-          </div>
+          </Panel>
+        </ScrollRegion>
+        <Panel
+          scroll
+          className="min-h-0 max-lg:flex-1"
+          title="Practice history"
+          icon={History}
+          tone="emerald"
+          meta={`${attempts} attempt${attempts === 1 ? '' : 's'}`}
+        >
           <AttemptHistory items={query.data.attempts} />
-        </Card>
-      </div>
+        </Panel>
+      </FillPage>
     </>
   );
 }

@@ -20,13 +20,13 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
   );
   return (
     <form
-      className="review-editor"
+      className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         save.mutate();
       }}
     >
-      <div className="row">
+      <div className="flex flex-wrap items-end gap-2 *:min-w-0">
         <Field label="Review scheduling">
           <SelectField
             value={action}
@@ -47,13 +47,13 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
           Save review date
         </Button>
       </div>
-      <p className="small muted">
+      <p className="text-[0.8125rem] text-muted-foreground">
         Recommended: {review.recommendedDate ? dateLabel(review.recommendedDate) : 'Not scheduled'}.
       </p>
       <ErrorNotice error={save.error} />
       {save.error instanceof ApiError && save.error.status === 409 && (
-        <div className="stack">
-          <p className="small">
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-[0.8125rem]">
             This schedule changed elsewhere. Reload its latest choice before rescheduling.
           </p>
           <Button type="button" variant="outline" onClick={() => void cache.invalidateQueries()}>
@@ -62,7 +62,7 @@ export function ReviewEditor({ review }: { review: ReviewTarget }) {
         </div>
       )}
       {save.isSuccess && (
-        <p role="status" className="positive">
+        <p role="status" className="text-[0.8125rem] font-semibold">
           Review choice saved.
         </p>
       )}

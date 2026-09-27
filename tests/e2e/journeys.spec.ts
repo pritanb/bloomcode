@@ -93,6 +93,10 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
   await page.goto(
     `/library?search=${encodeURIComponent(problem.title)}&status=completed&timeBucket=0-10`,
   );
-  await expect(page.locator('.library-results h2')).toHaveText('1 question');
-  await expect(page.locator('.problem-table tbody tr')).toContainText('9:53');
+  await expect(
+    page.getByRole('heading', { level: 2, name: /^(\d+ questions?|Questions)$/ }),
+  ).toHaveText('1 question');
+  await expect(page.getByRole('table', { name: 'Questions' }).locator('tbody tr')).toContainText(
+    '9:53',
+  );
 });

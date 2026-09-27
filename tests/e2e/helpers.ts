@@ -53,7 +53,9 @@ export { expect };
 export async function openLibrary(page: Page) {
   await page.goto('/library');
   await expect(page.getByRole('heading', { name: 'Question library', exact: true })).toBeVisible();
-  await expect(page.locator('.library-results h2')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 2, name: /^(\d+ questions?|Questions)$/ }),
+  ).toBeVisible();
 }
 export async function createProblem(
   api: BrowserApi,

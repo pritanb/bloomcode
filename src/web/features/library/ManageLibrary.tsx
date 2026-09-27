@@ -1,49 +1,60 @@
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, List, Plus, Tags } from 'lucide-react';
+import { ArrowRight, List as ListIcon, Plus, Tags } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import type { Tag, ProblemList } from '../../../shared/contracts';
 import { api } from '../../app/api';
+import { ErrorNotice, Field, Loading, useAction } from '../../components/ui';
 import {
-  Icon,
-  SectionTitle,
-  Empty,
-  ErrorNotice,
-  Field,
-  Loading,
-  PageTitle,
-  useAction,
-} from '../../components/ui';
+  EmptyState,
+  FillPage,
+  List,
+  ListRow,
+  PageHeader,
+  Panel,
+  ScrollRegion,
+  ToneBadge,
+} from '../../components/kit';
+import { BackLink } from '../../components/back-link';
+
+const hueGradient = `linear-gradient(to right, ${[0, 60, 120, 180, 240, 300, 359]
+  .map((h) => `hsl(${h} 65% 55%)`)
+  .join(', ')})`;
+
+/** Inline "create" strip at the top of each panel. */
+const createForm =
+  'grid shrink-0 grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] items-end gap-3 rounded-2xl bg-muted p-4 [&_[data-slot=input]]:bg-card [&>.error]:col-span-full [&>.error]:m-0 [&>[data-slot=button]]:justify-self-start';
+const hint = 'shrink-0 text-[0.8125rem] text-muted-foreground';
+
 function TagRow({ tag }: { tag: Tag }) {
   const [name, setName] = useState(tag.name);
   const [description, setDescription] = useState(tag.description);
   const [hue, setHue] = useState(tag.hue ?? 0);
   const edit = useAction((data: Partial<Tag>) => api.send<Tag>(`/tags/${tag.id}`, 'PATCH', data));
   return (
-    <li className={`tag-manager-row${tag.archived ? ' archived' : ''}`}>
+    <li className="py-4 first:pt-0 last:pb-0">
       <form
+        className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           edit.mutate({ name, description, hue });
         }}
       >
-        <div className="tag-manager-fields">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)]">
           <Popover>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="tag-colour-swatch"
+                className="size-9 cursor-pointer rounded-xl border-[3px] border-card ring-1 ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={`Edit colour for ${tag.name}`}
                 title="Edit tag colour"
                 style={{ backgroundColor: `hsl(${hue} 65% 55%)` }}
               />
             </PopoverTrigger>
-            <PopoverContent align="start">
+            <PopoverContent align="start" className="flex flex-col gap-2">
               <Field label={`Colour for ${tag.name}`}>
                 <input
                   type="range"
@@ -52,22 +63,34 @@ function TagRow({ tag }: { tag: Tag }) {
                   step="1"
                   value={hue}
                   onChange={(e) => setHue(Number(e.target.value))}
-                  className="tag-hue-picker"
+                  className="w-full rounded-2xl accent-foreground"
+                  style={{ background: hueGradient }}
                 />
               </Field>
-              <p className="small muted">Choose a colour, then Save changes.</p>
+              <p className="text-[0.8125rem] text-muted-foreground">
+                Choose a colour, then Save changes.
+              </p>
             </PopoverContent>
           </Popover>
-          <Field label={`Name for ${tag.name}`}>
-            <Input value={name} required onChange={(e) => setName(e.target.value)} />
-          </Field>
-          <Field label={`Description for ${tag.name}`}>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-          </Field>
+          <Input
+            aria-label={`Name for ${tag.name}`}
+            placeholder="Name"
+            value={name}
+            required
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            aria-label={`Description for ${tag.name}`}
+            placeholder="Description"
+            className="max-sm:col-span-full"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
-        <div className="row tag-manager-actions">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button
             variant="outline"
+            size="sm"
             disabled={
               edit.isPending ||
               (name === tag.name && description === tag.description && hue === (tag.hue ?? 0))
@@ -77,6 +100,7 @@ function TagRow({ tag }: { tag: Tag }) {
           </Button>
           <Button
             variant="outline"
+            size="sm"
             type="button"
             aria-label={`${tag.archived ? 'Restore' : 'Archive'} ${tag.name}`}
             disabled={edit.isPending}
@@ -84,13 +108,12 @@ function TagRow({ tag }: { tag: Tag }) {
           >
             {tag.archived ? 'Restore' : 'Archive'}
           </Button>
-          {tag.archived && (
-            <Badge variant="secondary" className="badge">
-              Archived
-            </Badge>
-          )}
-          <Button asChild variant="ghost" className="tag-manager-open">
-            <Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>Open notebook</Link>
+          {tag.archived && <ToneBadge tone="muted">Archived</ToneBadge>}
+          <Button asChild variant="ghost" size="sm" className="ml-auto">
+            <Link to={`/patterns?tag=${encodeURIComponent(tag.id)}`}>
+              Open notebook
+              <ArrowRight aria-hidden="true" />
+            </Link>
           </Button>
         </div>
         <ErrorNotice error={edit.error} />
@@ -98,6 +121,7 @@ function TagRow({ tag }: { tag: Tag }) {
     </li>
   );
 }
+
 export function ManageLibrary() {
   const tags = useQuery({
     queryKey: ['tags'],
@@ -134,22 +158,15 @@ export function ManageLibrary() {
   });
   return (
     <>
-      <Link className="back-link" to="/library">
-        <Icon icon={ArrowLeft} />
-        Back to library
-      </Link>
-      <PageTitle
+      <BackLink to="/library">Back to library</BackLink>
+      <PageHeader
         title="Tags & lists"
         description="Each tag has a notebook page. Its assigned questions appear there automatically."
       />
-      <div className="management-grid fill-page">
-        <Card className="panel">
-          <div className="section-heading">
-            <SectionTitle icon={Tags}>Tags</SectionTitle>
-            {tags.data && <span className="desk-count">{tags.data.length}</span>}
-          </div>
+      <FillPage className="lg:grid lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)]">
+        <Panel className="min-h-0" title="Tags" icon={Tags} tone="brand" meta={tags.data?.length}>
           <form
-            className="manage-create"
+            className={createForm}
             onSubmit={(e) => {
               e.preventDefault();
               addTag.mutate();
@@ -162,12 +179,12 @@ export function ManageLibrary() {
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
             <Button variant="default" disabled={addTag.isPending}>
-              <Icon icon={Plus} />
+              <Plus aria-hidden="true" />
               Create tag
             </Button>
             <ErrorNotice error={addTag.error} />
           </form>
-          <p className="small muted">
+          <p className={hint}>
             Archived tags stay on existing questions but are hidden from new assignments.
           </p>
           {tags.isPending ? (
@@ -175,24 +192,28 @@ export function ManageLibrary() {
           ) : tags.isError ? (
             <ErrorNotice error={tags.error} retry={() => void tags.refetch()} />
           ) : tags.data.length ? (
-            <ul className="plain-list tag-manager-list">
-              {[...tags.data]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((t) => (
-                  <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}-${t.kind}`} tag={t} />
-                ))}
-            </ul>
+            <ScrollRegion className="border-t pt-4">
+              <ul className="m-0 flex list-none flex-col divide-y p-0">
+                {[...tags.data]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((t) => (
+                    <TagRow key={`${t.id}-${t.name}-${t.archived}-${t.hue}-${t.kind}`} tag={t} />
+                  ))}
+              </ul>
+            </ScrollRegion>
           ) : (
-            <Empty>No tags yet.</Empty>
+            <EmptyState className="flex-1" icon={Tags} title="No tags yet." />
           )}
-        </Card>
-        <Card className="panel">
-          <div className="section-heading">
-            <SectionTitle icon={List}>Question lists</SectionTitle>
-            {lists.data && <span className="desk-count">{lists.data.length}</span>}
-          </div>
+        </Panel>
+        <Panel
+          className="min-h-0"
+          title="Question lists"
+          icon={ListIcon}
+          tone="sky"
+          meta={lists.data?.length}
+        >
           <form
-            className="manage-create"
+            className={createForm}
             onSubmit={(e) => {
               e.preventDefault();
               addList.mutate();
@@ -208,12 +229,12 @@ export function ManageLibrary() {
               <Input value={sourceVersion} onChange={(e) => setSourceVersion(e.target.value)} />
             </Field>
             <Button variant="default" disabled={addList.isPending}>
-              <Icon icon={Plus} />
+              <Plus aria-hidden="true" />
               Create list
             </Button>
             <ErrorNotice error={addList.error} />
           </form>
-          <p className="small muted">
+          <p className={hint}>
             Edit a question to change its lists. A new list starts empty: popular lists appear only
             after importing a verified manifest.
           </p>
@@ -222,39 +243,42 @@ export function ManageLibrary() {
           ) : lists.isError ? (
             <ErrorNotice error={lists.error} retry={() => void lists.refetch()} />
           ) : lists.data.length ? (
-            <ul className="plain-list list-manager-list">
-              {lists.data.map((l) => (
-                <li className="list-row" key={l.id}>
-                  <span className="list-row-icon" aria-hidden="true">
-                    <Icon icon={List} />
-                  </span>
-                  <div>
-                    <Link to={`/library?listId=${encodeURIComponent(l.id)}`}>{l.name}</Link>
-                    <small>
-                      {l.sourceVersion ?? 'Custom list'}
-                      {l.sourceUrl && (
-                        <>
-                          {' '}
-                          ·{' '}
-                          <a
-                            href={/^https?:\/\//.test(l.sourceUrl) ? l.sourceUrl : undefined}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Source
-                          </a>
-                        </>
-                      )}
-                    </small>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <ScrollRegion className="border-t">
+              <List>
+                {lists.data.map((l) => (
+                  <ListRow
+                    key={l.id}
+                    icon={ListIcon}
+                    tone="sky"
+                    title={l.name}
+                    to={`/library?listId=${encodeURIComponent(l.id)}`}
+                    meta={
+                      <span className="block truncate">
+                        {l.sourceVersion ?? 'Custom list'}
+                        {l.sourceUrl && (
+                          <>
+                            {' '}
+                            ·{' '}
+                            <a
+                              href={/^https?:\/\//.test(l.sourceUrl) ? l.sourceUrl : undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Source
+                            </a>
+                          </>
+                        )}
+                      </span>
+                    }
+                  />
+                ))}
+              </List>
+            </ScrollRegion>
           ) : (
-            <Empty>No lists yet.</Empty>
+            <EmptyState className="flex-1" icon={ListIcon} title="No lists yet." />
           )}
-        </Card>
-      </div>
+        </Panel>
+      </FillPage>
     </>
   );
 }

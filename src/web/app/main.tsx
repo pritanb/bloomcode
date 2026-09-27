@@ -6,7 +6,6 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/dm-sans';
 import '../styles/styles.css';
 import '../styles/theme.css';
-import '../features/library/library.css';
 import '../features/topics/topics.css';
 import '../features/notebooks/notebooks.css';
 import '../features/settings/settings-reports.css';

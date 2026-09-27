@@ -1,4 +1,3 @@
-import { tagColour } from '../../lib/tag-colour';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { SelectField, SelectOption } from '@/components/select-field';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { Tag } from '../../../shared/contracts';
-import { Icon } from '../../components/ui';
+import { TagDot } from './tags';
 import type { LibraryFilter } from './use-library-params';
 
 /** The Tags field in the library filters: a searchable pattern picker in a popover. */
@@ -25,17 +24,21 @@ export function LibraryTagFilter({
   const [tagsOpen, setTagsOpen] = useState(false);
   const selectedTags = (params.get('tags') ?? '').split(',').filter(Boolean);
   return (
-    <div className="field">
+    <div className="flex min-w-0 flex-col gap-2">
       <Label htmlFor="tag-filter-trigger">Tags</Label>
       <Popover open={tagsOpen} onOpenChange={setTagsOpen}>
         <PopoverTrigger asChild>
-          <Button id="tag-filter-trigger" variant="outline" className="tag-filter-trigger">
+          <Button
+            id="tag-filter-trigger"
+            variant="outline"
+            className="w-full justify-between bg-card font-normal"
+          >
             {selectedTags.length ? `${selectedTags.length} selected` : 'All tags'}
-            <Icon icon={ChevronDown} />
+            <ChevronDown className="text-muted-foreground" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="tag-filter-popover"
+          className="flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
           align="start"
           sideOffset={6}
           aria-label="Filter by patterns"
@@ -46,13 +49,16 @@ export function LibraryTagFilter({
             value={tagSearch}
             onChange={(e) => setTagSearch(e.target.value)}
           />
-          <div className="tag-filter-options">
+          <div className="-mx-1 max-h-64 overflow-y-auto">
             {tags
               ?.filter(
                 (tag) => !tag.archived && tag.name.toLowerCase().includes(tagSearch.toLowerCase()),
               )
               .map((tag) => (
-                <Label className="tag-filter-option" key={tag.id}>
+                <label
+                  key={tag.id}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg p-2 text-sm font-normal text-foreground hover:bg-muted"
+                >
                   <Checkbox
                     checked={selectedTags.includes(tag.id)}
                     onCheckedChange={(checked) =>
@@ -65,17 +71,16 @@ export function LibraryTagFilter({
                       )
                     }
                   />
-                  <span className="tag-colour tag-label" style={tagColour(tag)}>
-                    {tag.name}
-                  </span>
-                </Label>
+                  <TagDot hue={tag.hue} />
+                  <span className="min-w-0 truncate">{tag.name}</span>
+                </label>
               ))}
             {tags &&
               !tags.some(
                 (tag) => !tag.archived && tag.name.toLowerCase().includes(tagSearch.toLowerCase()),
-              ) && <p className="muted">No matching tags.</p>}
+              ) && <p className="p-2 text-sm text-muted-foreground">No matching tags.</p>}
           </div>
-          <div className="tag-filter-actions">
+          <div className="flex items-center gap-1.5 border-t pt-2">
             <SelectField
               aria-label="Match selected patterns"
               value={params.get('tagMode') ?? 'any'}
