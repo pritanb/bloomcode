@@ -23,7 +23,8 @@
     "electron:make": "npm run build && node scripts/electron.mjs make",
     "eval:insights": "node --import tsx scripts/evaluate-insights.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "eval:tutor": "node --import tsx tests/integrations/coaching-eval.mjs"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",

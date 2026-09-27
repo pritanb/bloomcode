@@ -243,3 +243,78 @@ This also uses disposable data and signed-in account usage.
   does not autonomously score work, change schedules, diagnose learning difficulties,
   or coach active practice. Existing live scenarios verify key behaviors but are
   not a comprehensive benchmark of teaching quality.
+
+## Adaptive coaching (LangGraph)
+
+Ask **“Coach me through my latest attempt”** in the floating tutor or terminal.
+A request about “this attempt” uses the completed-attempt screen when supplied.
+Problem names work too; ambiguous attempts prompt a choice. Opening the tutor
+alone does not start coaching. Ordinary explanations and goal/preference requests
+still use the original conversational tutor.
+
+Python routes the request, retrieves bounded evidence through MCP, and runs a
+LangGraph teaching loop. It selects one focus, asks a diagnostic question, and
+adapts to the answer with a clarification, hint, explanation, or wrap-up. You can
+ask for a direct explanation at any point. Coaching observations are tentative;
+they do not update scores, schedules, or Learning Insights diagnoses.
+
+The graph owns teaching state. Codex calls use ephemeral threads and validated
+structured output, with model tools disabled. Python gathers the selected attempt,
+up to two earlier attempts on the same problem, current preferences and the
+bounded learner snapshot. Learning Insights is supplementary and can be absent.
+Activity appears while coaching runs; the answer appears after schema and
+reference validation. General chat continues to stream tokens as before.
+
+**Return to chat** pauses coaching; **Resume coaching** restores the last question.
+After Stop, close/reopen the tutor and use **Retry step** if interrupted work remains.
+A committed response is not regenerated on resume. An interrupted model call can
+be repeated and incur more usage. Minimise/navigation preserve the current view;
+reopening the worker restores the saved session. Terminal equivalents are
+`/coach-pause`, `/coach-resume`, and `/coach-retry`.
+
+State lives in `tutor/coaching.sqlite` with local pointer files beside existing
+session storage, protected by the same process lock. New conversation clears the
+active coaching pointer, preserving old checkpoints and authoritative goals and
+preferences. Checkpoints are versioned and are **not included in study database
+backups**. Unsupported state can be reset with New conversation. For a corrupt
+SQLite file, close the tutor and move that file aside before reopening; do not
+replace or delete BloomCode's study database. Missing coaching dependencies leave
+ordinary chat available. Hosted LangSmith tracing is disabled by default.
+
+The graph pauses between turns using a separate `interrupt()` node; resuming it
+cannot replay a model call before the pause. Request receipts prevent duplicate
+committed coaching turns. Evidence is refreshed on each coaching answer, and
+changed attempt contents invalidate the previous question's assumptions. Access
+checks run before retrieval and again before committing an answer. Active practice
+blocks coaching, including in the terminal.
+
+### Before/after evaluation
+
+Run explicitly (uses your signed-in Codex allowance):
+
+```sh
+npm run eval:tutor
+# All ten scenarios:
+npm run eval:tutor -- --cases=all
+```
+
+The runner starts a disposable study database, seeds two synthetic attempts,
+compares the original `chat_reply` with the LangGraph path using identical learner
+messages, and removes the test database afterwards. It does not use your study
+workspace. Reports remain ignored under `private/coaching-evals/<timestamp>/`:
+
+- `comparison.md`: side-by-side responses, timings, and space for your judgement.
+- `comparison.json`: full responses, model-call metadata, available usage,
+  evidence snapshots, unknown record-ID checks, and software errors.
+
+The default three scenarios cover an incorrect answer, a correct answer, and an
+explicit request for explanation. The ten author-reviewed scenario definitions
+also cover ambiguous/missing records, sparse/conflicting evidence, style overrides,
+unavailable insights, and unsupported execution claims. Preference persistence
+and restart correctness remain deterministic integration/unit checks.
+
+Score relevance, adaptation, hinting and evidence honesty separately. These are
+single-run examples, not statistically reliable improvement claims. Scripted
+answers may align more naturally with one version's question; inspect the whole
+exchange. Routing and fresh evidence retrieval add latency. Quality scores are
+left blank for human review, and software failures are reported separately.
