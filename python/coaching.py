@@ -59,6 +59,7 @@ class Coaching:
         allowed_ids = set(re.findall(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}', message))
         allowed_ids.update(c['id'] for c in self.candidates)
         if context_id: allowed_ids.add(context_id)
+        if view: allowed_ids.add(view['attemptId'])
         if route.attempt_id and route.attempt_id not in allowed_ids:
             raise RuntimeError('Could not safely identify the attempt. Specify its problem name or use the completed-attempt screen.')
         if route.intent in ('chat', 'leave'):

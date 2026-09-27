@@ -36,6 +36,9 @@ test('worker streams, deduplicates requests and recovers from cancellation and c
   expect(chat.state.draft).toBe('');
   chat.start();
   await vi.waitFor(() => expect(chat.state.status).toBe('ready'));
+  chat.send(randomUUID(), { method: 'reply', message: 'failed-step' });
+  await vi.waitFor(() => expect(chat.state.coaching?.needsRetry).toBe(true));
+  expect(chat.state.messages).toHaveLength(0);
   chat.send(randomUUID(), { method: 'reply', message: 'crash' });
   await vi.waitFor(() => expect(chat.state.status).toBe('error'));
 });
@@ -60,6 +63,16 @@ test('practice blocks the UI and invalidates an in-flight reply; scoped model cr
   try {
     await app.inject({ method: 'POST', url: '/api/tutor-chat/open', headers });
     await vi.waitFor(() => expect(chat.state.status).toBe('ready'));
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/tutor-chat/message',
+          headers,
+          payload: { id: randomUUID(), message: 'coach this', attemptId: randomUUID() },
+        })
+      ).statusCode,
+    ).toBe(400);
     const scoped = readFileSync(join(dir, 'tutor-token'), 'utf8').trim();
     expect(
       (
@@ -91,6 +104,25 @@ test('practice blocks the UI and invalidates an in-flight reply; scoped model cr
       headers,
       payload: { problemId: problem.id, context: 'mixed' },
     });
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/api/tutor-access',
+          headers: { authorization: `Bearer ${scoped}` },
+        })
+      ).json(),
+    ).toEqual({ allowed: false });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/tutor-chat/coaching',
+          headers,
+          payload: { id: randomUUID(), action: 'resume' },
+        })
+      ).statusCode,
+    ).toBe(403);
     const state = (await app.inject({ method: 'GET', url: '/api/tutor-chat', headers })).json();
     expect(state).toMatchObject({ status: 'blocked', messages: [], draft: '', proposals: [] });
     expect(chat.state.status).toBe('closed');

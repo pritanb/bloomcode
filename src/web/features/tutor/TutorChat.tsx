@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { MessageCircle, Send, Square } from 'lucide-react';
 import type { ChatState } from '../../../shared/tutor-chat';
 import { api } from '../../app/api';
@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 
 const suggestions = [
+  'Coach me through my latest attempt.',
   'What should I practise next?',
   'How am I progressing on my goals?',
   'Help me reflect on my latest attempt.',
@@ -48,6 +49,8 @@ export function TutorChat({
   visible: boolean;
 }) {
   const [message, setMessage] = useState('');
+  const location = useLocation();
+  const attemptId = /^\/attempts\/([a-f0-9-]{36})$/i.exec(location.pathname)?.[1];
   useEffect(() => {
     if (request) setMessage(request.text);
   }, [request]);
@@ -77,12 +80,57 @@ export function TutorChat({
     if (!ready || !message.trim()) return;
     following.current = true;
     action.mutate(
-      { path: 'message', body: { id: crypto.randomUUID(), message } },
+      {
+        path: 'message',
+        body: { id: crypto.randomUUID(), message, ...(attemptId ? { attemptId } : {}) },
+      },
       { onSuccess: () => setMessage('') },
     );
   };
   return (
     <>
+      {state.coachingError && (
+        <p role="status" className="mb-2 text-sm text-muted-foreground">
+          {state.coachingError}
+        </p>
+      )}
+      {state.coaching && state.status !== 'blocked' && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-muted p-2 text-sm">
+          <Link className="underline" to={`/attempts/${state.coaching.attemptId}`}>
+            Coaching · {state.coaching.status}
+          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!ready}
+            onClick={() =>
+              action.mutate({
+                path: 'coaching',
+                body: {
+                  id: crypto.randomUUID(),
+                  action: state.coaching?.status === 'paused' ? 'resume' : 'pause',
+                },
+              })
+            }
+          >
+            {state.coaching.status === 'paused' ? 'Resume coaching' : 'Return to chat'}
+          </Button>
+          {state.coaching.needsRetry && (
+            <Button
+              size="sm"
+              disabled={!ready}
+              onClick={() =>
+                action.mutate({
+                  path: 'coaching',
+                  body: { id: crypto.randomUUID(), action: 'retry' },
+                })
+              }
+            >
+              Retry step
+            </Button>
+          )}
+        </div>
+      )}
       <div className="mb-3 flex shrink-0 flex-wrap gap-2">
         {state.status === 'ready' && (
           <>

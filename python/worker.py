@@ -42,7 +42,13 @@ def history(tutor):
 
 
 def state(tutor):
-    return {"conversationId": tutor.thread.id, "messages": history(tutor), "proposals": [
+    coaching = tutor.coaching.view() if tutor.coaching else None
+    messages = (coaching['messages'] if coaching and coaching['status'] != 'paused' else history(tutor))
+    notice = tutor.coaching.notice if tutor.coaching else None
+    if notice:
+        messages = [*messages, {'role': 'assistant', 'text': notice}]
+    return {"conversationId": tutor.thread.id, "messages": messages[-100:],
+            "coaching": coaching, "coachingError": tutor.coaching_error, "proposals": [
         {"kind": kind, **proposal} for kind, pending in [
             ("goal", tutor.pending_goals), ("preferences", tutor.pending_preferences)
         ] for proposal in pending
@@ -67,9 +73,14 @@ def main():
                     raise ValueError("Unsupported protocol")
                 method = request["method"]
                 if method == "reply":
-                    tutor.reply(request["message"],
+                    tutor.reply(request["message"], request_id=id,
+                        context_id=request.get('attemptId'),
                         on_activity=lambda message: emit("activity", id, message=message),
                         on_text=lambda text: emit("delta", id, text=text))
+                elif method == "coaching":
+                    if not tutor.coaching:
+                        raise RuntimeError('Coaching is unavailable')
+                    tutor.coaching.control(request['action'])
                 elif method == "confirm":
                     kind = request["kind"]
                     pending = tutor.pending_goals if kind == "goal" else tutor.pending_preferences
@@ -86,7 +97,7 @@ def main():
                     raise ValueError("Unknown request")
                 emit("result", id, activity=activity, **state(tutor))
             except Exception:
-                emit("error", id, message="The tutor could not finish. Check backend connectivity and Codex sign-in; retry confirmation with the same proposal.")
+                emit("error", id, **state(tutor), message="The tutor could not finish. Retry the coaching step or return to chat. If no retry is offered, send your message again. Confirmation can be retried with the same proposal.")
 
 
 if __name__ == "__main__":

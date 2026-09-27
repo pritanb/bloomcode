@@ -8,6 +8,14 @@ for await (const line of createInterface({ input: process.stdin })) {
   const req = JSON.parse(line);
   if (req.message === 'crash') process.exit(1);
   if (req.message === 'hang') continue;
+  if (req.message === 'failed-step') {
+    emit('error', req.id, {
+      ...state(),
+      message: 'Retry step',
+      coaching: { id: 'coach', attemptId: 'attempt', status: 'active', needsRetry: true },
+    });
+    continue;
+  }
   if (req.method === 'reply') {
     emit('activity', req.id, { message: 'Reading evidence…' });
     emit('delta', req.id, { text: 'Recorded evidence' });

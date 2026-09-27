@@ -12,6 +12,16 @@ import type { ChatState } from '../../shared/tutor-chat.js';
 
 const result = z.object({
   conversationId: z.string(),
+  coaching: z
+    .object({
+      id: z.string(),
+      attemptId: z.string(),
+      status: z.enum(['active', 'paused', 'completed']),
+      needsRetry: z.boolean(),
+    })
+    .nullable()
+    .optional(),
+  coachingError: z.string().nullable().optional(),
   activity: z.string().default(''),
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string() })).max(100),
   proposals: z.array(
@@ -89,6 +99,7 @@ export class TutorConversation {
             this.current = undefined;
             this.state = {
               ...this.state,
+              ...(result.safeParse(event).success ? result.parse(event) : {}),
               status: 'ready',
               draft: '',
               activity: '',
@@ -214,6 +225,7 @@ export function registerConversation(
   app.addHook('onClose', async () => {
     chat?.stop();
   });
+  app.get('/api/tutor-access', () => ({ allowed: !blocked() }));
   app.get('/api/tutor-chat', () => {
     if (blocked()) {
       chat?.stop();
@@ -271,11 +283,24 @@ export function registerConversation(
   app.post('/api/tutor-chat/message', (req) => {
     guard();
     const body = z
-      .object({ id: z.string().uuid(), message: z.string().trim().min(1).max(12000) })
+      .object({
+        id: z.string().uuid(),
+        message: z.string().trim().min(1).max(12000),
+        attemptId: z.string().uuid().optional(),
+      })
       .strict()
       .parse(req.body);
     if (!chat) throw conflict('Open the tutor first');
-    chat.send(body.id, { method: 'reply', message: body.message });
+    if (
+      body.attemptId &&
+      !maybe(db, "SELECT id FROM attempts WHERE id = ? AND status = 'completed'", body.attemptId)
+    )
+      throw new ApiError(400, 'TUTOR_CONTEXT', 'Choose a completed attempt');
+    chat.send(body.id, {
+      method: 'reply',
+      message: body.message,
+      ...(body.attemptId ? { attemptId: body.attemptId } : {}),
+    });
     return { accepted: true };
   });
   app.post('/api/tutor-chat/confirm', (req) => {
@@ -297,6 +322,16 @@ export function registerConversation(
       kind: body.kind,
       approved: body.approved,
     });
+    return { accepted: true };
+  });
+  app.post('/api/tutor-chat/coaching', (req) => {
+    guard();
+    const body = z
+      .object({ id: z.string().uuid(), action: z.enum(['pause', 'resume', 'retry']) })
+      .strict()
+      .parse(req.body);
+    if (!chat) throw conflict('Open the tutor first');
+    chat.send(body.id, { method: 'coaching', action: body.action });
     return { accepted: true };
   });
   app.post('/api/tutor-chat/new', () => {

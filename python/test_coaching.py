@@ -98,3 +98,16 @@ class RoutingTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             StructuredCodex(codex, {})(Teaching, 'test', {'evidence': {'ids': ['real']}})
         self.assertEqual(thread.count, 2)
+
+    def test_answer_can_reference_the_already_selected_attempt(self):
+        from coaching import Coaching
+        from coaching_model import Route
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory:
+            coach = Coaching(Path(directory), lambda *a: Route(intent='answer', attempt_id='selected', problem=None, latest=False), None)
+            coach.evidence = SimpleNamespace(check_access=lambda: None)
+            original = coach.graph
+            coach.graph = SimpleNamespace(state=lambda: {}, view=lambda: {'attemptId':'selected','status':'active','messages':[]},
+                reply=lambda request: {'messages':[{'text':'Adapted response'}]})
+            self.assertEqual(coach.reply('My answer'), 'Adapted response')
+            original.close()
