@@ -1,0 +1,66 @@
+# Python tutor
+
+Python manages the tutor conversation through the [Codex Python SDK](https://learn.chatgpt.com/docs/codex-sdk).
+BloomCode's existing TypeScript MCP server supplies platform tools. There is no
+separate Python MCP server or API client.
+
+## Run
+
+Requires Python 3.11+, Node.js matching the repository's requirements, and a
+running BloomCode backend containing the latest changes in this worktree.
+An older installed app will not have the new attempt-list endpoint.
+
+From the worktree root:
+
+```sh
+npm ci
+python3 -m venv python/.venv
+python/.venv/bin/python -m pip install -r python/requirements.txt
+python/.venv/bin/python python/chat.py \
+  --api-url http://127.0.0.1:4317 \
+  --token-file /absolute/path/to/data/api-token
+```
+
+Replace the token path with the `api-token` file beside your running server's
+database. Dependencies are already installed in the development worktree.
+The tutor reuses file-based Codex sign-in (`auth.json` in `CODEX_HOME`, normally
+`~/.codex`). Keyring-only sign-in is not supported yet. Messages and retrieved
+records are sent to Codex and use the signed-in account's usage.
+
+Ask: **“For my latest Two Sum attempt, what changed in my help usage?”**
+No attempt ID is required. Enter `/quit` or press Ctrl+C to exit.
+`--model MODEL` overrides the default `gpt-6-sol`. Without `--token-file`, the
+conversation runs without platform tools. `--attempt ID` remains an optional
+shortcut for starting a discussion about a known attempt.
+
+## Follow the code
+
+- `chat.py`: terminal input and output.
+- `tutor.py`: teaching instructions, Codex session, and dedicated MCP configuration.
+- `../src/integrations/mcp.ts`: the shared `get_recent_attempts` and `get_attempt_context` tools.
+- `../src/server/attempts/attempts.ts`: lists completed attempts through the authenticated API.
+
+`get_recent_attempts` returns summaries newest first, optionally filtered by
+problem title (up to 20 results). `hasMore` indicates older matches. The tutor
+passes a returned ID to `get_attempt_context`, which returns the existing
+platform context, including code, history and topic scores. Ambiguous requests
+can be clarified using titles and dates rather than internal IDs.
+
+Only those two tools are allowlisted for this tutor; the shared server's write
+tools are not exposed. General-purpose Codex tools and web search are disabled.
+The API still enforces authentication and assessment visibility. The MCP process
+holds the existing broad local API credential; server-side scoped credentials
+remain production hardening work. User MCP configuration is not modified.
+
+Conversation memory lasts until exit. Persistence is the next milestone.
+
+## Verify
+
+```sh
+node --import tsx tests/integrations/python-context.mjs
+```
+
+This starts the real TypeScript MCP server against a disposable BloomCode
+database and tests listing, filtering, retrieval and assessment restrictions.
+Add `--live` to verify that Codex calls both tools without being given an ID,
+then answers a follow-up. That option consumes signed-in account usage.

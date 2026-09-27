@@ -14,3 +14,6 @@ api-token
 output/playwright/
 .playwright-cli/
 .claude/
+.venv/
+__pycache__/
+*.pyc
