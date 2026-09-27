@@ -321,10 +321,25 @@ export function TutorChat({
                     value={message}
                     maxLength={12000}
                     onChange={(event) => setMessage(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key !== 'Enter' ||
+                        event.shiftKey ||
+                        event.nativeEvent.isComposing ||
+                        event.nativeEvent.keyCode === 229
+                      )
+                        return;
+                      event.preventDefault();
+                      if (!event.repeat) event.currentTarget.form?.requestSubmit();
+                    }}
+                    aria-describedby="tutor-message-help"
                     placeholder="Ask a question, or use /coach followed by a problem name"
                     rows={3}
                     disabled={state.status === 'starting'}
                   />
+                  <p id="tutor-message-help" className="text-xs text-muted-foreground">
+                    Enter to send · Shift+Enter for a new line
+                  </p>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs text-muted-foreground">
                       Uses your Codex sign-in. Advice is based on recorded evidence and can be
