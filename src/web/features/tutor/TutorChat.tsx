@@ -67,6 +67,19 @@ export function TutorChat({
     onSuccess: () => cache.invalidateQueries({ queryKey: ['tutor-chat'] }),
   });
   const state = query.data;
+  const attemptedStart = useRef(false);
+  const { mutate, isPending } = action;
+  useEffect(() => {
+    if (!visible || state?.status === 'blocked' || state?.status === 'ready') {
+      attemptedStart.current = false;
+      return;
+    }
+    // Try once per opening/closed session; failures need an explicit retry.
+    if (state?.status === 'closed' && !isPending && !attemptedStart.current) {
+      attemptedStart.current = true;
+      mutate({ path: 'open' });
+    }
+  }, [visible, state?.status, isPending, mutate]);
   useEffect(() => {
     if (following.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [state?.messages.length, state?.draft, state?.proposals.length]);
@@ -162,13 +175,6 @@ export function TutorChat({
               }
             >
               {attemptId ? 'Coach this attempt' : 'Coach latest attempt'}
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => action.mutate({ path: 'cancel' })}
-            >
-              Close tutor
             </Button>
           </>
         )}
@@ -330,7 +336,7 @@ export function TutorChat({
               </div>
               {state.status === 'closed' || state.status === 'error' ? (
                 <Button disabled={action.isPending} onClick={() => action.mutate({ path: 'open' })}>
-                  Open tutor
+                  {action.isPending ? 'Connecting…' : 'Retry connection'}
                 </Button>
               ) : (
                 <form

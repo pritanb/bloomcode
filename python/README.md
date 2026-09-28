@@ -23,7 +23,7 @@ python/.venv/bin/python -m pip install -r python/requirements.txt
 ```
 
 **In the app:** build with `npm run build`, restart the backend, and click
-**Ask Bloom**. For desktop development, use `npm run electron:dev`; it sets
+**Ask Bloom**; the tutor connects and resumes automatically. For desktop development, use `npm run electron:dev`; it sets
 `BLOOMCODE_TUTOR_ROOT` so the staged app can find this worktree's Python files.
 Set `BLOOMCODE_PYTHON` to an absolute interpreter path if using another environment.
 Python is not yet bundled in the desktop release.
@@ -85,7 +85,7 @@ request; in-app requests time out after three minutes.
   The model uses restricted tools and cannot directly change scores or schedules.
 - Active practice blocks tutor access and stops an in-flight app response.
 - Completed conversations resume automatically. One process can use a session
-  directory at a time; close the app tutor before using that session in the terminal.
+  directory at a time; quit BloomCode before using that session in the terminal.
 - Tutor files live in `tutor/` beside the API token, or `private/tutor/` without one
   (`--state-dir` overrides this). Codex history lives in `codex-home/`; coaching
   checkpoints live in `coaching.sqlite`. The ordinary answer graph has no checkpoints.
