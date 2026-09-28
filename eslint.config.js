@@ -5,6 +5,7 @@ export default tseslint.config(
   {
     ignores: [
       '.claude/**',
+      'private/**',
       'dist/**',
       'node_modules/**',
       'coverage/**',
