@@ -3,6 +3,10 @@ r = json.loads(input())
 id = r['id']
 kind = r['context'].get('mode')
 message = dict(v=1, id=id)
+if kind == 'startup_failure':
+    import sys
+    print('Traceback (most recent call last):\n  private study record\nModuleNotFoundError: private module name', file=sys.stderr)
+    sys.exit(1)
 if kind == 'usage':
     message.update(type='error', kind='usage_limit', message='Codex usage limit reached.')
 elif kind == 'unexpected_read':

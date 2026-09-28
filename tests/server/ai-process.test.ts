@@ -38,3 +38,16 @@ it('preserves classified errors and denies unsolicited platform reads', async ()
     ),
   ).rejects.toThrow('Unexpected evidence');
 });
+
+it('reports startup dependency failures without exposing stderr contents', async () => {
+  const failure = await runAIWorker(
+    { id: 'task', kind: 'report', context: { mode: 'startup_failure' }, timeoutMs: 1000 },
+    options,
+    {},
+    runtime,
+  ).catch((error: Error) => error);
+  expect(failure).toMatchObject({ kind: 'not_installed' });
+  expect((failure as Error).message).toContain('ModuleNotFoundError');
+  expect((failure as Error).message).toContain('BLOOMCODE_PYTHON');
+  expect((failure as Error).message).not.toContain('private');
+});

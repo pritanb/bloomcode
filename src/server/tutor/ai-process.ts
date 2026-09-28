@@ -141,13 +141,27 @@ export function runAIWorker(
       ),
     );
     child.stdin.on('error', () => finish(new Error('AI worker disconnected.')));
-    // Consume diagnostics without logging potentially private SDK data.
-    child.stderr.resume();
+    // Keep only a recognised exception category, never traceback text or source records.
+    let diagnosticBuffer = '',
+      startupFailure: string | undefined;
+    child.stderr.on('data', (chunk: Buffer) => {
+      diagnosticBuffer = (diagnosticBuffer + chunk.toString()).slice(-4096);
+      const category = diagnosticBuffer.match(
+        /(?:^|\n)(ModuleNotFoundError|ImportError|SyntaxError|IndentationError|UnicodeDecodeError|JSONDecodeError|RuntimeError|ValueError|PermissionError|FileNotFoundError):/,
+      )?.[1];
+      if (category) startupFailure = category;
+    });
     child.on('close', (code) => {
       if (!settled)
         finish(
-          new Error(
-            `AI worker exited (${code ?? 'signal'}). Check Python dependencies and file-based Codex sign-in.`,
+          new CodexError(
+            startupFailure === 'ModuleNotFoundError' || startupFailure === 'ImportError'
+              ? 'not_installed'
+              : 'crashed',
+            `AI worker exited (${code ?? 'signal'}${startupFailure ? `; ${startupFailure}` : ''}). ` +
+              (startupFailure === 'ModuleNotFoundError' || startupFailure === 'ImportError'
+                ? 'Install python/requirements.txt using the interpreter configured by BLOOMCODE_PYTHON, or python/.venv/bin/python, then restart BloomCode.'
+                : 'Restart BloomCode and retry. If this continues, check the configured Python runtime and worker installation.'),
           ),
         );
     });
