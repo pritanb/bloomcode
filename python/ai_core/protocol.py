@@ -5,8 +5,8 @@ import sys
 MAX_MESSAGE = 2_000_000
 
 
-def emit(kind, id=None, **data):
-    print(json.dumps({'v': 1, 'type': kind, 'id': id, **data}), flush=True)
+def emit(message_type, id=None, **data):
+    print(json.dumps({'v': 1, 'type': message_type, 'id': id, **data}), flush=True)
 
 
 def receive(expected_id=None):
