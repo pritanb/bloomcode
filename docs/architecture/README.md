@@ -57,9 +57,9 @@ prevents the app and terminal from writing the same tutor state concurrently.
 
 - [Chat UI](../../src/web/features/tutor/TutorChat.tsx)
 - [Fastify worker lifecycle and chat routes](../../src/server/tutor/conversation.ts)
-- [Python worker](../../python/worker.py) and [tutor session](../../python/bloom_tutor/session.py)
-- [Ordinary answer graph](../../python/bloom_tutor/answer_graph.py)
-- [Coaching graph](../../python/bloom_tutor/coaching/graph.py)
+- [Python worker](../../python/worker.py) and [tutor session](../../python/tutor/session.py)
+- [Ordinary answer graph](../../python/tutor/answer_graph.py)
+- [Coaching graph](../../python/tutor/coaching/graph.py)
 - [Shared MCP tools](../../src/integrations/mcp.ts)
 - [Tutor setup and implementation details](../../python/README.md)
 - [Backend notes](../../src/server/README.md)

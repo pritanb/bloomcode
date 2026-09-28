@@ -3,7 +3,7 @@ import argparse
 import json
 import time
 from pathlib import Path
-from bloom_tutor.session import open_tutor
+from tutor.session import open_tutor
 
 p = argparse.ArgumentParser()
 p.add_argument('--api-url', required=True)

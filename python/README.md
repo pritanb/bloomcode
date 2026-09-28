@@ -87,7 +87,7 @@ the app-to-Python flow, evidence retrieval, coaching loop and storage boundaries
 python/
 ├── chat.py                 # Terminal entry point
 ├── worker.py               # App subprocess entry point
-├── bloom_tutor/            # Runtime implementation
+├── tutor/            # Runtime implementation
 │   ├── session.py          # Codex session, instructions and proposals
 │   ├── answer_graph.py     # Snapshot → evidence → ordinary answer
 │   ├── learner_state.py    # MCP access and learner snapshot
@@ -107,7 +107,7 @@ python/
 └── requirements.txt
 ```
 
-Start with `chat.py` or `worker.py`, then follow `bloom_tutor/session.py` into
+Start with `chat.py` or `worker.py`, then follow `tutor/session.py` into
 `answer_graph.py` for ordinary chat or `coaching/controller.py` for coaching.
 The shared platform tools remain in `../src/integrations/mcp.ts`; Python does
 not duplicate them. The app and terminal launch commands are unchanged.
@@ -284,7 +284,7 @@ This also uses disposable data and signed-in account usage.
 
 ## Evidence-first answers (LangGraph)
 
-Ordinary messages now run through `bloom_tutor/answer_graph.py` before the existing Codex
+Ordinary messages now run through `tutor/answer_graph.py` before the existing Codex
 chat turn: **snapshot → retrieve and inspect evidence → answer**. This is also
 used when active coaching hands a message back to chat. It adds no classifier or
 planning model call. Codex still streams the answer, keeps conversation history,

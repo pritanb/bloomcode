@@ -13,7 +13,7 @@ os.environ['LANGCHAIN_TRACING_V2'] = 'false'
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import interrupt, Command
 from langgraph.checkpoint.sqlite import SqliteSaver
-from bloom_tutor.coaching.model import Teaching, TEACHING
+from tutor.coaching.model import Teaching, TEACHING
 
 
 class State(TypedDict, total=False):

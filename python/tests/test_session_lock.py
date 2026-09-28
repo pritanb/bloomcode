@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from bloom_tutor.session_lock import session_lock
+from tutor.session_lock import session_lock
 
 
 class SessionLockTests(unittest.TestCase):

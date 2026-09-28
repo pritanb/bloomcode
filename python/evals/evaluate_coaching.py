@@ -6,7 +6,7 @@ import re
 import time
 from pathlib import Path
 from datetime import datetime, timezone
-from bloom_tutor.session import open_tutor
+from tutor.session import open_tutor
 
 
 def main():

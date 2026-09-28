@@ -7,7 +7,7 @@ from pathlib import Path
 import signal
 import sys
 
-from bloom_tutor.session import open_tutor
+from tutor.session import open_tutor
 
 
 def emit(kind, id=None, **data):

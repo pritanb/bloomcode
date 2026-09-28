@@ -123,7 +123,7 @@ try {
         `
 import json,sys
 from pathlib import Path
-from bloom_tutor.answer_graph import AnswerFlow
+from tutor.answer_graph import AnswerFlow
 flow = AnswerFlow(Path(sys.argv[1]), lambda message, **kw: 'inspected')
 flow.reply('Why am I still failing to understand Binary Search questions?')
 print(json.dumps(flow.last_evidence))

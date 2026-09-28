@@ -2,8 +2,8 @@ import unittest
 from contextlib import asynccontextmanager
 from unittest.mock import patch
 
-from bloom_tutor.answer_graph import AnswerFlow
-from bloom_tutor.session import TutorSession
+from tutor.answer_graph import AnswerFlow
+from tutor.session import TutorSession
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -24,8 +24,8 @@ class AnswerFlowTests(unittest.TestCase):
             if kwargs.get('on_text'): kwargs['on_text']('Grounded answer')
             return 'Grounded answer'
         flow = AnswerFlow(Path('unused'), answer)
-        with patch('bloom_tutor.answer_graph.platform_session', session), patch('bloom_tutor.answer_graph.call', tool), patch(
-                'bloom_tutor.answer_graph.load_snapshot', return_value=snapshot or {'status':'available'}):
+        with patch('tutor.answer_graph.platform_session', session), patch('tutor.answer_graph.call', tool), patch(
+                'tutor.answer_graph.load_snapshot', return_value=snapshot or {'status':'available'}):
             result = flow.reply(message)
         return flow, answers, result
 
@@ -109,8 +109,8 @@ class AnswerFlowTests(unittest.TestCase):
             kw['on_text']('text')
             return 'answer'
         flow = AnswerFlow(Path('unused'), respond)
-        with patch('bloom_tutor.answer_graph.platform_session', session), patch('bloom_tutor.answer_graph.call', tool), patch(
-                'bloom_tutor.answer_graph.load_snapshot', return_value={'status':'available'}):
+        with patch('tutor.answer_graph.platform_session', session), patch('tutor.answer_graph.call', tool), patch(
+                'tutor.answer_graph.load_snapshot', return_value={'status':'available'}):
             flow.reply('Why am I struggling with Binary Search questions?', on_text=delivered.append)
             flow.reply('Can you explain?', on_text=delivered.append)
         self.assertIn('Binary Search', queries[2])

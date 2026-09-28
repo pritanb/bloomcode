@@ -10,8 +10,8 @@ os.environ['LANGSMITH_TRACING'] = 'false'
 os.environ['LANGCHAIN_TRACING_V2'] = 'false'
 
 from langgraph.graph import StateGraph, START, END
-from bloom_tutor.coaching.evidence import call, compact
-from bloom_tutor.learner_state import load_snapshot, platform_session
+from tutor.coaching.evidence import call, compact
+from tutor.learner_state import load_snapshot, platform_session
 
 
 class AnswerState(TypedDict, total=False):

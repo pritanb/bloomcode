@@ -1,6 +1,6 @@
 import unittest
 
-from bloom_tutor.goal_progress import goal_progress
+from tutor.goal_progress import goal_progress
 
 
 GOAL = {"id": "goal", "createdAt": "2026-09-20T12:00:00Z"}

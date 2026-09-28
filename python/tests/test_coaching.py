@@ -1,8 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from bloom_tutor.coaching.graph import CoachingGraph
-from bloom_tutor.coaching.model import Teaching
+from tutor.coaching.graph import CoachingGraph
+from tutor.coaching.model import Teaching
 
 
 def evidence(id):
@@ -67,7 +67,7 @@ class CoachingTests(unittest.TestCase):
 
 class RoutingTests(unittest.TestCase):
     def test_normal_chat_pauses_and_clarification_is_persisted(self):
-        from bloom_tutor.coaching.controller import Coaching
+        from tutor.coaching.controller import Coaching
         with tempfile.TemporaryDirectory() as directory:
             coach = Coaching(Path(directory), lambda *a: self.fail('Selection must not call a model'), None)
             class FakeEvidence:
@@ -83,7 +83,7 @@ class RoutingTests(unittest.TestCase):
             coach.close()
 
     def test_explicit_start_switch_and_resume_have_no_classification_call(self):
-        from bloom_tutor.coaching.controller import Coaching
+        from tutor.coaching.controller import Coaching
         with tempfile.TemporaryDirectory() as directory:
             calls, targets = [], []
             def model(schema, instructions, data):
@@ -118,7 +118,7 @@ class RoutingTests(unittest.TestCase):
             coach.close()
 
     def test_ordinary_chat_after_completion_leaves_coaching_view(self):
-        from bloom_tutor.coaching.controller import Coaching
+        from tutor.coaching.controller import Coaching
         with tempfile.TemporaryDirectory() as directory:
             coach = Coaching(Path(directory), lambda *a: Teaching(
                 action='finish', focus='x', response='Done', evidence_ids=[]), None)
@@ -130,7 +130,7 @@ class RoutingTests(unittest.TestCase):
             coach.close()
 
     def test_ambiguous_selection_survives_restart_without_a_model_call(self):
-        from bloom_tutor.coaching.controller import Coaching
+        from tutor.coaching.controller import Coaching
         with tempfile.TemporaryDirectory() as directory:
             class FakeEvidence:
                 def check_access(self): pass
@@ -155,7 +155,7 @@ class RoutingTests(unittest.TestCase):
             coach.close()
 
     def test_invalid_model_references_are_repaired_once(self):
-        from bloom_tutor.coaching.model import StructuredCodex
+        from tutor.coaching.model import StructuredCodex
         from types import SimpleNamespace
         class Thread:
             count = 0
@@ -171,7 +171,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(thread.count, 2)
 
     def test_active_answer_uses_teaching_without_router(self):
-        from bloom_tutor.coaching.controller import Coaching
+        from tutor.coaching.controller import Coaching
         with tempfile.TemporaryDirectory() as directory:
             calls = []
             def model(schema, instructions, data):
@@ -190,7 +190,7 @@ class RoutingTests(unittest.TestCase):
             coach.close()
 
     def test_goal_request_hands_off_once_without_consuming_the_question(self):
-        from bloom_tutor.coaching.controller import Coaching
+        from tutor.coaching.controller import Coaching
         with tempfile.TemporaryDirectory() as directory:
             calls = []
             def model(schema, instructions, data):
@@ -249,7 +249,7 @@ class FocusedEvidenceTests(unittest.TestCase):
     def test_explicit_targets_select_the_requested_record_only(self):
         from contextlib import asynccontextmanager
         from unittest.mock import patch
-        from bloom_tutor.coaching.evidence import Evidence
+        from tutor.coaching.evidence import Evidence
         calls = []
         @asynccontextmanager
         async def session(config): yield object()
@@ -260,7 +260,7 @@ class FocusedEvidenceTests(unittest.TestCase):
             return {'attempts': [
                 {'id':id, 'problem':{'title':'Two Sum'}, 'finishedAt':'today'}
                 for id in ['newest', 'older']]}
-        with patch('bloom_tutor.coaching.evidence.platform_session', session), patch('bloom_tutor.coaching.evidence.call', call):
+        with patch('tutor.coaching.evidence.platform_session', session), patch('tutor.coaching.evidence.call', call):
             provider = Evidence(None)
             self.assertEqual(provider.resolve('latest', 'screen'), ('newest', []))
             self.assertEqual(provider.resolve('this', 'screen'), ('screen', []))
@@ -273,7 +273,7 @@ class FocusedEvidenceTests(unittest.TestCase):
     def test_followup_reads_fresh_access_attempt_and_preferences_only(self):
         from contextlib import asynccontextmanager
         from unittest.mock import patch
-        from bloom_tutor.coaching.evidence import Evidence
+        from tutor.coaching.evidence import Evidence
         calls = []
         @asynccontextmanager
         async def session(config):
@@ -285,7 +285,7 @@ class FocusedEvidenceTests(unittest.TestCase):
                 'get_attempt_context': {'attempt': {'id':'a', 'status':'completed', 'version':2, 'code':'new code'}, 'history':[{'id':'old'}]},
                 'get_tutor_preferences': {'hintStyle':'direct', 'version':3},
             }[tool]
-        with patch('bloom_tutor.coaching.evidence.platform_session', session), patch('bloom_tutor.coaching.evidence.call', call):
+        with patch('tutor.coaching.evidence.platform_session', session), patch('tutor.coaching.evidence.call', call):
             result = Evidence(None).followup('a')
         self.assertEqual(calls, ['get_tutor_access', 'get_attempt_context', 'get_tutor_preferences'])
         self.assertEqual(result['records'][0]['attempt']['version'], 2)
@@ -297,13 +297,13 @@ class FocusedEvidenceTests(unittest.TestCase):
     def test_denied_followup_does_not_read_records(self):
         from contextlib import asynccontextmanager
         from unittest.mock import patch
-        from bloom_tutor.coaching.evidence import Evidence
+        from tutor.coaching.evidence import Evidence
         calls = []
         @asynccontextmanager
         async def session(config): yield object()
         async def call(client, tool, args):
             calls.append(tool)
             return {'allowed': False}
-        with patch('bloom_tutor.coaching.evidence.platform_session', session), patch('bloom_tutor.coaching.evidence.call', call):
+        with patch('tutor.coaching.evidence.platform_session', session), patch('tutor.coaching.evidence.call', call):
             with self.assertRaises(PermissionError): Evidence(None).followup('a')
         self.assertEqual(calls, ['get_tutor_access'])
