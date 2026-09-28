@@ -11,7 +11,7 @@ import { z } from 'zod';
 export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 export const EMBEDDING_REVISION = '751bff37182d3f1213fa05d7196b954e230abad9';
 export const ANALYSIS_VERSION = 'learning-insights-v1';
-export const REPORT_VERSION = 'learning-report-independent-v4';
+export const REPORT_VERSION = 'learning-report-targeted-v5';
 export const REPORT_WRITING_RULES = `Use this required format for every finding:
 - title (Habit): at most 6 words, plain language.
 - action (Next time): at most 25 words, one concrete action, starting with a verb.
@@ -43,6 +43,8 @@ export const findingInput = z
     kind: z.enum(['recurring', 'single_problem', 'improvement', 'focus']),
     explanation: text,
     action: text,
+    exercise: text.optional(),
+    successCheck: text.optional(),
     evidenceIds: z.array(id).min(1).max(12),
     caveat: z.string().max(1000),
     suggestions: z
@@ -83,6 +85,16 @@ export const conciseReportResult = reportResult.extend({
       }),
     )
     .max(6),
+});
+
+/** New reports require actionable practice; saved reports retain the legacy contract. */
+export const targetedReportResult = reportResult.extend({
+  findings: z.array(findingInput.extend({
+    title: z.string().trim().min(1).max(200),
+    action: z.string().trim().min(1).max(600),
+    exercise: text,
+    successCheck: z.string().trim().min(1).max(1000),
+  })).max(3),
 });
 
 export type ObservationInput = z.infer<typeof observationInput>;
