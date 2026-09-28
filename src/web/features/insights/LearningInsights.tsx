@@ -137,6 +137,7 @@ function InsightCard({
   refresh: () => void;
 }) {
   const { icon, tone } = findingTiles[finding.kind];
+  const supporting = data.observations.filter((o) => finding.evidenceIds.includes(o.id));
   const topics = [
     ...new Map(
       data.observations
@@ -205,16 +206,31 @@ function InsightCard({
           {finding.action}
         </Callout>
         {finding.caveat && <p className="text-xs text-muted-foreground">{finding.caveat}</p>}
-        <Disclosure quiet title={`Inspect evidence (${finding.evidenceIds.length})`}>
-          <List>
-            {finding.evidenceIds.map((id) => {
-              const observation = data.observations.find((o) => o.id === id);
-              return observation ? (
-                <Evidence key={id} observation={observation} onDismiss={refresh} />
-              ) : null;
-            })}
-          </List>
-        </Disclosure>
+        {supporting[0] && (
+          <section className="flex flex-col gap-2">
+            <Subheading>Your evidence</Subheading>
+            <List>
+              <Evidence observation={supporting[0]} onDismiss={refresh} />
+            </List>
+          </section>
+        )}
+        {finding.exercise && (
+          <Callout tone="brand" label="Try this exercise">
+            {finding.exercise}
+          </Callout>
+        )}
+        {finding.successCheck && (
+          <Callout label="Check your understanding">{finding.successCheck}</Callout>
+        )}
+        {supporting.length > 1 && (
+          <Disclosure quiet title={`More supporting evidence (${supporting.length - 1})`}>
+            <List>
+              {supporting.slice(1).map((observation) => (
+                <Evidence key={observation.id} observation={observation} onDismiss={refresh} />
+              ))}
+            </List>
+          </Disclosure>
+        )}
         {finding.suggestions.length > 0 && (
           <section className="flex flex-col gap-1">
             <SectionHeader level={3} icon={BookOpen} title="Optional targeted practice" />
