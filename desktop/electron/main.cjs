@@ -182,6 +182,8 @@ async function startWorker() {
       ...(app.isPackaged
         ? {
             BLOOMCODE_TUTOR_ROOT: join(process.resourcesPath, 'ai'),
+            // Keep the signed application bundle immutable when Python imports modules.
+            PYTHONDONTWRITEBYTECODE: '1',
             BLOOMCODE_PYTHON:
               process.env.BLOOMCODE_PYTHON ||
               join(app.getPath('appData'), 'BloomCode', 'ai-runtime', 'bin', 'python'),
