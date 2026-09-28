@@ -10,8 +10,7 @@ import sys
 from tutor.session import open_tutor
 
 
-def emit(kind, id=None, **data):
-    print(json.dumps({"v": 1, "type": kind, "id": id, **data}), flush=True)
+from ai_core.protocol import emit
 
 
 def history(tutor):

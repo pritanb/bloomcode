@@ -1,0 +1,32 @@
+"""One model call per invocation. Retry policy belongs to the feature workflow."""
+from contextlib import closing
+import json
+import time
+from openai_codex import ApprovalMode, Sandbox
+
+
+def stream_events(turn):
+    with closing(turn.stream()) as events:
+        yield from events
+
+
+class StructuredModel:
+    def __init__(self, codex, options, model, effort):
+        self.codex, self.options = codex, options
+        self.model, self.effort = model, effort
+        self.trace = []
+
+    def generate(self, schema, instructions, data):
+        options = {**self.options, 'model': self.model, 'base_instructions': instructions,
+                   'config': {'mcp_servers.bloomcode.enabled': False},
+                   'approval_mode': ApprovalMode.deny_all, 'sandbox': Sandbox.read_only}
+        thread = self.codex.thread_start(ephemeral=True, **options)
+        started = time.monotonic()
+        result = thread.run(json.dumps(data), output_schema=schema, effort=self.effort)
+        self.trace.append({'model': self.model, 'reasoningEffort': str(self.effort),
+            'latencySeconds': round(time.monotonic() - started, 3),
+            'inputCharacters': len(json.dumps(data)),
+            'usage': result.usage.model_dump(mode='json') if result.usage else None})
+        if result.error or result.status.value != 'completed':
+            raise RuntimeError('Codex could not finish the response.')
+        return result.final_response or ''

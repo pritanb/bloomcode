@@ -1,6 +1,6 @@
 """A conversation with BloomCode's tutor, backed by the Codex Python SDK."""
 
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import asyncio
 import os
@@ -11,7 +11,7 @@ from typing import Callable, Iterator
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox, Thread
+from openai_codex import ApprovalMode, Codex, Sandbox, Thread
 from tutor.learner_state import load_snapshot, save_confirmed_change
 from tutor.session_lock import session_lock
 
@@ -107,13 +107,8 @@ Only use records actually returned. All platform tools available to you are read
 Never claim to have retrieved other records or verified execution.
 """
 
-# Keep general-purpose tools disabled; expose only read-only learning tools.
-DISABLED_FEATURES = (
-    "shell_tool", "unified_exec", "apps", "browser_use",
-    "browser_use_external", "computer_use", "image_generation",
-    "multi_agent", "plugins", "view_image", "in_app_browser",
-    "goals", "skill_search", "tool_suggest", "hooks",
-)
+from ai_core.runtime import auth_file as find_auth_file, runtime_config
+from ai_core.model import stream_events
 
 TOOL_ACTIVITY = {
     "get_recent_attempts": ("Finding recent attempts…", "Attempt search"),
@@ -198,42 +193,41 @@ class TutorSession:
         fallback_response = None
         answer_ids = set()
         turn = self.thread.turn(message)
-        with closing(turn.stream()) as events:
-            for event in events:
-                if event.method in {"item/started", "item/completed"}:
-                    item = event.payload.item.root
-                    if item.type == "agentMessage" and (item.phase is None or item.phase.value == "final_answer"):
-                        answer_ids.add(item.id)
-                    if (event.method == "item/completed" and item.type == "mcpToolCall"
-                            and item.server == "bloomcode" and item.tool in {"propose_learning_goal", "propose_tutor_preferences"}
-                            and item.error is None and item.result is not None):
-                        for content in item.result.content:
-                            if content.get("type") == "text":
-                                data = json.loads(content["text"])
-                                if "proposal" in data:
-                                    change = data["proposal"]
-                                    pending = self.pending_goals if item.tool == "propose_learning_goal" else self.pending_preferences
-                                    if not any(p["change"] == change for p in pending):
-                                        pending.append({"change": change, "key": str(uuid4())})
-                    if (item.type == "mcpToolCall" and item.server == "bloomcode"
-                            and item.tool in TOOL_ACTIVITY and on_activity):
-                        started, label = TOOL_ACTIVITY[item.tool]
-                        if event.method == "item/started":
-                            on_activity(started)
-                        else:
-                            failed = item.error is not None or item.status.value == "failed"
-                            on_activity(f"{label} {'failed' if failed else 'completed'}.")
-                    elif event.method == "item/completed" and item.type == "agentMessage":
-                        if item.phase is None:
-                            fallback_response = item.text
-                        elif item.phase.value == "final_answer":
-                            final_response = item.text
-                elif event.method == "item/agentMessage/delta" and on_text and event.payload.item_id in answer_ids:
-                    on_text(event.payload.delta)
-                elif event.method == "thread/tokenUsage/updated":
-                    self.last_usage = event.payload.token_usage.model_dump(mode='json')
-                elif event.method == "turn/completed":
-                    completed = event.payload.turn
+        for event in stream_events(turn):
+            if event.method in {"item/started", "item/completed"}:
+                item = event.payload.item.root
+                if item.type == "agentMessage" and (item.phase is None or item.phase.value == "final_answer"):
+                    answer_ids.add(item.id)
+                if (event.method == "item/completed" and item.type == "mcpToolCall"
+                        and item.server == "bloomcode" and item.tool in {"propose_learning_goal", "propose_tutor_preferences"}
+                        and item.error is None and item.result is not None):
+                    for content in item.result.content:
+                        if content.get("type") == "text":
+                            data = json.loads(content["text"])
+                            if "proposal" in data:
+                                change = data["proposal"]
+                                pending = self.pending_goals if item.tool == "propose_learning_goal" else self.pending_preferences
+                                if not any(p["change"] == change for p in pending):
+                                    pending.append({"change": change, "key": str(uuid4())})
+                if (item.type == "mcpToolCall" and item.server == "bloomcode"
+                        and item.tool in TOOL_ACTIVITY and on_activity):
+                    started, label = TOOL_ACTIVITY[item.tool]
+                    if event.method == "item/started":
+                        on_activity(started)
+                    else:
+                        failed = item.error is not None or item.status.value == "failed"
+                        on_activity(f"{label} {'failed' if failed else 'completed'}.")
+                elif event.method == "item/completed" and item.type == "agentMessage":
+                    if item.phase is None:
+                        fallback_response = item.text
+                    elif item.phase.value == "final_answer":
+                        final_response = item.text
+            elif event.method == "item/agentMessage/delta" and on_text and event.payload.item_id in answer_ids:
+                on_text(event.payload.delta)
+            elif event.method == "thread/tokenUsage/updated":
+                self.last_usage = event.payload.token_usage.model_dump(mode='json')
+            elif event.method == "turn/completed":
+                completed = event.payload.turn
         response = final_response or fallback_response
         if completed and completed.error:
             raise RuntimeError(completed.error.message)
@@ -252,12 +246,7 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
                new: bool = False) -> Iterator[TutorSession]:
     # Reuse file-based CLI login without importing user MCP servers or rules.
     # The symlink lets Codex refresh the existing credential when needed.
-    auth_file = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "auth.json"
-    if not auth_file.is_file():
-        raise RuntimeError(
-            "No file-based Codex sign-in found. This first integration requires "
-            "an existing auth.json in CODEX_HOME (normally ~/.codex)."
-        )
+    auth_file = find_auth_file()
 
     repo = Path(__file__).resolve().parents[2]
     workspace_key = str(token_file.resolve()) if token_file else "standalone"
@@ -319,15 +308,7 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
             )
         # Rebuild our own configuration so stale tool settings are not retained.
         (codex_home / "config.toml").write_text(mcp_config)
-        config = CodexConfig(
-            cwd=str(workspace),
-            env={"CODEX_HOME": str(codex_home)},
-            config_overrides=(
-                'cli_auth_credentials_store="file"',
-                'web_search="disabled"',
-                *(f"features.{name}=false" for name in DISABLED_FEATURES),
-            ),
-        )
+        config = runtime_config(codex_home, workspace)
         with Codex(config) as codex:
             options = dict(model=model, cwd=str(workspace), base_instructions=TUTOR_INSTRUCTIONS,
                            sandbox=Sandbox.read_only, approval_mode=ApprovalMode.deny_all)

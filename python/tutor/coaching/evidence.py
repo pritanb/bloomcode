@@ -6,26 +6,7 @@ from uuid import UUID
 from tutor.learner_state import platform_session, load_snapshot
 
 
-async def call(session, tool, args):
-    result = await session.call_tool(tool, args)
-    data = json.loads(result.content[0].text)
-    if result.isError:
-        if data.get('error', {}).get('status') == 403:
-            raise PermissionError('Finish or cancel active practice before coaching.')
-        raise RuntimeError('Study evidence is unavailable. Retry when BloomCode is running.')
-    return data
-
-
-def compact(context, *, limits=(('code', 16000), ('notes', 4000), ('takeaway', 2000))):
-    attempt = dict(context['attempt'])
-    truncated = []
-    for key, limit in limits:
-        value = attempt.get(key)
-        if isinstance(value, str) and len(value) > limit:
-            attempt[key] = value[:limit]
-            truncated.append(key)
-    return {'attempt': attempt, 'truncatedFields': truncated,
-            'historyOmitted': len(context.get('history', []))}
+from ai_core.evidence import call, compact
 
 
 class Evidence:

@@ -10,7 +10,7 @@ os.environ['LANGSMITH_TRACING'] = 'false'
 os.environ['LANGCHAIN_TRACING_V2'] = 'false'
 
 from langgraph.graph import StateGraph, START, END
-from tutor.coaching.evidence import call, compact
+from ai_core.evidence import call, compact, matches_source
 from tutor.learner_state import load_snapshot, platform_session
 
 
@@ -75,10 +75,7 @@ async def retrieve_evidence(config, query, context_id=None):
                 bundle['attempts'].append(record)
                 for observation in observations:
                     if observation['attemptId'] != id: continue
-                    source = attempt.get(observation.get('sourceField'))
-                    source = source if isinstance(source, str) else json.dumps(source)
-                    excerpt = observation.get('excerpt', '')
-                    if not excerpt or excerpt not in source:
+                    if not matches_source(observation, attempt):
                         bundle['limitations'].append('An observation no longer matches its source and was excluded.')
                         continue
                     verified.append({k: observation.get(k) for k in (

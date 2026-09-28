@@ -2,10 +2,9 @@
 import json
 import os
 import re
-import time
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
-from openai_codex import ApprovalMode, Sandbox
+from ai_core.model import StructuredModel
 from openai_codex.generated.v2_all import ReasoningEffort
 
 
@@ -28,18 +27,11 @@ class StructuredCodex:
         self.trace = []
 
     def __call__(self, schema, instructions, data):
-        # Override the inherited MCP configuration: graph code retrieves evidence.
-        options = {**self.options, 'model': self.model, 'base_instructions': instructions,
-                   'config': {'mcp_servers.bloomcode.enabled': False},
-                   'approval_mode': ApprovalMode.deny_all, 'sandbox': Sandbox.read_only}
-        thread = self.codex.thread_start(ephemeral=True, **options)
+        model = StructuredModel(self.codex, self.options, self.model, self.effort)
         for attempt in range(2):
-            started = time.monotonic()
-            result = thread.run(json.dumps(data), output_schema=schema.model_json_schema(), effort=self.effort)
-            if result.error or result.status.value != 'completed':
-                raise RuntimeError('Codex could not finish the coaching step.')
+            text = model.generate(schema.model_json_schema(), instructions, data)
             try:
-                value = schema.model_validate_json(result.final_response or '')
+                value = schema.model_validate_json(text)
                 if isinstance(value, Teaching):
                     if value.action == 'broaden' and not data.get('broader_evidence_available'):
                         raise ValueError('Broader evidence was already supplied')
@@ -48,7 +40,7 @@ class StructuredCodex:
                     allowed = set(data.get('evidence', {}).get('ids', []))
                     if not (set(value.evidence_ids) | set(re.findall(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}', value.response))) <= allowed:
                         raise ValueError('Unsupported evidence reference')
-                self.trace.append({'model': self.model, 'reasoningEffort': self.effort.value, 'schema': schema.__name__, 'action': getattr(value, 'action', None), 'latencySeconds': round(time.monotonic()-started, 3), 'inputCharacters': len(json.dumps(data)), 'usage': result.usage.model_dump(mode='json') if result.usage else None})
+                self.trace.extend(model.trace)
                 return value
             except ValueError:
                 if attempt:
