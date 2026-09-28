@@ -11,7 +11,7 @@ import { z } from 'zod';
 export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 export const EMBEDDING_REVISION = '751bff37182d3f1213fa05d7196b954e230abad9';
 export const ANALYSIS_VERSION = 'learning-insights-v1';
-export const REPORT_VERSION = 'learning-report-targeted-v5';
+export const REPORT_VERSION = 'learning-report-targeted-v6';
 const id = z.string().min(1).max(200);
 const text = z.string().trim().min(1).max(2000);
 export const observationInput = z
@@ -67,7 +67,7 @@ export const targetedReportResult = reportResult.extend({
         successCheck: z.string().trim().min(1).max(1000),
       }),
     )
-    .max(3),
+    .max(6),
 });
 
 export type ObservationInput = z.infer<typeof observationInput>;

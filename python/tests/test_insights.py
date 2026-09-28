@@ -24,8 +24,8 @@ class InsightsTests(unittest.TestCase):
     def test_selection_is_distinct_bounded_and_includes_strengths(self):
         rows = [row(i) for i in range(20)] + [row('strength', 'strength'), row(0)]
         ids = select_attempts(rows)
-        self.assertEqual(len(ids), 8)
-        self.assertEqual(len(set(ids)), 8)
+        self.assertEqual(len(ids), 12)
+        self.assertEqual(len(set(ids)), 12)
         self.assertIn('strength', ids)
 
     def test_inspection_keeps_source_window_and_drops_changed_observations(self):
@@ -75,6 +75,7 @@ class InsightsTests(unittest.TestCase):
 
     def test_schema_only_allows_inspected_citations_and_catalogue(self):
         schema = report_schema({'evidence': [row('verified')], 'questions': [{'id': 'known'}]})
+        self.assertEqual(schema['properties']['findings']['maxItems'], 6)
         self.assertEqual(schema['$defs']['Finding']['properties']['evidenceIds']['items']['enum'], ['verified'])
         self.assertEqual(schema['$defs']['Suggestion']['properties']['problemId']['enum'], ['known'])
         empty = report_schema({'evidence': [], 'questions': []})
@@ -88,7 +89,7 @@ class InsightsTests(unittest.TestCase):
         selected = select_attempts(rows)
         self.assertIn('old-difficulty', selected)
         self.assertIn('old-strength', selected)
-        self.assertLessEqual(len(selected), 8)
+        self.assertLessEqual(len(selected), 12)
         self.assertEqual(selected, select_attempts(list(reversed(rows))))
 
     def test_selection_spans_history_and_duplicate_observations_add_no_weight(self):

@@ -182,7 +182,7 @@ export function runAIWorker(
           const send = (data: object) =>
             child.stdin.write(JSON.stringify({ v: 1, id, ...data }) + '\n');
           if (event.type === 'evidence') {
-            if (++reads > 8 || !handlers.evidence) throw new Error('Unexpected evidence request.');
+            if (++reads > 12 || !handlers.evidence) throw new Error('Unexpected evidence request.');
             send({
               type: 'evidence_result',
               seq: event.seq,
