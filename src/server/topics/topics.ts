@@ -3,9 +3,31 @@ import { z } from 'zod';
 import type { Db } from '../db/db.js';
 import { attempts, attemptView, NEWEST } from '../attempts/attempt-model.js';
 import { problemViews, assertMetadataVisible } from '../catalogue/problem-model.js';
-import { decisions, getTopic, topics, topicView } from './topic-model.js';
+import { decisions, getTopic, topics, topicRows, topicView } from './topic-model.js';
 export function registerTopics(app: FastifyInstance, db: Db) {
   app.get('/api/topics', () => topics(db));
+  app.get('/api/topics/scores', (req) => {
+    assertMetadataVisible(db);
+    const { limit } = z
+      .object({ limit: z.coerce.number().int().min(1).max(50).default(20) })
+      .strict()
+      .parse(req.query);
+    const rows = topicRows(db).sort(
+      (a, b) => (a.score ?? Infinity) - (b.score ?? Infinity) || a.id.localeCompare(b.id),
+    );
+    return {
+      total: rows.length,
+      unscoredCount: rows.filter((t) => t.score === null).length,
+      hasMore: rows.length > limit,
+      topics: rows.slice(0, limit).map(({ id, name, score, provisional, lastReviewed }) => ({
+        id,
+        name,
+        score,
+        provisional: !!provisional,
+        lastReviewed,
+      })),
+    };
+  });
   // Score-only history is safe during mixed practice; no problem metadata,
   // evidence, notes or attempt identifiers are returned by this route.
   app.get<{ Params: { id: string } }>('/api/topics/:id/history', (req) => {

@@ -8,7 +8,7 @@ import { decisions } from '../topics/topic-model.js';
 import { type Db, insert, maybe, run, transaction, update } from '../db/db.js';
 import { readSettings } from '../db/settings.js';
 import { ApiError, conflict } from '../db/errors.js';
-import { getProblem, hiddenAssessment } from '../catalogue/problem-model.js';
+import { assertMetadataVisible, getProblem, hiddenAssessment } from '../catalogue/problem-model.js';
 import {
   version,
   studyDate,
@@ -16,8 +16,41 @@ import {
   reflectionSafeView,
   checkVersion,
   getAttempt,
+  attempts,
+  NEWEST,
 } from './attempt-model.js';
 export function registerAttempts(app: FastifyInstance, db: Db, clock: () => Date) {
+  app.get('/api/attempts', (req) => {
+    assertMetadataVisible(db);
+    const { q, limit, startedAfter } = z
+      .object({
+        q: z.string().trim().max(200).default(''),
+        limit: z.coerce.number().int().min(1).max(20).default(10),
+        startedAfter: z.iso.datetime({ offset: true }).optional(),
+      })
+      .strict()
+      .parse(req.query);
+    const rows = attempts(
+      db,
+      `WHERE a.status = 'completed' AND instr(lower(p.title), lower(?)) > 0
+       AND (? = '' OR julianday(a.startedAt) >= julianday(?)) ${NEWEST} LIMIT ?`,
+      q,
+      startedAfter ?? '',
+      startedAfter ?? '',
+      limit + 1,
+    );
+    return {
+      attempts: rows.slice(0, limit).map((a) => ({
+        id: a.id,
+        problem: a.problem,
+        finishedAt: a.finishedAt,
+        startedAt: a.startedAt,
+        outcome: a.outcome,
+        help: a.help,
+      })),
+      hasMore: rows.length > limit,
+    };
+  });
   app.post('/api/attempts', (req) => {
     const b = z
       .object({

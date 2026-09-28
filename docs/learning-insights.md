@@ -27,9 +27,14 @@ analysis remains durable and resumes later.
    and normalizes the piece vectors into a 384-dimensional observation embedding.
 3. SQLite caches vectors by observation fingerprint and model identity. Exact cosine
    similarity and keyword overlap are combined with reciprocal rank fusion (k=60).
-   No vector service is needed. The report retrieves neighbours of recent difficulty
-   and strength observations, including contrary evidence and previous attempts on
-   the same problem, from the full indexed history.
+   No vector service is needed. Report retrieval groups observations across the whole current corpus using
+   cosine similarity (0.65 minimum); lexical overlap is a fallback when embeddings
+   are absent. Hybrid ranking orders neighbours within each candidate group.
+   Groups prioritise distinct-problem support, not recency or raw observation counts.
+   Core supporting and contrary evidence stays together within the twelve-attempt
+   inspection budget. Groups whose core evidence cannot be verified are omitted
+   with an explicit limitation. These groups are retrieval hypotheses, not diagnoses;
+   the threshold is heuristic and requires evaluation against real learning examples.
 4. The tutor produces a structured report. The backend validates all citations and
    catalogue IDs. Recurrence requires difficulties on two distinct problems.
    Improvement requires an earlier difficulty and later strength on the same problem,
@@ -126,7 +131,7 @@ the desktop app can load the local MiniLM worker.
 
 ### Concise report contract
 
-New reports use three presentation fields: Habit (`title`, at most 6 whitespace-separated words), Next time (`action`, at most 25 words), and Why (`explanation`, at most 35 words). The prompt requires one concrete action starting with a verb and familiar language. Evidence references and uncertainty remain in the detail panel. Length and references are validated.
+New reports contain up to six distinct, evidence-supported habits. The report inspects up to twelve attempts selected across study history within a 48,000-character source budget. Each habit includes an explanation, next action, exercise, success check, citations and caveats; fewer habits are valid when evidence is sparse. Python constrains citations to inspected records and Fastify validates them before saving. The detail panel shows the action and practice first, a short source excerpt, and expandable limitations and full evidence with correction controls. Older inline observation hashes render as readable source links.
 
 The worker makes at most one correction request for malformed JSON, schema violations, or rejected evidence. It includes the validation errors and shares one time budget across both model calls. Timeout, disconnect, and stale-claim failures do not trigger a correction call. Failed correction retains the previous report and exposes retry. Reports saved in the older format stay valid; new submissions must satisfy the concise contract. Report-format versioning refreshes synthesis without re-extracting attempts or rebuilding embeddings.
 

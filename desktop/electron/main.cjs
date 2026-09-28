@@ -179,6 +179,19 @@ async function startWorker() {
     stdio: 'pipe',
     env: {
       ...process.env,
+      ...(app.isPackaged
+        ? {
+            BLOOMCODE_TUTOR_ROOT: join(process.resourcesPath, 'ai'),
+            // Keep the signed application bundle immutable when Python imports modules.
+            PYTHONDONTWRITEBYTECODE: '1',
+            BLOOMCODE_PYTHON:
+              process.env.BLOOMCODE_PYTHON ||
+              join(app.getPath('appData'), 'BloomCode', 'ai-runtime', 'bin', 'python'),
+            BLOOMCODE_MCP_COMMAND: process.execPath,
+            BLOOMCODE_MCP_ENTRY: join(root, 'dist/server/mcp.js'),
+            BLOOMCODE_MCP_CWD: process.resourcesPath,
+          }
+        : {}),
       DATA_DIR: dataDir,
       PORT: process.env.DESKTOP_TEST_PORT || process.env.PORT || '4317',
       TUTOR_WEB_ROOT: join(root, 'dist/web'),

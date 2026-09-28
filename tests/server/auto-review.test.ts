@@ -65,7 +65,7 @@ test('a web submission queues a report that the worker writes, and a failure can
   await api.request('POST', `/api/attempts/${attemptId}/auto-review`, {});
   expect(
     await reviewNext(jobs, async (request) => {
-      prompt = request.user;
+      prompt = JSON.stringify(request.context);
       return { text: 'Summary:\nClean one-pass hash map.', model: null };
     }),
   ).toBe(true);

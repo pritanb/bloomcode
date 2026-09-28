@@ -2,6 +2,8 @@ import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Check, Focus, Lightbulb, Lock, Repeat, Sparkles } from 'lucide-react';
 import type { Finding, InsightStatus, Observation } from '../../../shared/insights';
+import { InsightText } from './InsightText';
+import { Link } from 'react-router-dom';
 import { AnalysisStatus } from './AnalysisStatus';
 import { api } from '../../app/api';
 import { Loading, ErrorNotice, Field, dateLabel } from '../../components/ui';
@@ -137,6 +139,7 @@ function InsightCard({
   refresh: () => void;
 }) {
   const { icon, tone } = findingTiles[finding.kind];
+  const supporting = data.observations.filter((o) => finding.evidenceIds.includes(o.id));
   const topics = [
     ...new Map(
       data.observations
@@ -172,7 +175,7 @@ function InsightCard({
             </span>
           )}
           <Callout label="Next time" className="mt-auto">
-            {finding.action}
+            <InsightText text={finding.action} sources={supporting} />
           </Callout>
         </Tile>
       </SidePanelTrigger>
@@ -186,35 +189,60 @@ function InsightCard({
         }
       >
         <SidePanelTitle className="mt-1">{finding.title}</SidePanelTitle>
-        {topics.length > 0 && (
-          <div
-            className="flex flex-wrap items-center gap-1.5"
-            aria-label="Topics from supporting questions"
-          >
-            <span className="mr-1 text-xs text-muted-foreground">Topics</span>
-            {topicBadges(topics)}
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <Subheading>Why</Subheading>
-          <SidePanelDescription className="text-[0.9375rem] leading-relaxed">
-            {finding.explanation}
-          </SidePanelDescription>
-        </div>
-        <Callout tone="brand" label="Next time">
-          {finding.action}
+        <SidePanelDescription className="text-sm text-muted-foreground">
+          {topics.length
+            ? topics.join(' · ')
+            : `Based on ${supporting.length} supporting observations`}
+        </SidePanelDescription>
+        <Callout label="Your next step">
+          <InsightText text={finding.action} sources={supporting} />
         </Callout>
-        {finding.caveat && <p className="text-xs text-muted-foreground">{finding.caveat}</p>}
-        <Disclosure quiet title={`Inspect evidence (${finding.evidenceIds.length})`}>
-          <List>
-            {finding.evidenceIds.map((id) => {
-              const observation = data.observations.find((o) => o.id === id);
-              return observation ? (
-                <Evidence key={id} observation={observation} onDismiss={refresh} />
-              ) : null;
-            })}
-          </List>
-        </Disclosure>
+        <section className="space-y-2 text-sm leading-relaxed">
+          <Subheading>What to work on</Subheading>
+          <InsightText text={finding.explanation} sources={supporting} />
+        </section>
+        {(finding.exercise || finding.successCheck) && (
+          <section className="space-y-3 border-t pt-4 text-sm leading-relaxed">
+            <Subheading>Practise it</Subheading>
+            {finding.exercise && <InsightText text={finding.exercise} sources={supporting} />}
+            {finding.successCheck && (
+              <div className="border-l-2 pl-3">
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">Success check</p>
+                <InsightText text={finding.successCheck} sources={supporting} />
+              </div>
+            )}
+          </section>
+        )}
+        {supporting[0] && (
+          <section className="space-y-2 border-t pt-4 text-sm">
+            <Subheading>From your work</Subheading>
+            <blockquote className="line-clamp-3 border-l-2 pl-3 text-muted-foreground whitespace-pre-wrap wrap-anywhere">
+              {supporting[0].excerpt}
+            </blockquote>
+            <Link
+              className="inline-block text-xs underline underline-offset-2"
+              to={`/attempts/${supporting[0].attemptId}`}
+            >
+              {supporting[0].problemTitle}
+            </Link>
+          </section>
+        )}
+        {finding.caveat && (
+          <Disclosure quiet title="Context and limitations">
+            <div className="text-sm text-muted-foreground">
+              <InsightText text={finding.caveat} sources={supporting} />
+            </div>
+          </Disclosure>
+        )}
+        {supporting.length > 0 && (
+          <Disclosure quiet title={`Inspect evidence (${supporting.length})`}>
+            <List>
+              {supporting.map((observation) => (
+                <Evidence key={observation.id} observation={observation} onDismiss={refresh} />
+              ))}
+            </List>
+          </Disclosure>
+        )}
         {finding.suggestions.length > 0 && (
           <section className="flex flex-col gap-1">
             <SectionHeader level={3} icon={BookOpen} title="Optional targeted practice" />
@@ -294,6 +322,25 @@ function StatusPanel({
                 <p className="text-muted-foreground">
                   Save a completed attempt to start building your learning memory.
                 </p>
+              )}
+              {data.analyzed > 0 && data.failed === 0 && data.embeddingStatus !== 'failed' && (
+                <div>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      action.isPending ||
+                      data.reportStatus === 'waiting' ||
+                      data.reportStatus === 'generating'
+                    }
+                    onClick={() => action.mutate({ path: 'regenerate', body: {} })}
+                  >
+                    {data.reportStatus === 'generating'
+                      ? 'Regenerating insights…'
+                      : data.reportStatus === 'waiting'
+                        ? 'Report queued…'
+                        : 'Regenerate insights'}
+                  </Button>
+                </div>
               )}
               {(data.failed > 0 || data.embeddingStatus === 'failed') && (
                 <div role="alert">

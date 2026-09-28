@@ -5,11 +5,10 @@ import { type AttemptRecord, attempts, getAttempt, NEWEST } from '../attempts/at
 import {
   ANALYSIS_VERSION,
   REPORT_VERSION,
-  REPORT_WRITING_RULES,
   EMBEDDING_MODEL,
   EMBEDDING_REVISION,
   extractionResult,
-  conciseReportResult,
+  targetedReportResult,
   type Correction,
   type InsightJob,
   type InsightReport,
@@ -24,6 +23,7 @@ import {
   type TagRow,
 } from '../catalogue/problem-model.js';
 import { conflict, ApiError, missing } from '../db/errors.js';
+import { patternCandidates } from './patterns.js';
 import { keywordScore, rank } from './retrieval.js';
 import type { Embed } from './embeddings.js';
 export const hash = (value: unknown) =>
@@ -88,6 +88,7 @@ const reportView = ({ id, findings, topicPriorities, ...r }: ReportRow): Insight
   evidenceIds: JSON.parse(r.evidenceIds) as string[],
 });
 export class Insights {
+  reportActivity: string | null = null;
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
   error: string | null = null;
   /** A learning report can only be claimed once local search is ready. */
@@ -319,42 +320,43 @@ export class Insights {
   }
   reportContext() {
     const rows = this.observations(),
-      vectors = this.vectors(),
-      selected = new Map<string, Observation>();
-    // Include recent anchors from both polarities and retrieved neighbours across
-    // the entire history. Counts below describe coverage, not prevalence estimates.
-    const attemptDates = new Map(this.attempts().map((a) => [a.id, a.finishedAt ?? a.studyDate]));
-    const recent = [...rows].sort(
-      (a, b) =>
-        (attemptDates.get(b.attemptId) ?? '').localeCompare(attemptDates.get(a.attemptId) ?? '') ||
-        a.id.localeCompare(b.id),
-    );
-    const anchors = [
-      ...recent.filter((o) => o.polarity === 'difficulty').slice(0, 6),
-      ...recent.filter((o) => o.polarity === 'strength').slice(0, 6),
-    ];
-    for (const anchor of anchors) selected.set(anchor.id, anchor);
-    for (const anchor of anchors) {
-      const neighbours = rank(anchor.summary, vectors.get(anchor.id) ?? [], rows, vectors);
-      for (const r of neighbours.slice(0, 5)) selected.set(r.id, r);
-      // Explicitly seek contrary evidence and earlier attempts on the same problem.
-      for (const r of neighbours.filter((o) => o.polarity !== anchor.polarity).slice(0, 2))
-        selected.set(r.id, r);
-      for (const r of neighbours
-        .filter((o) => o.problemId === anchor.problemId && o.attemptId !== anchor.attemptId)
-        .slice(0, 2))
-        selected.set(r.id, r);
-    }
+      vectors = this.vectors();
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const candidates = patternCandidates(rows, vectors);
+    const selected = new Map<string, Observation>();
+    const patterns: ReturnType<typeof patternCandidates> = [];
     let evidenceChars = 0;
-    const evidence = [...selected.values()]
-      .filter((o) => {
-        const size = JSON.stringify(o).length;
-        if (evidenceChars + size > 30000) return false;
+    for (const candidate of candidates) {
+      const required = candidate.requiredEvidenceIds.map((id) => byId.get(id)!);
+      const size = required.reduce((sum, row) => sum + JSON.stringify(row).length, 0);
+      if (
+        patterns.length >= 12 ||
+        selected.size + required.length > 80 ||
+        evidenceChars + size > 30000
+      )
+        continue;
+      for (const row of required) selected.set(row.id, row);
+      evidenceChars += size;
+      patterns.push(candidate);
+    }
+    // Share the remaining retrieval budget among candidate groups, not just the first group.
+    for (let index = 0; index < 80; index++) {
+      for (const candidate of patterns) {
+        const id = candidate.evidenceIds[index];
+        if (!id || selected.has(id)) continue;
+        const row = byId.get(id)!;
+        const size = JSON.stringify(row).length;
+        if (selected.size >= 80 || evidenceChars + size > 30000) continue;
+        selected.set(id, row);
         evidenceChars += size;
-        return true;
-      })
-      .slice(0, 80);
-    const query = anchors.map((o) => o.summary).join(' ');
+      }
+    }
+    const evidence = [...selected.values()];
+    const candidatePatterns = patterns.map((pattern) => ({
+      ...pattern,
+      evidenceIds: pattern.evidenceIds.filter((id) => selected.has(id)),
+    }));
+    const query = patterns.map((pattern) => byId.get(pattern.anchorId)!.summary).join(' ');
     let questionChars = 0;
     const questions = this.catalogue()
       .sort(
@@ -372,10 +374,11 @@ export class Insights {
     const attempts = new Map(this.attempts().map((a) => [a.id, a]));
     return {
       reportVersion: REPORT_VERSION,
-      writingRules: REPORT_WRITING_RULES,
       ...this.coverage(),
       observationCount: rows.length,
       retrievedCount: evidence.length,
+      candidatePatterns,
+      candidatePatternCount: candidates.length,
       evidence: evidence.map((o) => ({
         ...o,
         problemTitle: attempts.get(o.attemptId)!.problem.title,
@@ -414,7 +417,7 @@ export class Insights {
     const allEmbedded = this.observations().every((o) => vectors.has(o.id));
     const shouldReport =
       coverage.analyzed > 0 &&
-      report?.fingerprint !== fp &&
+      (report?.fingerprint !== fp || ['pending', 'running'].includes(oldReportJob?.status ?? '')) &&
       this.embeddingStatus === 'ready' &&
       allEmbedded &&
       (!pending.length || coverage.analyzed - (report?.analyzed ?? 0) >= 10);
@@ -441,6 +444,21 @@ export class Insights {
     update(this.db, 'insight_jobs', job.id, claim);
     return { job: { ...job, ...claim }, context };
   }
+  regenerateReport() {
+    assertMetadataVisible(this.db);
+    if (!this.enabled()) throw conflict('Enable automatic analysis before regenerating insights');
+    if (!this.coverage().analyzed) throw conflict('Analyze a completed attempt first');
+    const job = this.job('report-job');
+    if (job && ['pending', 'running'].includes(job.status)) return { ok: true };
+    this.queue([['report-job', null, this.corpusFingerprint()]]);
+    update(this.db, 'insight_jobs', 'report-job', {
+      status: 'pending',
+      claimId: null,
+      claimedAt: 0,
+      error: null,
+    });
+    return { ok: true };
+  }
   extractionContext(attemptId: string) {
     const a = getAttempt(this.db, attemptId);
     // Explicit limits prevent a large imported answer from overflowing the tutor.
@@ -457,6 +475,25 @@ export class Insights {
       activeSeconds: a.activeSeconds,
       truncated: a.code.length > 30000 || a.notes.length > 10000,
       corrections: this.corrections(a.id),
+    };
+  }
+  reportAttempt(id: string, claimId: string, attemptId: string) {
+    const job = this.currentJob(id, claimId);
+    if (
+      job.attemptId ||
+      !this.observations().some((o) => o.attemptId === attemptId && job.evidenceIds.includes(o.id))
+    )
+      throw new ApiError(403, 'EVIDENCE', 'Attempt is outside the claimed report evidence');
+    const attempt = getAttempt(this.db, attemptId);
+    if (attempt.status !== 'completed')
+      throw new ApiError(403, 'EVIDENCE', 'Only completed attempts may be inspected');
+    return {
+      id: attempt.id,
+      language: attempt.language,
+      studyDate: attempt.studyDate,
+      status: attempt.status,
+      evidence: attempt.evidence,
+      ...source(attempt),
     };
   }
   currentJob(id: string, claimId: string) {
@@ -518,7 +555,7 @@ export class Insights {
           data.limitation
         ).slice(0, 1000);
       } else {
-        const data = conciseReportResult.parse(result),
+        const data = targetedReportResult.parse(result),
           observations = new Map(this.observations().map((o) => [o.id, o]));
         for (const finding of data.findings) {
           const evidence = finding.evidenceIds.map((id) => observations.get(id));
@@ -644,11 +681,13 @@ export class Insights {
           ? 'generating'
           : reportJob?.fingerprint === currentFingerprint && reportJob.status === 'failed'
             ? 'failed'
-            : report && !stale
-              ? 'ready'
-              : coverage.analyzed > 0
-                ? 'waiting'
-                : 'idle';
+            : reportJob?.fingerprint === currentFingerprint && reportJob.status === 'pending'
+              ? 'waiting'
+              : report && !stale
+                ? 'ready'
+                : coverage.analyzed > 0
+                  ? 'waiting'
+                  : 'idle';
     const ids = new Set(active.map((o) => o.id));
     // Remove invalidated findings immediately; an older report must never repeat a correction.
     const visible = report
@@ -706,6 +745,7 @@ export class Insights {
       report: hidden ? null : visible,
       stale,
       reportStatus,
+      reportActivity: hidden ? null : this.reportActivity,
       observations: hidden
         ? []
         : active

@@ -15,6 +15,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { LearningInsights } from '../features/insights/LearningInsights';
+import { TutorDock } from '../features/tutor/TutorDock';
 import { StudyReport } from '../features/reports/StudyReports';
 import { Dashboard } from '../features/desk/Dashboard';
 import { Library, ProblemDetail } from '../features/library/Library';
@@ -63,7 +64,9 @@ export function App() {
           />
         )}
       >
-        <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed((value) => !value)} />
+        <TutorDock>
+          <Workspace collapsed={collapsed} toggleSidebar={() => setCollapsed((value) => !value)} />
+        </TutorDock>
       </SetupGate>
     </div>
   );

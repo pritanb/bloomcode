@@ -259,6 +259,8 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
       kind: 'recurring',
       explanation: 'Two attempts report missed empty inputs.',
       action: 'Trace the empty input before submission.',
+      exercise: 'Trace an empty array.',
+      successCheck: 'Return before indexing an empty array.',
       evidenceIds: ids,
       caveat: 'Self-reported evidence only.',
       suggestions: [],
@@ -294,10 +296,10 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
       service.complete(
         report.job.id,
         report.job.claimId!,
-        { findings: [{ ...finding, action: Array(26).fill('word').join(' ') }], limitation: '' },
+        { findings: [{ ...finding, exercise: '' }], limitation: '' },
         'test',
       ),
-    ).toThrow('at most 25 words');
+    ).toThrow();
     expect(service.status().report).toBeNull();
     service.complete(
       report.job.id,
@@ -356,4 +358,37 @@ it('serves topic analysis as a static route rather than looking up an analysis t
   const response = await call('GET', '/api/topics/analysis');
   expect(response.statusCode).toBe(200);
   expect(response.json()).toMatchObject({ topics: [], report: null, enabled: false });
+});
+
+it('regenerates only the report, preserves saved insights and coalesces repeat requests', async () => {
+  await completed();
+  await call('POST', '/api/insights/enable', { enabled: true });
+  const extractionJob = claim()!;
+  expect(complete(extractionJob, { observations: [observation], limitation: '' })).toBe(200);
+  const service = app.tutorJobs.insights;
+  await service.refresh();
+  await service.tick();
+  const original = claim()!;
+  expect(original.job.attemptId).toBeNull();
+  expect(complete(original, { findings: [], limitation: 'Original report' })).toBe(200);
+  const saved = service.latestReport()!;
+  expect(claim()).toBeNull();
+  const before = many(app.tutorJobs.db, 'SELECT * FROM insight_jobs WHERE attemptId IS NOT NULL');
+  expect((await call('POST', '/api/insights/regenerate', {})).statusCode).toBe(200);
+  expect(service.status().reportStatus).toBe('waiting');
+  expect(service.latestReport()!.id).toBe(saved.id);
+  expect((await call('POST', '/api/insights/regenerate', {})).statusCode).toBe(200);
+  const replacement = claim()!;
+  expect(replacement.job.attemptId).toBeNull();
+  expect(replacement.job.claimId).not.toBe(original.job.claimId);
+  expect((await call('POST', '/api/insights/regenerate', {})).statusCode).toBe(200);
+  expect(claim()).toBeNull();
+  expect(complete(replacement, { findings: [], limitation: 'Replacement report' })).toBe(200);
+  expect(service.latestReport()!.id).not.toBe(saved.id);
+  expect(many(app.tutorJobs.db, 'SELECT * FROM insight_jobs WHERE attemptId IS NOT NULL')).toEqual(
+    before,
+  );
+  expect(claim()).toBeNull();
+  await call('POST', '/api/insights/enable', { enabled: false });
+  expect((await call('POST', '/api/insights/regenerate', {})).statusCode).toBe(409);
 });

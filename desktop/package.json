@@ -1,7 +1,7 @@
 {
   "name": "bloomcode-desktop",
   "productName": "BloomCode",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "A local-first LeetCode study workspace",
   "author": "Pritan Barai",
@@ -17,7 +17,8 @@
     "@huggingface/transformers": "4.3.0",
     "better-sqlite3": "^13.0.3",
     "fastify": "^5.12.4",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@modelcontextprotocol/sdk": "^1.30.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",

@@ -6,6 +6,9 @@ import { registerCatalogue } from '../catalogue/catalogue.js';
 import { registerImport } from '../catalogue/import.js';
 import { registerAttempts } from '../attempts/attempts.js';
 import { registerTopics } from '../topics/topics.js';
+import { registerLearningGoals } from '../topics/learning-goals.js';
+import { registerTutorPreferences } from '../topics/tutor-preferences.js';
+import { registerConversation, type TutorConversation } from '../tutor/conversation.js';
 import { registerStudyTools } from '../topics/study-tools.js';
 import { registerScoring } from '../scoring/scoring.js';
 import { registerPlans } from '../plans/plans.js';
@@ -20,12 +23,14 @@ export function registerStudyRoutes(
     dbPath,
     demo,
     dailyBackup,
+    conversationWorker,
   }: {
     db: Db;
     clock: () => Date;
     dbPath: string;
     demo?: boolean;
     dailyBackup?: boolean;
+    conversationWorker?: TutorConversation;
   },
 ) {
   registerSettings(app, db);
@@ -34,6 +39,9 @@ export function registerStudyRoutes(
   registerImport(app, db, clock);
   registerAttempts(app, db, clock);
   registerTopics(app, db);
+  registerLearningGoals(app, db, clock);
+  registerTutorPreferences(app, db, clock);
+  registerConversation(app, db, dbPath, conversationWorker);
   registerScoring(app, db, clock);
   registerPlans(app, db, clock);
   registerStudyTools(app, db, clock);

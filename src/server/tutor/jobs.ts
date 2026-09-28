@@ -1,3 +1,4 @@
+import type { GenerateReport } from './insight-worker.js';
 import type { Db } from '../db/db.js';
 import type { AutoReviewQueue } from '../attempts/auto-review-queue.js';
 import type { Insights } from '../insights/service.js';
@@ -20,10 +21,11 @@ export async function runNextJob(
   jobs: TutorJobs,
   generate: Generate,
   reportBudgetMs?: number,
+  report?: GenerateReport,
 ): Promise<boolean> {
   return (
     (await reviewNext(jobs, generate)) ||
-    (await analyzeNext(jobs.insights, generate, reportBudgetMs)) ||
+    (await analyzeNext(jobs.insights, generate, reportBudgetMs, report)) ||
     (await analyzeTopicsNext(jobs.topics, generate))
   );
 }

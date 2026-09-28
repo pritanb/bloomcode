@@ -1,0 +1,277 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" version="26.0.0" compressed="false">
+  <diagram id="overview" name="BloomCode architecture">
+    <mxGraphModel dx="1860" dy="1380" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1860" pageHeight="1380" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="How BloomCode works" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=36;fontColor=#173456;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="25" width="1650" height="55" />
+        </mxCell>
+        <mxCell id="ui" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;Study app&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;React · Electron&lt;/font&gt;&lt;br&gt;&lt;br&gt;" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/web/">
+          <mxGeometry as="geometry" x="70" y="140" width="320" height="160" />
+        </mxCell>
+        <mxCell id="study" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;Study backend&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;Fastify / Node.js&lt;/font&gt;&lt;br&gt;&lt;br&gt;Save practice · update scores&lt;br&gt;Schedule reviews · build daily plans" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/core/app.ts">
+          <mxGeometry as="geometry" x="600" y="140" width="480" height="160" />
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;Saved study history&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;SQLite · on your computer&lt;/font&gt;&lt;br&gt;&lt;br&gt;Attempts · scores · plans · AI reports&lt;br&gt;Learning goals · teaching preferences" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;shape=cylinder3;size=16;boundedLbl=1;fillColor=#e7f3ec;strokeColor=#52876a;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/db/schema.ts">
+          <mxGeometry as="geometry" x="1400" y="140" width="390" height="160" />
+        </mxCell>
+        <mxCell id="ui-api" value="Read / save" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ui" target="study">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="offset" x="0" y="-22" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="study-db" value="Read / write" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="study" target="db">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="offset" x="0" y="-22" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mcp" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;Bloom · AI tutor&lt;/font&gt;&lt;/b&gt;&lt;br&gt;App-wide chat · Python + LangGraph&lt;br&gt;See the “Bloom AI tutor” page" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f0f2f5;strokeColor=#858d99;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/web/features/tutor/TutorDock.tsx; python/tutor/session.py">
+          <mxGeometry as="geometry" x="70" y="360" width="320" height="110" />
+        </mxCell>
+        <mxCell id="mcp-api" value="Chat API" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.8;exitDx=0;exitDy=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="mcp" target="study">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="460" y="415" />
+              <mxPoint x="460" y="268" />
+            </Array>
+            <mxPoint as="offset" x="0" y="-20" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="worker" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;AI job runner&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;Backend queues · optional&lt;/font&gt;&lt;br&gt;&lt;br&gt;Collect saved context&lt;br&gt;Run one AI job at a time" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/tutor/jobs.ts">
+          <mxGeometry as="geometry" x="600" y="490" width="480" height="140" />
+        </mxCell>
+        <mxCell id="provider" value="&lt;b&gt;Shared Python AI layer&lt;/b&gt;&lt;br&gt;Codex SDK → OpenAI&lt;br&gt;&lt;br&gt;Prompts · structured responses&lt;br&gt;Feature workflows · isolated runtime" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f0f2f5;strokeColor=#858d99;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="python/ai_core/; python/ai_worker.py">
+          <mxGeometry as="geometry" x="1400" y="490" width="390" height="140" />
+        </mxCell>
+        <mxCell id="enqueue" value="New result or&#10;analysis request" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="study" target="worker">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="offset" x="105" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="generation" value="Prompt / response" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;" edge="1" parent="1" source="worker" target="provider">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="offset" x="0" y="-22" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="branch" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;ellipse;fillColor=#62758b;strokeColor=#62758b;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="37" y="822" width="6" height="6" />
+        </mxCell>
+        <mxCell id="dispatch" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=0;exitY=0.5;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;endArrow=none;" edge="1" parent="1" source="worker" target="branch">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="40" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="direct-label" value="A / Feedback &amp; topic suggestions" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=24;fontColor=#173456;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="680" width="1300" height="42" />
+        </mxCell>
+        <mxCell id="direct" value="&lt;b&gt;Generate feedback&lt;/b&gt;&lt;br&gt;Python reviews / recommendations&lt;br&gt;&lt;br&gt;Review a solution or suggest topics" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f0eaf8;strokeColor=#9175b4;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="python/reviews/review.py; python/recommendations/topics.py">
+          <mxGeometry as="geometry" x="70" y="750" width="440" height="150" />
+        </mxCell>
+        <mxCell id="direct-check" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;Check the response&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;Backend rules&lt;/font&gt;&lt;br&gt;&lt;br&gt;Check feedback or recommended topics" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/tutor/review-job.ts; src/server/topics/topic-analysis.ts">
+          <mxGeometry as="geometry" x="790" y="750" width="350" height="150" />
+        </mxCell>
+        <mxCell id="direct-save" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;Save results&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;SQLite&lt;/font&gt;&lt;br&gt;&lt;br&gt;Display feedback in the app" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e7f3ec;strokeColor=#52876a;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/scoring/review-model.ts">
+          <mxGeometry as="geometry" x="1510" y="750" width="280" height="150" />
+        </mxCell>
+        <mxCell id="direct-job" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="branch" target="direct">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="direct-check-edge" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="direct" target="direct-check">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="direct-save-edge" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="direct-check" target="direct-save">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="insight-label" value="B / Learning insights across your attempts" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=24;fontColor=#173456;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="980" width="1600" height="42" />
+        </mxCell>
+        <mxCell id="extract" value="&lt;b&gt;1 · Read each attempt&lt;/b&gt;&lt;br&gt;Python · Codex SDK&lt;br&gt;&lt;br&gt;Extract sourced observations&lt;br&gt;Backend verifies and saves" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f0eaf8;strokeColor=#9175b4;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="python/insights/extract.py; src/server/insights/service.ts">
+          <mxGeometry as="geometry" x="70" y="1060" width="280" height="170" />
+        </mxCell>
+        <mxCell id="embed" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;2 · Build search index&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;Local MiniLM embeddings&lt;/font&gt;&lt;br&gt;&lt;br&gt;Turn observations into vectors&lt;br&gt;and cache them in SQLite" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/insights/embeddings.ts">
+          <mxGeometry as="geometry" x="430" y="1060" width="280" height="170" />
+        </mxCell>
+        <mxCell id="retrieve" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;3 · Find past evidence&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;Local search&lt;/font&gt;&lt;br&gt;&lt;br&gt;Match meaning + keywords&lt;br&gt;across saved observations" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/insights/retrieval.ts">
+          <mxGeometry as="geometry" x="790" y="1060" width="280" height="170" />
+        </mxCell>
+        <mxCell id="report" value="&lt;b&gt;4 · Targeted report&lt;/b&gt;&lt;br&gt;Python · LangGraph · Codex SDK&lt;br&gt;&lt;br&gt;Inspect sources · exercise&lt;br&gt;Observable success check" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f0eaf8;strokeColor=#9175b4;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="python/insights/report.py; python/ai_core/model.py">
+          <mxGeometry as="geometry" x="1150" y="1060" width="280" height="170" />
+        </mxCell>
+        <mxCell id="saved" value="&lt;b&gt;&lt;font style=&quot;font-size:22px&quot;&gt;5 · Check + save&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot;&gt;Backend → SQLite&lt;/font&gt;&lt;br&gt;&lt;br&gt;Verify citations and question IDs;&lt;br&gt;save the accepted report" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e7f3ec;strokeColor=#52876a;strokeWidth=1.5;align=center;verticalAlign=middle;spacing=14;" vertex="1" parent="1" data-source="src/server/insights/service.ts">
+          <mxGeometry as="geometry" x="1510" y="1060" width="280" height="170" />
+        </mxCell>
+        <mxCell id="insight-job" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=0.5;exitY=1;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="branch" target="extract">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="40" y="1145" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="extract-embed" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="extract" target="embed">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="embed-retrieve" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="embed" target="retrieve">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="retrieve-report" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="retrieve" target="report">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="report-save" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;endFill=1;endSize=9;strokeWidth=1.6;strokeColor=#62758b;labelBackgroundColor=#ffffff;fontSize=15;whiteSpace=nowrap;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="report" target="saved">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="legend-0" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;fillColor=#e8f1fc;strokeColor=#567fae;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="1290" width="18" height="18" />
+        </mxCell>
+        <mxCell id="legend-text-0" value="Runs locally" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#536278;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="98" y="1285" width="550" height="30" />
+        </mxCell>
+        <mxCell id="legend-1" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;fillColor=#f0eaf8;strokeColor=#9175b4;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="660" y="1290" width="18" height="18" />
+        </mxCell>
+        <mxCell id="legend-text-1" value="Calls shared Codex / OpenAI generation" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#536278;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="688" y="1285" width="550" height="30" />
+        </mxCell>
+        <mxCell id="legend-2" value="" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;rounded=1;fillColor=#e7f3ec;strokeColor=#52876a;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1250" y="1290" width="18" height="18" />
+        </mxCell>
+        <mxCell id="legend-text-2" value="Saved in the same SQLite workspace" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#536278;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1278" y="1285" width="550" height="30" />
+        </mxCell>
+        <mxCell id="external-legend" value="Grey: client or AI provider" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=17;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontColor=#536278;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="1325" width="600" height="28" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="bloom-tutor" name="Bloom AI tutor">
+    <mxGraphModel dx="1800" dy="1180" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1800" pageHeight="1180" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="heading" value="&lt;b&gt;How Bloom answers you&lt;/b&gt;" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;fontSize=36;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="25" width="1600" height="60" />
+        </mxCell>
+        <mxCell id="intro" value="Python chooses the evidence and teaching flow. Codex runs the model conversation and tool loop." style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;fontSize=20;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="90" width="1660" height="40" />
+        </mxCell>
+        <mxCell id="chat" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Bloom chat&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;React · available across the app&lt;br&gt;Send / stop / confirm&lt;br&gt;Poll updates every 500 ms" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="src/web/features/tutor/TutorChat.tsx">
+          <mxGeometry as="geometry" x="60" y="180" width="350" height="200" />
+        </mxCell>
+        <mxCell id="bridge" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Fastify chat controller&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;Starts and stops Python&lt;br&gt;Enforces practice restrictions&lt;br&gt;Streams worker events into UI state" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="src/server/tutor/conversation.ts">
+          <mxGeometry as="geometry" x="500" y="180" width="350" height="200" />
+        </mxCell>
+        <mxCell id="python" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Python tutor&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;worker.py → session.py&lt;br&gt;Sessions + LangGraph flows&lt;br&gt;Ordinary chat or explicit /coach" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="python/worker.py; python/tutor/session.py">
+          <mxGeometry as="geometry" x="940" y="180" width="350" height="200" />
+        </mxCell>
+        <mxCell id="codex" value="&lt;b&gt;Shared AI runtime → Codex&lt;/b&gt;&lt;br&gt;&lt;br&gt;ai_core · SDK model calls&lt;br&gt;Chat: streaming + allowed tools&lt;br&gt;Coaching: structured output" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f0eafa;strokeColor=#9270b1;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="python/ai_core/runtime.py; python/ai_core/model.py">
+          <mxGeometry as="geometry" x="1380" y="180" width="350" height="200" />
+        </mxCell>
+        <mxCell id="chat-bridge" source="chat" target="bridge" value="HTTP" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;startArrow=block;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="bridge-python" source="bridge" target="python" value="JSONL v1" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;startArrow=block;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="python-codex" source="python" target="codex" value="SDK" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;startArrow=block;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="study-store" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Study database&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;SQLite · authoritative records&lt;br&gt;Attempts, scores, goals, preferences&lt;br&gt;Insights + local embedding index" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f3ea;strokeColor=#6b9473;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="src/server/db/schema.ts">
+          <mxGeometry as="geometry" x="60" y="500" width="350" height="180" />
+        </mxCell>
+        <mxCell id="api" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Platform API&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;Fastify rules + authentication&lt;br&gt;Restricts reads during practice&lt;br&gt;Validates confirmed changes" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="src/server/core/app.ts; src/server/topics/learning-goals.ts">
+          <mxGeometry as="geometry" x="500" y="500" width="350" height="180" />
+        </mxCell>
+        <mxCell id="tools" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Shared TypeScript MCP&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;Recent attempts + topic scores&lt;br&gt;Attempt context + evidence search&lt;br&gt;Reads + proposals; host-only writes" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="src/integrations/mcp.ts">
+          <mxGeometry as="geometry" x="940" y="500" width="350" height="180" />
+        </mxCell>
+        <mxCell id="session-store" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Separate tutor storage&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;Codex conversation history&lt;br&gt;Session pointers + process lock&lt;br&gt;Coaching: tutor/coaching.sqlite" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f3ea;strokeColor=#6b9473;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="python/tutor/session.py; python/tutor/coaching/graph.py">
+          <mxGeometry as="geometry" x="1380" y="500" width="350" height="180" />
+        </mxCell>
+        <mxCell id="python-tools" source="python" target="tools" value="Python context reads" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="codex-tools" source="codex" target="tools" value="Chat tool calls" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;exitX=0.25;exitY=1;entryX=0.8;entryY=0;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="codex-store" source="codex" target="session-store" value="Conversation history" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;exitX=0.8;exitY=1;entryX=0.8;entryY=0;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="tools-api" source="tools" target="api" value="Auth API" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="api-store" source="api" target="study-store" value="SQL" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;endArrow=block;strokeColor=#567088;strokeWidth=2;fontSize=15;labelBackgroundColor=#ffffff;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="flows-title" value="&lt;b&gt;Two teaching flows, using the same platform capabilities&lt;/b&gt;" style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;fontSize=25;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="740" width="1670" height="45" />
+        </mxCell>
+        <mxCell id="ordinary" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Ordinary chat&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Snapshot → retrieve → answer&lt;/b&gt;&lt;br&gt;&lt;br&gt;Load recent learning state. Search local&lt;br&gt;meaning + keyword evidence, including&lt;br&gt;counterexamples. Check source excerpts.&lt;br&gt;Pass bounded evidence to Codex.&lt;br&gt;&lt;br&gt;No extra model classification call." style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="python/tutor/answer_graph.py">
+          <mxGeometry as="geometry" x="60" y="805" width="530" height="255" />
+        </mxCell>
+        <mxCell id="coaching" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Explicit coaching&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Evidence → teach → wait for you&lt;/b&gt;&lt;br&gt;&lt;br&gt;Retrieve a completed attempt. Choose a&lt;br&gt;focus, ask a question, adapt to your reply.&lt;br&gt;Optionally expand evidence once.&lt;br&gt;Persist the teaching state with LangGraph.&lt;br&gt;&lt;br&gt;Model tools disabled in coaching calls." style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#e8f1fc;strokeColor=#567fae;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="python/tutor/coaching/graph.py">
+          <mxGeometry as="geometry" x="635" y="805" width="530" height="255" />
+        </mxCell>
+        <mxCell id="approval" value="&lt;b&gt;&lt;font style=&quot;font-size:23px&quot;&gt;Learner stays in control&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Propose → confirm → validated save&lt;/b&gt;&lt;br&gt;&lt;br&gt;Model proposals alone change nothing.&lt;br&gt;You confirm goals or preferences in the UI.&lt;br&gt;Python applies the confirmed change&lt;br&gt;through the authorised backend path.&lt;br&gt;&lt;br&gt;No autonomous score or schedule writes." style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;rounded=1;arcSize=10;fillColor=#f7f8fa;strokeColor=#c8cfd8;strokeWidth=1.5;spacing=18;" vertex="1" parent="1" data-source="python/tutor/session.py; src/server/tutor/conversation.ts">
+          <mxGeometry as="geometry" x="1210" y="805" width="530" height="255" />
+        </mxCell>
+        <mxCell id="footnote" value="Blue: local components and logic · Purple: model calls · Green: local storage&lt;br&gt;Tutor files and coaching checkpoints are separate from the study-database backup. Python is not yet bundled in releases." style="html=1;whiteSpace=wrap;fontFamily=Helvetica;fontSize=18;fontColor=#203047;text;strokeColor=none;fillColor=none;align=left;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="1090" width="1680" height="60" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="shared-ai" name="Shared Python AI">
+    <mxGraphModel dx="1560" dy="1080" grid="1" gridSize="10" page="1" pageWidth="1560" pageHeight="1080" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;Shared AI capabilities · separate feature workflows&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="30" width="1440" height="90" />
+        </mxCell>
+        <mxCell id="host" value="&lt;b&gt;Fastify host&lt;/b&gt;&lt;br&gt;&lt;br&gt;UI requests + background queue&lt;br&gt;Claims · access checks · deadlines&lt;br&gt;Validate and save reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fc;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1" data-source="src/server/tutor/insight-worker.ts; src/server/tutor/conversation.ts">
+          <mxGeometry as="geometry" x="60" y="200" width="400" height="260" />
+        </mxCell>
+        <mxCell id="flows" value="&lt;b&gt;Python feature workflows&lt;/b&gt;&lt;br&gt;&lt;br&gt;Bloom chat + coaching&lt;br&gt;Insights extraction + reports&lt;br&gt;Attempt reviews + topic priorities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fc;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1" data-source="python/tutor/; python/insights/; python/reviews/; python/recommendations/">
+          <mxGeometry as="geometry" x="580" y="200" width="400" height="260" />
+        </mxCell>
+        <mxCell id="core" value="&lt;b&gt;Shared ai_core/&lt;/b&gt;&lt;br&gt;&lt;br&gt;Codex profiles + structured calls&lt;br&gt;Streaming · source utilities&lt;br&gt;Protocol + sanitised errors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0eafa;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1" data-source="python/ai_core/">
+          <mxGeometry as="geometry" x="1100" y="200" width="400" height="260" />
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;Authoritative SQLite&lt;/b&gt;&lt;br&gt;&lt;br&gt;Attempts · observations · reports&lt;br&gt;Scores · goals · preferences&lt;br&gt;Native database backups" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e7f3ec;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1" data-source="src/server/db/schema.ts">
+          <mxGeometry as="geometry" x="60" y="640" width="400" height="250" />
+        </mxCell>
+        <mxCell id="evidence" value="&lt;b&gt;Platform evidence access&lt;/b&gt;&lt;br&gt;&lt;br&gt;Bloom: restricted MCP tools&lt;br&gt;Reports: claim-scoped host reads&lt;br&gt;Existing local semantic search" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fc;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1" data-source="src/integrations/mcp.ts; src/server/insights/service.ts">
+          <mxGeometry as="geometry" x="580" y="640" width="400" height="250" />
+        </mxCell>
+        <mxCell id="provider" value="&lt;b&gt;Codex SDK → remote model&lt;/b&gt;&lt;br&gt;&lt;br&gt;Bloom: persistent conversation&lt;br&gt;Reports: ephemeral, tools disabled&lt;br&gt;Shared file-based sign-in" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0eafa;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1" data-source="python/ai_core/runtime.py">
+          <mxGeometry as="geometry" x="1100" y="640" width="400" height="250" />
+        </mxCell>
+        <mxCell id="a" source="host" target="flows" value="JSON-lines" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#62758b;strokeWidth=2;fontSize=17;labelBackgroundColor=#ffffff;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="b" source="flows" target="core" value="Reuse" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#62758b;strokeWidth=2;fontSize=17;labelBackgroundColor=#ffffff;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="c" source="core" target="provider" value="Generate" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#62758b;strokeWidth=2;fontSize=17;labelBackgroundColor=#ffffff;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="d" source="host" target="db" value="Validate + persist" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#62758b;strokeWidth=2;fontSize=17;labelBackgroundColor=#ffffff;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e" source="flows" target="evidence" value="Read" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#62758b;strokeWidth=2;fontSize=17;labelBackgroundColor=#ffffff;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="f" source="evidence" target="db" value="Authorised sources" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;strokeColor=#62758b;strokeWidth=2;fontSize=17;labelBackgroundColor=#ffffff;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="note" value="All LLM prompts, model calls and response shaping live in Python.&lt;br&gt;Fastify owns queues, permissions and authoritative writes.&lt;br&gt;Embeddings and search remain backend retrieval infrastructure." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#62758b;fontFamily=Helvetica;fontSize=22;fontColor=#203047;spacing=20;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="945" width="1440" height="110" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -27,9 +27,17 @@ export function registerTutorFeatures(
     db,
     clock,
     token,
+    tutorToken,
     dbPath,
     embed,
-  }: { db: Db; clock: () => Date; token: string; dbPath: string; embed?: Embed },
+  }: {
+    db: Db;
+    clock: () => Date;
+    token: string;
+    tutorToken: string;
+    dbPath: string;
+    embed?: Embed;
+  },
 ) {
   const { insights, topics } = createInsights(app, db, clock, dbPath, embed);
   const reviews = new AutoReviewQueue();
@@ -39,5 +47,12 @@ export function registerTutorFeatures(
   app.decorate('tutorJobs', jobs);
   registerCloseout(app, db, clock, reviews);
   registerAutoReview(app, db, reviews, tutor.active);
-  registerInsights(app, db, insights, topics, (header) => bearerMatches(header, token), tutor);
+  registerInsights(
+    app,
+    db,
+    insights,
+    topics,
+    (header) => bearerMatches(header, token) || bearerMatches(header, tutorToken),
+    tutor,
+  );
 }

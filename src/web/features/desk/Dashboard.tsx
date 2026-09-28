@@ -1,3 +1,4 @@
+import { useTutor } from '../tutor/TutorDock';
 import { DropdownMenu } from 'radix-ui';
 import { enumLabel } from '../../lib/labels';
 import { DateField } from '@/components/date-field';
@@ -381,6 +382,7 @@ function greeting(now = new Date()) {
 }
 
 export function Dashboard() {
+  const openTutor = useTutor();
   const [planNotice, setPlanNotice] = useState('');
   const query = useQuery({
     queryKey: ['dashboard'],
@@ -434,12 +436,17 @@ export function Dashboard() {
             : dateLabel(d.plan?.date ?? null)
         }
         actions={
-          <Button asChild variant="outline">
-            <Link to="/settings">
-              <ListChecks aria-hidden="true" />
-              {perDay} per day
-            </Link>
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => openTutor()}>
+              Talk to your tutor
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/settings">
+                <ListChecks aria-hidden="true" />
+                {perDay} per day
+              </Link>
+            </Button>
+          </>
         }
       />
       <FillPage>

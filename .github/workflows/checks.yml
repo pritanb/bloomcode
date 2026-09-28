@@ -13,9 +13,20 @@ jobs:
         with:
           node-version: '22.23.0'
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: python/requirements.txt
+      - name: Install Python AI dependencies
+        run: |
+          python -m venv python/.venv
+          python/.venv/bin/python -m pip install -r python/requirements.txt
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
+      - name: Test Python AI workflows (offline)
+        run: python/.venv/bin/python -m unittest discover -s python/tests -t python -p 'test_*.py'
       - run: npm test
       - run: npm run test:smoke

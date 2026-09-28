@@ -1,3 +1,4 @@
+import { useTutor } from '../tutor/TutorDock';
 import { enumLabel, helpLabel, languageLabel } from '../../lib/labels';
 import { DateField } from '@/components/date-field';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,7 @@ export function AttemptPage() {
   return <AttemptWorkspace key={query.data.id} initial={query.data} />;
 }
 function AttemptWorkspace({ initial }: { initial: Attempt }) {
+  const openTutor = useTutor();
   const dark = useDarkMode();
   const cache = useQueryClient();
   const [attempt, setAttempt] = useState(initial);
@@ -264,12 +266,19 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
             : 'Record your result from LeetCode. An unfinished solution still counts as practice.'
         }
         actions={
-          <Button asChild variant="outline">
-            <a href={attempt.problem.url} target="_blank" rel="noreferrer">
-              <ExternalLink aria-hidden="true" focusable="false" />
-              Open in LeetCode
-            </a>
-          </Button>
+          <>
+            {completed && (
+              <Button variant="outline" onClick={() => openTutor(attempt.id)}>
+                Discuss with tutor
+              </Button>
+            )}
+            <Button asChild variant="outline">
+              <a href={attempt.problem.url} target="_blank" rel="noreferrer">
+                <ExternalLink aria-hidden="true" focusable="false" />
+                Open in LeetCode
+              </a>
+            </Button>
+          </>
         }
       />
       {!!error && (

@@ -4,6 +4,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { pathToFileURL } from 'node:url';
 import { LocalApi, ApiError } from './local-api.js';
+import { goalChange, confirmedGoalChange } from '../shared/learning-goals.js';
+import { preferenceChange, confirmedPreferenceChange } from '../shared/tutor-preferences.js';
 const id = z
   .string()
   .min(1)
@@ -18,6 +20,21 @@ const key = z
 const date = z.iso.date();
 const action = z.enum(['recommended', 'manual', 'none']);
 const schemas = {
+  get_tutor_access: z.strictObject({}),
+  get_tutor_preferences: z.strictObject({}),
+  propose_tutor_preferences: z.strictObject({ change: preferenceChange }),
+  confirm_tutor_preferences: confirmedPreferenceChange.extend({ idempotencyKey: key }),
+  get_learning_goals: z.strictObject({
+    state: z.enum(['active', 'completed', 'abandoned', 'all']).optional(),
+  }),
+  propose_learning_goal: z.strictObject({ change: goalChange }),
+  confirm_learning_goal: confirmedGoalChange.extend({ idempotencyKey: key }),
+  get_topic_scores: z.strictObject({ limit: z.number().int().min(1).max(50).optional() }),
+  get_recent_attempts: z.strictObject({
+    startedAfter: z.iso.datetime({ offset: true }).optional(),
+    problem: z.string().trim().max(200).optional(),
+    limit: z.number().int().min(1).max(20).optional(),
+  }),
   get_learning_insights: z.strictObject({}),
   retrieve_learning_evidence: z.strictObject({
     query: z.string().trim().min(1).max(800),
@@ -90,6 +107,23 @@ const schemas = {
   }),
 };
 const descriptions: Record<keyof typeof schemas, string> = {
+  get_tutor_access: 'Check whether tutoring is permitted; no study records are returned.',
+  get_tutor_preferences:
+    'Read the current explanation depth, hint style and version. A null sourceConversation means defaults, not learner-confirmed preferences.',
+  propose_tutor_preferences:
+    'Propose explicit teaching preferences for host confirmation; does not save. Include BOTH current-or-requested values and the current version. Preserve any preference the learner did not ask to change. Depth: concise, balanced, detailed. Hint style: questions, progressive hints, or direct guidance. Do not infer preferences from learner performance.',
+  confirm_tutor_preferences:
+    'Host-only: save preferences AFTER explicit confirmation using the full credential. Retry uncertain writes with the SAME key and payload.',
+  get_learning_goals:
+    'Read up to 20 saved learning goals (active by default). Includes versions and source conversation. Hidden during mixed assessments.',
+  propose_learning_goal:
+    'Propose a goal or state change for the learner to review. This does NOT save anything. The host will ask for explicit confirmation. Never claim a proposal is saved. For state changes use the current goal ID and version.',
+  confirm_learning_goal:
+    'Host-only: commit a change AFTER explicit learner confirmation. Requires full host credential; unavailable to the conversational tutor. Retry uncertain writes with the SAME idempotency key and payload.',
+  get_topic_scores:
+    'Read topic scores, lowest scored topics first and unscored topics last. Limit 1–50 (default 20). Includes provisional flags, coverage counts and hasMore; null scores mean unknown, not weak. No notes or attempt history. Hidden during mixed assessments.',
+  get_recent_attempts:
+    'Find completed attempts newest first, optionally filtered by problem title substring. Returns IDs, titles, dates, outcomes and help usage. Use returned IDs with get_attempt_context; do not ask the learner to look up IDs. Limit 1–20 (default 10); hasMore indicates older matches. Optional startedAfter is an ISO timestamp (inclusive) for practice begun since a goal was agreed. Hidden during mixed assessments.',
   get_learning_insights:
     'Read the current learning report and coverage. Hidden during mixed assessments.',
   retrieve_learning_evidence:
@@ -113,6 +147,13 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
   inputSchema: z.toJSONSchema(schema) as { type: 'object' },
   annotations: {
     readOnlyHint: [
+      'get_tutor_preferences',
+      'propose_tutor_preferences',
+      'get_learning_goals',
+      'propose_learning_goal',
+      'get_topic_scores',
+      'get_tutor_access',
+      'get_recent_attempts',
       'search_questions',
       'get_attempt_context',
       'get_learning_insights',
@@ -125,7 +166,36 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
 export async function callTool(api: LocalApi, name: string, args: unknown) {
   try {
     let result: unknown;
-    if (name === 'get_learning_insights') {
+    if (name === 'get_tutor_access') {
+      schemas.get_tutor_access.parse(args);
+      result = await api.request('GET', '/api/tutor-access');
+    } else if (name === 'get_tutor_preferences') {
+      schemas.get_tutor_preferences.parse(args);
+      result = await api.request('GET', '/api/tutor-preferences');
+    } else if (name === 'propose_tutor_preferences') {
+      result = { proposal: schemas.propose_tutor_preferences.parse(args).change, saved: false };
+    } else if (name === 'confirm_tutor_preferences') {
+      const { idempotencyKey, ...body } = schemas.confirm_tutor_preferences.parse(args);
+      result = await api.request('POST', '/api/tutor-preferences', body, idempotencyKey);
+    } else if (name === 'get_learning_goals') {
+      const { state = 'active' } = schemas.get_learning_goals.parse(args);
+      result = await api.request('GET', `/api/learning-goals?state=${state}`);
+    } else if (name === 'propose_learning_goal') {
+      result = { proposal: schemas.propose_learning_goal.parse(args).change, saved: false };
+    } else if (name === 'confirm_learning_goal') {
+      const { idempotencyKey, ...body } = schemas.confirm_learning_goal.parse(args);
+      result = await api.request('POST', '/api/learning-goals', body, idempotencyKey);
+    } else if (name === 'get_topic_scores') {
+      const { limit = 20 } = schemas.get_topic_scores.parse(args);
+      result = await api.request('GET', `/api/topics/scores?limit=${limit}`);
+    } else if (name === 'get_recent_attempts') {
+      const input = schemas.get_recent_attempts.parse(args);
+      const params = new URLSearchParams();
+      if (input.problem !== undefined) params.set('q', input.problem);
+      if (input.startedAfter !== undefined) params.set('startedAfter', input.startedAfter);
+      if (input.limit !== undefined) params.set('limit', String(input.limit));
+      result = await api.request('GET', `/api/attempts?${params}`);
+    } else if (name === 'get_learning_insights') {
       schemas.get_learning_insights.parse(args);
       result = await api.request('GET', '/api/insights');
     } else if (name === 'retrieve_learning_evidence')

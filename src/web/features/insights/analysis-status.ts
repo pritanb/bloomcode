@@ -55,8 +55,7 @@ export function analysisStatus(data: InsightStatus) {
   if (data.reportStatus === 'generating' || data.worker?.activeKind === 'report')
     return {
       title: 'Generating report…',
-      detail:
-        'Attempt analysis and report generation are separate steps. The tutor accepted this request; waiting for its result. A quiet connection during generation is normal.',
+      detail: data.reportActivity ?? 'Preparing targeted practice advice from your saved attempts.',
       busy: true,
     };
   if (data.worker?.activeKind === 'attempt')

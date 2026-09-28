@@ -49,10 +49,19 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
     await client.connect(transport);
     const tools = await client.listTools();
     expect(tools.tools.map((t) => t.name).sort()).toEqual([
+      'confirm_learning_goal',
+      'confirm_tutor_preferences',
       'finish_attempt',
       'get_attempt_context',
+      'get_learning_goals',
       'get_learning_insights',
+      'get_recent_attempts',
       'get_today',
+      'get_topic_scores',
+      'get_tutor_access',
+      'get_tutor_preferences',
+      'propose_learning_goal',
+      'propose_tutor_preferences',
       'retrieve_learning_evidence',
       'save_review',
       'search_questions',

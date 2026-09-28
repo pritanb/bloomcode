@@ -1,11 +1,9 @@
 import type { TutorJobKind } from '../../shared/tutor.js';
 
-// One model call. The app's Codex worker runs the model.
+/** Task data only. Python owns prompts, schemas and model calls. */
 export interface GenerateRequest {
-  kind: TutorJobKind;
-  system: string;
-  user: string;
-  maxTokens: number;
+  kind: Exclude<TutorJobKind, 'report'> | 'connection';
+  context: unknown;
   timeoutMs: number;
 }
 export type Generate = (

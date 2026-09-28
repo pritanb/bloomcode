@@ -21,9 +21,9 @@ export function AnalysisStatus({ data }: { data: InsightStatus }) {
     data.failed > 0 ||
     data.embeddingStatus === 'failed';
   const message = failed
-    ? 'Couldn’t update your recommendations.'
+    ? `Couldn’t update your recommendations. ${status.detail}`
     : status.busy
-      ? 'Updating recommendations…'
+      ? (data.reportActivity ?? 'Updating recommendations…')
       : data.total === 0
         ? 'Complete a practice attempt to get recommendations.'
         : 'Waiting for your tutor…';
