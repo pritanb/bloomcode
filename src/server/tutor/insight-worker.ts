@@ -33,11 +33,13 @@ export async function runInsightWorker(
           saved = true;
           return undefined;
         } catch (error) {
-          if (
-            error instanceof z.ZodError ||
-            (error instanceof ApiError && ['VALIDATION', 'EVIDENCE'].includes(error.code))
-          )
-            return error.message.slice(0, 2000);
+          if (error instanceof z.ZodError)
+            return error.issues
+              .slice(0, 5)
+              .map((issue) => `${issue.path.join('.')}: ${issue.code}`)
+              .join('; ');
+          if (error instanceof ApiError && ['VALIDATION', 'EVIDENCE'].includes(error.code))
+            return error.message.slice(0, 1500);
           throw error;
         }
       },

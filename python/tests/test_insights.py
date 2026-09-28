@@ -1,6 +1,6 @@
 import json
 import unittest
-from insights.report import ReportFlow, inspect, select_attempts
+from insights.report import ReportFlow, inspect, select_attempts, report_schema
 
 
 def row(i, polarity='difficulty', **changes):
@@ -9,9 +9,10 @@ def row(i, polarity='difficulty', **changes):
 
 
 class Model:
-    def __init__(self, values): self.values, self.calls = iter(values), 0
+    def __init__(self, values): self.values, self.calls, self.requests = iter(values), 0, []
     def generate(self, *_):
         self.calls += 1
+        self.requests.append(_)
         return json.dumps(next(self.values))
 
 
@@ -53,3 +54,29 @@ class InsightsTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             ReportFlow(model, lambda _: {'status': 'active'}, lambda _: None).run({'evidence': [row(1)]})
         self.assertEqual(model.calls, 0)
+
+    def test_correction_receives_rejected_report_and_specific_error(self):
+        model = Model([{}, {'findings': [], 'limitation': 'Sparse evidence'}])
+        ReportFlow(model, read, lambda _: None).run({'evidence': []})
+        correction = model.requests[1][2]
+        self.assertEqual(json.loads(correction['rejectedReport']), {})
+        self.assertIn('findings: missing', correction['correction'])
+        self.assertIn('limitation: missing', correction['correction'])
+
+    def test_final_rejection_keeps_reason_without_private_model_content(self):
+        model = Model([{'findings': 'private text'}, {'findings': 'private text'}])
+        with self.assertRaises(RuntimeError) as failure:
+            ReportFlow(model, read, lambda _: None).run({'evidence': []})
+        self.assertIn('findings: list_type', str(failure.exception))
+        self.assertNotIn('private text', str(failure.exception))
+        model = Model([{'findings': [], 'limitation': ''}] * 2)
+        with self.assertRaisesRegex(RuntimeError, 'Single-problem findings must cite one problem'):
+            ReportFlow(model, read, lambda _: 'Single-problem findings must cite one problem').run({'evidence': []})
+
+    def test_schema_only_allows_inspected_citations_and_catalogue(self):
+        schema = report_schema({'evidence': [row('verified')], 'questions': [{'id': 'known'}]})
+        self.assertEqual(schema['$defs']['Finding']['properties']['evidenceIds']['items']['enum'], ['verified'])
+        self.assertEqual(schema['$defs']['Suggestion']['properties']['problemId']['enum'], ['known'])
+        empty = report_schema({'evidence': [], 'questions': []})
+        self.assertEqual(empty['properties']['findings']['maxItems'], 0)
+        self.assertEqual(empty['$defs']['Finding']['properties']['suggestions']['maxItems'], 0)
