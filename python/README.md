@@ -1,4 +1,4 @@
-# Python tutor
+# Python AI workflows
 
 Bloom is BloomCode's AI tutor. **Python manages sessions and teaching behavior,
 LangGraph coordinates the workflows, and Codex generates answers.** Platform data
@@ -46,6 +46,9 @@ Without a token file, chat runs without platform context or tools.
 python/
 ├── chat.py                 # Terminal entry point
 ├── worker.py               # JSON-lines bridge for the app
+├── insights_worker.py      # Stateless report worker
+├── ai_core/                # Shared runtime, model, evidence and protocol
+├── insights/               # Targeted Learning Insights graph
 ├── tutor/
 │   ├── session.py          # Codex session, instructions and proposals
 │   ├── answer_graph.py     # Ordinary answer workflow
@@ -114,3 +117,40 @@ python/.venv/bin/python python/evals/check_resume.py           # Restart/resume 
 Comparisons save responses, timings and evidence under ignored
 `private/coaching-evals/` or `private/answer-evals/`. Review answer quality manually;
 these small scenarios do not establish a measured quality improvement.
+
+## Shared AI layer and Learning Insights
+
+`ai_core/` contains the isolated Codex runtime, structured model calls, streaming,
+source verification and worker protocol. `tutor/` owns conversation and coaching
+policy; `insights/` owns targeted report policy. Both use the same SDK infrastructure.
+
+Fastify starts `insights_worker.py` for a claimed report job. Its LangGraph flow is
+`select → inspect → generate → validate`. The worker requests supporting attempts
+through the parent, which restricts reads to the current job's evidence. It inspects
+at most eight attempts and 48,000 source characters. Fastify validates citations,
+recurrence, corrections and current access before saving. There is normally one
+model call and at most one correction across all validation stages.
+
+Reports use Settings' model and report reasoning effort. They require the same
+Python dependencies and file-based sign-in as Bloom, but use temporary isolated
+sessions without Bloom's conversation lock. Missing setup fails the report clearly;
+saved reports remain readable. Attempt extraction, attempt reviews and topic picks
+still use the TypeScript Codex runner. Python is not yet bundled for release.
+
+New reports include a specific action, exercise and success check. Source verification
+checks provenance, not whether a diagnosis is correct. Sparse evidence can produce
+no findings. Reports are included in native SQLite backups; temporary AI sessions
+and credentials are not added to those backups. Older reports remain readable.
+
+Compare legacy and targeted reports using synthetic records only:
+
+```sh
+npm run eval:insights:reports                    # list scenarios; no model calls
+npm run eval:insights:reports -- --live          # explicit Codex usage
+```
+
+Use `--model`, `--effort`, or `--scenario` to narrow a comparison. Results and timing
+are saved to ignored `private/insights-comparison/`. Review `comparison.md` for
+specificity, supporting evidence, exercise relevance and a useful success check;
+a valid response is not automatically a better one. The legacy prompt exists only
+in the evaluation harness and is not a production fallback.

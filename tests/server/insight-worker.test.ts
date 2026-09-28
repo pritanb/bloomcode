@@ -64,3 +64,20 @@ it('aborts when evidence or assessment access changes', async () => {
   await expect(h.run()).rejects.toThrow('access or evidence changed');
   expect(h.insights.complete).not.toHaveBeenCalled();
 });
+
+it('explains missing Python setup without saving', async () => {
+  const h = fixture();
+  await expect(
+    runInsightWorker(
+      h.request,
+      {
+        model: 'test',
+        effort: 'low',
+        codexPath: null,
+        signal: h.controller.signal,
+      },
+      { ...runtime, python: '/nonexistent/bloomcode-python' },
+    ),
+  ).rejects.toThrow('BLOOMCODE_PYTHON');
+  expect(h.insights.complete).not.toHaveBeenCalled();
+});

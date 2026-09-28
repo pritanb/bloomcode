@@ -4,7 +4,7 @@ import os
 from typing import TypedDict
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
-from ai_core.evidence import matches_source
+from ai_core.evidence import matches_source, source_window
 os.environ['LANGSMITH_TRACING'] = 'false'
 os.environ['LANGCHAIN_TRACING_V2'] = 'false'
 from langgraph.graph import StateGraph, START, END
@@ -45,7 +45,11 @@ Use plain language. An exercise is proposed practice, never an observed failure 
 Distinguish learner reports, code-inferred concerns, and observed outcomes. Help usage or a score
 alone cannot establish a misconception. Do not invent intermediate work, requirements or causes.
 Cite only verified observation IDs. Recurring difficulties require two DISTINCT problems.
-Single-problem findings cite one problem. Improvement requires earlier difficulty and later
+Cite every observation discussed, including counterexamples in caveats. Single-problem findings
+cite one problem only. Use kind focus when contrasting evidence spans problems without supporting
+a recurring difficulty; do not drop the counterexample citation to fit single_problem.
+An exercise must actually require the identified decision, not a trivial case that bypasses it.
+Improvement requires earlier difficulty and later
 strength on the same problem, with matching language, help and evidence conditions.
 Consider counterexamples and corrections; don't rephrase rejected diagnoses. Preserve uncertainty.
 Similarity retrieval is a sample, not prevalence. Use supplied coverage; do not invent rates.
@@ -78,13 +82,6 @@ def select_attempts(rows):
     return ids[:8]
 
 
-def source_window(value, excerpts, limit):
-    if len(value) <= limit:
-        return value, False
-    # Keep a bounded contiguous window around a cited excerpt, not just the file prefix.
-    anchor = next((value.find(e) for e in excerpts if e and e in value), 0)
-    start = max(0, anchor - min(500, limit // 4))
-    return value[start:start + limit], True
 
 
 def inspect(context, ids, read):

@@ -11,16 +11,33 @@ import type { Attempt, AutoReviewStatus } from '../../src/shared/contracts.js';
 
 // The report transport is exercised separately without spending model usage.
 vi.mock('../../src/server/tutor/insight-worker.js', () => ({
-  runInsightWorker: async (request: import('../../src/server/tutor/insight-worker.js').ReportRequest, options: { model: string }) => {
+  runInsightWorker: async (
+    request: import('../../src/server/tutor/insight-worker.js').ReportRequest,
+    options: { model: string },
+  ) => {
     const { appendFile } = await import('node:fs/promises');
     if (process.env.FAKE_CODEX_LOG) await appendFile(process.env.FAKE_CODEX_LOG, 'report\n');
-    request.insights.complete(request.job.id, request.job.claimId!, {
-      findings: [{ title: 'Check empty input', kind: 'single_problem',
-        explanation: 'A reflection reports a missed empty input.', action: 'Trace the empty input.',
-        exercise: 'Trace your solution on an empty array.', successCheck: 'Explain which guard prevents indexing.',
-        evidenceIds: [request.context.evidence[0].id], caveat: 'One self-report.', suggestions: [] }],
-      limitation: 'One attempt analyzed.',
-    }, options.model);
+    request.insights.complete(
+      request.job.id,
+      request.job.claimId!,
+      {
+        findings: [
+          {
+            title: 'Check empty input',
+            kind: 'single_problem',
+            explanation: 'A reflection reports a missed empty input.',
+            action: 'Trace the empty input.',
+            exercise: 'Trace your solution on an empty array.',
+            successCheck: 'Explain which guard prevents indexing.',
+            evidenceIds: [request.context.evidence[0].id],
+            caveat: 'One self-report.',
+            suggestions: [],
+          },
+        ],
+        limitation: 'One attempt analyzed.',
+      },
+      options.model,
+    );
   },
 }));
 

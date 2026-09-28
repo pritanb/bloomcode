@@ -19,12 +19,14 @@ class StructuredModel:
 
     def generate(self, schema, instructions, data):
         options = {**self.options, 'model': self.model, 'base_instructions': instructions,
-                   'config': {'mcp_servers.bloomcode.enabled': False},
+                   'config': self.options.get('config', {}),
                    'approval_mode': ApprovalMode.deny_all, 'sandbox': Sandbox.read_only}
-        thread = self.codex.thread_start(ephemeral=True, **options)
         started = time.monotonic()
         try:
+            thread = self.codex.thread_start(ephemeral=True, **options)
             result = thread.run(json.dumps(data), output_schema=schema, effort=self.effort)
+        except TimeoutError:
+            raise
         except Exception as error:
             raise model_error(error) from None
         self.trace.append({'model': self.model, 'reasoningEffort': getattr(self.effort, 'value', self.effort),

@@ -7,7 +7,7 @@ async def call(session, tool, args):
     data = json.loads(result.content[0].text)
     if result.isError:
         if data.get('error', {}).get('status') == 403:
-            raise PermissionError('Finish or cancel active practice before coaching.')
+            raise PermissionError('Finish or cancel active practice before viewing study evidence.')
         raise RuntimeError('Study evidence is unavailable. Retry when BloomCode is running.')
     return data
 
@@ -29,3 +29,12 @@ def matches_source(observation, attempt):
     source = source if isinstance(source, str) else json.dumps(source, separators=(",", ":"), ensure_ascii=False)
     excerpt = observation.get("excerpt", "")
     return bool(excerpt and excerpt in source)
+
+
+def source_window(value, excerpts, limit):
+    if len(value) <= limit:
+        return value, False
+    # Keep a bounded contiguous window around a cited excerpt, not just the file prefix.
+    anchor = next((value.find(e) for e in excerpts if e and e in value), 0)
+    start = max(0, anchor - min(500, limit // 4))
+    return value[start:start + limit], True

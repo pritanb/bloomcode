@@ -91,6 +91,10 @@ export function runInsightWorker(
       options.signal.removeEventListener('abort', cancel);
       options.progress?.(null);
       if (error) {
+        if (child.exitCode !== null || child.signalCode !== null) {
+          reject(error);
+          return;
+        }
         child.stdin.write(JSON.stringify({ v: 1, id, type: 'cancel' }) + '\n', () => {});
         kill('SIGTERM');
         const hardKill = setTimeout(() => kill('SIGKILL'), 2000);

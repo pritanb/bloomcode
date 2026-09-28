@@ -6,7 +6,7 @@
 
 Read top to bottom, then follow either background AI path from left to right.
 Purple steps call Codex and OpenAI; blue steps run locally; green steps save to
-the same SQLite workspace. These backend operations are not separate services.
+the same SQLite workspace. The report step now runs in a Python worker; extraction remains in TypeScript.
 Bloom's interactive conversation is a separate Python worker, detailed below.
 
 ## Bloom AI tutor
@@ -68,3 +68,21 @@ Open `bloomcode.drawio` in draw.io or diagrams.net. The first page is the platfo
 overview; the second is Bloom's architecture. Export each page to its matching
 PNG with a white background, check the preview, and commit the source and images
 together when the architecture changes.
+
+## Shared Python AI layer
+
+![Bloom and Learning Insights share Python runtime and evidence utilities, with separate workflows and backend-controlled persistence.](shared-ai.png)
+
+Bloom and reports reuse `python/ai_core/` for Codex runtime isolation, model calls,
+evidence utilities and protocol helpers. They run in separate processes: persistent
+conversation state for Bloom, temporary tool-free sessions for background reports.
+
+Learning Insights: Fastify claims a job → Python selects evidence → requests up to
+eight supporting attempts → generates actionable findings → validates → Fastify
+checks current evidence and saves. Model generation uses the Python SDK directly;
+only evidence reads and candidate validation cross back to the parent. At most two
+model calls share one deadline. Access changes, cancellation or stale evidence stop
+work. Missing Python/sign-in is an explicit report error, not a legacy fallback.
+
+Reviews, extraction and topic recommendations still use the TypeScript runner.
+They can adopt shared Python capabilities later without changing study storage.

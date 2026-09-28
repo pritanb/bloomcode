@@ -27,3 +27,16 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(matches_source(observation, {'notes': 'I kept mid'}))
         self.assertFalse(matches_source(observation, {'notes': 'discarded mid'}))
         self.assertFalse(matches_source({'sourceField': 'notes', 'excerpt': ''}, {}))
+
+    def test_structured_background_call_does_not_create_an_mcp_server(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+        from ai_core.model import StructuredModel
+        codex = MagicMock()
+        codex.thread_start.return_value.run.return_value = SimpleNamespace(
+            error=None, status=SimpleNamespace(value='completed'), final_response='{}', usage=None)
+        model = StructuredModel(codex, {'config': {}}, 'test', 'low')
+        self.assertEqual(model.generate({}, 'instructions', {}), '{}')
+        self.assertEqual(codex.thread_start.call_args.kwargs['config'], {})
+        self.assertTrue(codex.thread_start.call_args.kwargs['ephemeral'])
+        self.assertEqual(len(model.trace), 1)

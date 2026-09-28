@@ -37,4 +37,4 @@ def background_runtime(codex_bin=None):
         (home / 'auth.json').symlink_to(credential.resolve())
         (home / 'config.toml').write_text('')
         with Codex(runtime_config(home, workspace, codex_bin)) as codex:
-            yield codex, {'cwd': str(workspace)}
+            yield codex, {'cwd': str(workspace), 'config': {}}

@@ -27,7 +27,8 @@ class StructuredCodex:
         self.trace = []
 
     def __call__(self, schema, instructions, data):
-        model = StructuredModel(self.codex, self.options, self.model, self.effort)
+        model = StructuredModel(self.codex, {**self.options,
+            'config': {'mcp_servers.bloomcode.enabled': False}}, self.model, self.effort)
         for attempt in range(2):
             text = model.generate(schema.model_json_schema(), instructions, data)
             try:
