@@ -18,12 +18,11 @@ for variant in ['before','after']:
     with open_tutor(api_url=a.api_url, token_file=a.token_file,
                     state_dir=a.token_file.parent / variant, new=True) as tutor:
         for question in questions:
-            activity, text = [], []
+            activity = []
             started = time.monotonic()
             first = []
-            def delta(value):
+            def delta(_value):
                 if not first: first.append(time.monotonic()-started)
-                text.append(value)
             try:
                 answer = (tutor.chat_reply if variant == 'before' else tutor.reply)(
                     question, on_activity=activity.append, on_text=delta)

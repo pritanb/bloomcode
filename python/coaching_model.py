@@ -1,4 +1,4 @@
-"""Schema-validated, stateless Codex calls used by routing and coaching."""
+"""Schema-validated, stateless Codex calls for adaptive coaching."""
 import json
 import os
 import re

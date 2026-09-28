@@ -71,12 +71,7 @@ async def retrieve_evidence(config, query, context_id=None):
                 attempt = context['attempt']
                 if attempt.get('status') != 'completed':
                     raise PermissionError('Only completed attempts can be inspected.')
-                record = compact(context)
-                for key, limit in [('code', 6000), ('notes', 1500), ('takeaway', 1000)]:
-                    value = record['attempt'].get(key)
-                    if isinstance(value, str) and len(value) > limit:
-                        record['attempt'][key] = value[:limit]
-                        if key not in record['truncatedFields']: record['truncatedFields'].append(key)
+                record = compact(context, limits=(('code', 6000), ('notes', 1500), ('takeaway', 1000)))
                 bundle['attempts'].append(record)
                 for observation in observations:
                     if observation['attemptId'] != id: continue

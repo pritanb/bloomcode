@@ -16,10 +16,10 @@ async def call(session, tool, args):
     return data
 
 
-def compact(context):
+def compact(context, *, limits=(('code', 16000), ('notes', 4000), ('takeaway', 2000))):
     attempt = dict(context['attempt'])
     truncated = []
-    for key, limit in [('code', 16000), ('notes', 4000), ('takeaway', 2000)]:
+    for key, limit in limits:
         value = attempt.get(key)
         if isinstance(value, str) and len(value) > limit:
             attempt[key] = value[:limit]

@@ -206,8 +206,9 @@ credential symlinks. BloomCode's database-only backup does not include these
 conversation files. Back up the tutor storage separately if needed. Resume
 errors are reported rather than silently starting a replacement chat.
 
-Structured goal criteria, answer-text streaming, context budgeting and
-teaching-quality evaluations remain later work.
+Structured goal criteria and a hard context budget across all model tool calls
+remain later work. Ordinary answers stream text; coaching responses appear after
+validation. Explicit before/after evaluations are documented below.
 
 ## Verify
 
@@ -311,7 +312,7 @@ Ambiguous results prompt you to send `/coach` followed by an offered attempt ID.
 The original exact “Coach me through my latest attempt” starter also works.
 Other free-form requests stay in ordinary chat until coaching is active. Opening
 the tutor alone does not start coaching. Ordinary explanations and goal/preference
-requests still use the original conversational tutor.
+requests use the evidence-first ordinary answer flow.
 
 Python uses the explicit target, retrieves bounded evidence through MCP, and runs a
 LangGraph teaching loop. It selects one focus, asks a diagnostic question, and
