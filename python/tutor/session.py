@@ -180,14 +180,18 @@ class TutorSession:
         if self.context_config:
             if snapshot is None:
                 if on_activity:
-                    on_activity("Loading learner snapshot…")
+                    on_activity("Loading your study progress…")
                 snapshot = load_snapshot(self.context_config)
             if self.coaching:
                 coaching = self.coaching.view()
                 if coaching and snapshot['status'] != 'blocked':
                     snapshot['coachingDiscussion'] = coaching['messages'][-4:]
             if on_activity:
-                on_activity(f"Learner snapshot {snapshot['status']}.")
+                on_activity({
+                    "available": "Reviewing your study progress…",
+                    "unavailable": "Your study progress is unavailable right now.",
+                    "blocked": "Finish or cancel active practice to continue.",
+                }[snapshot["status"]])
             message = json.dumps({"learner_message": message, "learner_snapshot": snapshot})
         completed = None
         final_response = None

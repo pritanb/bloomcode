@@ -117,7 +117,7 @@ class AnswerFlow:
 
     def _snapshot(self, state, config):
         started = time.monotonic()
-        self._activity(config, 'Loading learner snapshot…')
+        self._activity(config, 'Loading your study progress…')
         snapshot = load_snapshot(self.config)
         if snapshot['status'] == 'blocked':
             raise PermissionError('Finish or cancel active practice before using the tutor.')

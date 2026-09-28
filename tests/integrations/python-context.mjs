@@ -295,7 +295,7 @@ with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST
         activity.append(message)
         print('Tutor:', message, flush=True)
     answer = tutor.reply('For my latest Two Sum attempt, what changed in my recorded help usage compared to earlier attempts?', on_activity=report)
-    for started, completed in [('Loading learner snapshot…', 'Learner snapshot available.'),
+    for started, completed in [('Loading your study progress…', 'Reviewing your study progress…'),
                                ('Retrieving attempt context…', 'Context retrieval completed.')]:
         assert started in activity and completed in activity, activity
         assert activity.index(started) < activity.index(completed), activity
@@ -306,7 +306,7 @@ with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST
     activity.clear()
     recommendation = tutor.reply('What should I practise next across my recent problems? Explain the evidence and limitations.', on_activity=report)
     assert 'Learning insights completed.' in activity, activity
-    assert 'Learner snapshot available.' in activity, activity
+    assert 'Reviewing your study progress…' in activity, activity
     assert 'Context retrieval completed.' in activity, activity
     assert os.environ['TEST_OTHER_ATTEMPT'] in recommendation, recommendation
     print('Practice recommendation:', recommendation)
