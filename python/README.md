@@ -130,7 +130,10 @@ policy; `insights/` owns targeted report policy. Both use the same SDK infrastru
 Fastify starts `insights_worker.py` for a claimed report job. Its LangGraph flow is
 `select → inspect → generate → validate`. The worker requests supporting attempts
 through the parent, which restricts reads to the current job's evidence. It inspects
-at most eight attempts and 48,000 source characters. Fastify validates citations,
+at most eight attempts and 48,000 source characters. Retrieval anchors span the
+study history; inspection balances problems and strengths/difficulties, reserving
+space for earlier/later evidence on the same problem. It does not simply take the
+newest eight attempts. This is still a bounded sample, not an exhaustive diagnosis. Fastify validates citations,
 recurrence, corrections and current access before saving. There is normally one
 model call and at most one correction across all validation stages.
 

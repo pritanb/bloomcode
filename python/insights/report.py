@@ -101,18 +101,50 @@ class State(TypedDict, total=False):
     accepted: bool
 
 
+def spread(rows, limit):
+    """Evenly sample ordered candidates, keeping both ends of the history."""
+    if limit <= 0:
+        return []
+    if len(rows) <= limit:
+        return rows
+    if limit == 1:
+        return [rows[len(rows) // 2]]
+    return [rows[i * (len(rows) - 1) // (limit - 1)] for i in range(limit)]
+
+
 def select_attempts(rows):
-    # Alternate recent difficulty and strength anchors; duplicates do not consume slots.
-    ordered = sorted(rows, key=lambda o: (o.get('studyDate', ''), o['id']), reverse=True)
-    groups = [[o for o in ordered if o['polarity'] == p] for p in ('difficulty', 'strength')]
-    ids = []
-    for i in range(max((len(g) for g in groups), default=0)):
+    # Start from a time-spread mix of problems and polarities, then reserve space
+    # for earlier/later evidence on those problems. Observation count adds no weight.
+    ordered = sorted(rows, key=lambda o: (o.get('studyDate', ''), o['id']))
+    groups = []
+    for polarity in ('difficulty', 'strength'):
+        by_problem = {}
+        for row in ordered:
+            if row['polarity'] == polarity:
+                by_problem.setdefault(row['problemId'], row)
+        groups.append(spread(list(by_problem.values()), 2))
+    seeds, problems = [], set()
+    for i in range(2):
         for group in groups:
-            if i < len(group) and group[i]['attemptId'] not in ids:
-                ids.append(group[i]['attemptId'])
+            if i < len(group) and group[i]['problemId'] not in problems:
+                seeds.append(group[i])
+                problems.add(group[i]['problemId'])
+    ids = [row['attemptId'] for row in seeds]
+    for seed in seeds:
+        related = [row for row in ordered if row['problemId'] == seed['problemId']
+                   and row['attemptId'] not in ids]
+        contrary = [row for row in related if row['polarity'] != seed['polarity']]
+        candidates = contrary or related
+        if candidates:
+            ids.append(candidates[-1]['attemptId'])
+    # Fill unused slots with distinct problems distributed across the remaining history.
+    remaining = {}
+    for row in ordered:
+        if row['attemptId'] not in ids and row['problemId'] not in problems:
+            remaining.setdefault(row['problemId'], row)
+    for row in spread(list(remaining.values()), 8 - len(ids)):
+        ids.append(row['attemptId'])
     return ids[:8]
-
-
 
 
 def inspect(context, ids, read):

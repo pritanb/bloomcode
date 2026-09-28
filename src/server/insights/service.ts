@@ -321,18 +321,28 @@ export class Insights {
     const rows = this.observations(),
       vectors = this.vectors(),
       selected = new Map<string, Observation>();
-    // Include recent anchors from both polarities and retrieved neighbours across
-    // the entire history. Counts below describe coverage, not prevalence estimates.
+    // Spread anchors across the history for both polarities, then retrieve related
+    // evidence. Counts below describe coverage, not prevalence estimates.
     const attemptDates = new Map(this.attempts().map((a) => [a.id, a.finishedAt ?? a.studyDate]));
     const recent = [...rows].sort(
       (a, b) =>
         (attemptDates.get(b.attemptId) ?? '').localeCompare(attemptDates.get(a.attemptId) ?? '') ||
         a.id.localeCompare(b.id),
     );
-    const anchors = [
-      ...recent.filter((o) => o.polarity === 'difficulty').slice(0, 6),
-      ...recent.filter((o) => o.polarity === 'strength').slice(0, 6),
-    ];
+    const anchors = ['difficulty', 'strength'].flatMap((polarity) => {
+      // One anchor per attempt prevents verbose extractions from dominating selection.
+      const candidates = [
+        ...new Map(
+          recent.filter((o) => o.polarity === polarity).map((o) => [o.attemptId, o]),
+        ).values(),
+      ];
+      return candidates.length <= 6
+        ? candidates
+        : Array.from(
+            { length: 6 },
+            (_, i) => candidates[Math.floor((i * (candidates.length - 1)) / 5)]!,
+          );
+    });
     for (const anchor of anchors) selected.set(anchor.id, anchor);
     for (const anchor of anchors) {
       const neighbours = rank(anchor.summary, vectors.get(anchor.id) ?? [], rows, vectors);
