@@ -1,4 +1,4 @@
-// Who generates tutor text: a Codex CLI child process run by the app, or nobody.
+// Python AI workers use the Codex SDK; Fastify configures and schedules their tasks.
 // Off until chosen in Settings, because Codex spends the learner's ChatGPT plan.
 export type TutorProvider = 'codex' | 'off';
 export type TutorEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';

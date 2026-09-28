@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import os
 from openai_codex import Codex, CodexConfig
+from ai_core.errors import AIError
 
 DISABLED_FEATURES = (
     'shell_tool', 'unified_exec', 'apps', 'browser_use', 'browser_use_external',
@@ -15,7 +16,7 @@ DISABLED_FEATURES = (
 def auth_file():
     path = Path(os.environ.get('CODEX_HOME', str(Path.home() / '.codex'))) / 'auth.json'
     if not path.is_file():
-        raise RuntimeError('No file-based Codex sign-in found. Sign in with Codex using auth.json in CODEX_HOME; keyring-only sign-in is not supported.')
+        raise AIError('not_signed_in', 'No file-based Codex sign-in found. Sign in with Codex using auth.json in CODEX_HOME; keyring-only sign-in is not supported.')
     return path
 
 

@@ -4,8 +4,8 @@ import sys
 from ai_core.protocol import emit, receive
 
 
-def main():
-    request = receive()
+def main(request=None):
+    request = request or receive()
     id = request.get('id')
     if request.get('type') != 'start' or not isinstance(id, str):
         raise ValueError('Expected a report start request.')

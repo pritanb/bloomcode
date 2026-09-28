@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { createApp } from '../../src/server/core/app.js';
 import { insert, openDb } from '../../src/server/db/db.js';
 import { LocalApi } from '../../src/integrations/local-api.js';
-import { CodexError, findCodex, runCodex } from '../../src/server/tutor/codex.js';
+import { findCodex } from '../../src/server/tutor/codex.js';
 import { defaultTutorSettings } from '../../src/shared/tutor.js';
 import type { Attempt, AutoReviewStatus } from '../../src/shared/contracts.js';
 
@@ -41,28 +41,39 @@ vi.mock('../../src/server/tutor/insight-worker.js', () => ({
   },
 }));
 
+vi.mock('../../src/server/tutor/ai-process.js', () => ({
+  runAIWorker: async (request: { kind: string }, options: { model: string }) => {
+    const { appendFile } = await import('node:fs/promises');
+    const kind = request.kind;
+    if (process.env.FAKE_CODEX_MODE === 'pipeline' && process.env.FAKE_CODEX_LOG)
+      await appendFile(
+        process.env.FAKE_CODEX_LOG,
+        (kind === 'extraction' ? 'extract' : kind) + '\n',
+      );
+    const output =
+      kind === 'topics'
+        ? { topics: [{ topicNumber: 1, reason: 'Arrays is below the 4/5 target.' }] }
+        : {
+            observations: [
+              {
+                summary: 'The learner reports forgetting an empty input.',
+                polarity: 'difficulty',
+                evidenceType: 'learner_reported',
+                sourceField: 'notes',
+                excerpt: 'Forgot empty input.',
+              },
+            ],
+            limitation: 'Self-reported.',
+          };
+    return {
+      model: options.model,
+      text: kind === 'review' ? 'Summary:\nFake review.' : JSON.stringify(output),
+    };
+  },
+}));
+
 // A stand-in for the Codex CLI: never the real one, which would spend plan usage.
-const FAKE = `#!/usr/bin/env node
-const fs=require('node:fs');const args=process.argv.slice(2);let stdin='';
-process.stdin.on('data',c=>stdin+=c).on('end',()=>{
-  if(process.env.FAKE_CODEX_LOG&&process.env.FAKE_CODEX_MODE!=='pipeline')fs.writeFileSync(process.env.FAKE_CODEX_LOG,JSON.stringify({args,stdin,cwd:process.cwd()}));
-  const mode=process.env.FAKE_CODEX_MODE||'ok';
-  if(mode==='hang')return setInterval(()=>{},1000);
-  if(mode==='unauth'){console.log(JSON.stringify({type:'turn.failed',error:{message:'unexpected status 401 Unauthorized: Missing bearer'}}));process.exit(1);}
-  if(mode==='usage'){console.log(JSON.stringify({type:'turn.failed',error:{message:"You've hit your usage limit. Try again later."}}));process.exit(1);}
-  let reply=process.env.FAKE_CODEX_REPLY||'Summary:\\nFake review.';
-  if(mode==='pipeline'){
-    const data=stdin.slice(stdin.indexOf('<data>')+7,stdin.lastIndexOf('</data>'));
-    const phase=stdin.includes('Select the three topics')?'topics':stdin.includes('ONE completed')?'extract':stdin.includes('learning report')?'report':'review';
-    fs.appendFileSync(process.env.FAKE_CODEX_LOG,phase+'\\n');
-    if(phase==='topics')reply=JSON.stringify({topics:[{topicNumber:1,reason:'Arrays is below the 4/5 target.'}]});
-    if(phase==='extract')reply=JSON.stringify({observations:[{summary:'The learner reports forgetting an empty input.',polarity:'difficulty',evidenceType:'learner_reported',sourceField:'notes',excerpt:'Forgot empty input.'}],limitation:'Self-reported; no test execution.'});
-    if(phase==='report')reply=JSON.stringify({findings:[{title:'Check boundary cases',kind:'single_problem',explanation:'This attempt reports forgetting an empty input.',action:'Check whether empty input is permitted before submitting.',evidenceIds:[JSON.parse(data).context.evidence[0].id],caveat:'One self-report is not a recurring pattern.',suggestions:[]}],limitation:'One attempt analyzed.'});
-  }
-  fs.writeFileSync(args[args.indexOf('-o')+1],reply);
-  console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:1,output_tokens:1}}));
-});
-`;
+const FAKE = '#!/usr/bin/env node\nconsole.log("fake codex");\n';
 let dir: string, fake: string;
 const cleanups: (() => Promise<void>)[] = [];
 beforeAll(async () => {
@@ -79,57 +90,8 @@ afterEach(() => {
   delete process.env.FAKE_CODEX_MODE;
   delete process.env.FAKE_CODEX_LOG;
 });
-const run = (timeoutMs = 10_000) =>
-  runCodex({
-    path: fake,
-    model: 'm',
-    effort: 'high',
-    prompt: '<data>secret notes</data>',
-    timeoutMs,
-  });
-
-test('runs isolated, sends the prompt only on stdin and returns the final message', async () => {
-  process.env.FAKE_CODEX_LOG = join(dir, 'log.json');
-  expect(await run()).toEqual({ text: 'Summary:\nFake review.', model: 'm' });
-  const log = JSON.parse(await readFile(process.env.FAKE_CODEX_LOG, 'utf8')) as {
-    args: string[];
-    stdin: string;
-    cwd: string;
-  };
-  for (const flag of [
-    '--ignore-user-config',
-    '--ephemeral',
-    'shell_tool',
-    'read-only',
-    'model_reasoning_effort="high"',
-  ])
-    expect(log.args).toContain(flag);
-  expect(log.args.at(-1)).toBe('-');
-  expect(log.stdin).toContain('secret notes');
-  expect(log.args.join(' ')).not.toContain('secret notes');
-  expect(log.cwd).toContain('lc-tutor-codex-');
-});
-
-test('classifies sign-in, usage-limit, timeout and missing-install failures', async () => {
-  for (const [mode, kind] of [
-    ['unauth', 'not_signed_in'],
-    ['usage', 'usage_limit'],
-  ] as const) {
-    process.env.FAKE_CODEX_MODE = mode;
-    await expect(run()).rejects.toMatchObject({ kind });
-  }
-  process.env.FAKE_CODEX_MODE = 'hang';
-  await expect(run(300)).rejects.toMatchObject({ kind: 'timeout' });
+test('detects a missing configured executable without invoking a model', async () => {
   expect(await findCodex(null, [join(dir, 'missing')])).toBeNull();
-  await expect(
-    runCodex({
-      path: join(dir, 'missing'),
-      model: 'm',
-      effort: 'low',
-      prompt: 'x',
-      timeoutMs: 1000,
-    }),
-  ).rejects.toBeInstanceOf(CodexError);
 });
 
 test('with Codex selected, the app writes queued reviews itself', async () => {

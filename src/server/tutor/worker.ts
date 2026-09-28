@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { runAIWorker } from './ai-process.js';
 import { runInsightWorker, type GenerateReport } from './insight-worker.js';
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -13,7 +15,7 @@ import {
   type TutorSettings,
   type TutorTestResult,
 } from '../../shared/tutor.js';
-import { CodexError, codexPrompt, codexVersion, findCodex, runCodex } from './codex.js';
+import { CodexError, codexVersion, findCodex } from './codex.js';
 
 const effort = z.enum(TUTOR_EFFORTS as [string, ...string[]]);
 export const tutorSettingsSchema = z
@@ -215,16 +217,25 @@ export class CodexWorker {
       this.fail(error);
       throw error;
     }
-    this.activeKind = request.kind;
+    this.activeKind = request.kind === 'connection' ? null : request.kind;
     try {
-      const result = await runCodex({
-        path: this.codexPath,
-        model: settings.model,
-        effort: settings.effort[request.kind],
-        prompt: codexPrompt(request.system, request.user),
-        timeoutMs: Math.min(TIMEOUT_MS[request.kind], request.timeoutMs),
-        signal: this.abort.signal,
-      });
+      const result = await runAIWorker(
+        {
+          id: randomUUID(),
+          kind: request.kind,
+          context: request.context,
+          timeoutMs:
+            request.kind === 'connection'
+              ? 90_000
+              : Math.min(TIMEOUT_MS[request.kind], request.timeoutMs),
+        },
+        {
+          codexPath: this.codexPath,
+          model: settings.model,
+          effort: request.kind === 'connection' ? 'low' : settings.effort[request.kind],
+          signal: this.abort.signal,
+        },
+      );
       this.lastError = null;
       this.lastSuccessAt = this.clock().toISOString();
       return result;
@@ -265,14 +276,15 @@ export class CodexWorker {
       };
     const version = await codexVersion(path);
     try {
-      const result = await runCodex({
-        path,
-        model: settings.model,
-        effort: 'low',
-        prompt: codexPrompt('Reply with exactly the word: ready', 'connection test'),
-        timeoutMs: 90_000,
-        signal: this.abort.signal,
-      });
+      const result = await runAIWorker(
+        { id: randomUUID(), kind: 'connection', context: {}, timeoutMs: 90_000 },
+        {
+          codexPath: path,
+          model: settings.model,
+          effort: 'low',
+          signal: this.abort.signal,
+        },
+      );
       if (settings.provider === 'codex') this.reset();
       return {
         ok: true,
