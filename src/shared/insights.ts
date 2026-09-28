@@ -12,12 +12,6 @@ export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 export const EMBEDDING_REVISION = '751bff37182d3f1213fa05d7196b954e230abad9';
 export const ANALYSIS_VERSION = 'learning-insights-v1';
 export const REPORT_VERSION = 'learning-report-targeted-v5';
-export const REPORT_WRITING_RULES = `Use this required format for every finding:
-- title (Habit): at most 6 words, plain language.
-- action (Next time): at most 25 words, one concrete action, starting with a verb.
-- explanation (Why): at most 35 words linking the action to the supplied evidence.
-Use familiar words and short sentences. Avoid vague advice such as "improve your understanding", abstract phrases like "central mechanism", and multiple tasks bundled into one action. Preserve uncertainty and contrary evidence in caveat; never remove qualifiers just to shorten a claim. Keep caveats and practice reasons brief. Do not invent evidence.
-Example: title="Check your search bounds"; action="Explain why your lower and upper bounds contain the answer before starting binary search."; explanation="Two attempts mention difficulty choosing the upper bound." Use this example only for style, never as evidence.`;
 const id = z.string().min(1).max(200);
 const text = z.string().trim().min(1).max(2000);
 export const observationInput = z
@@ -62,39 +56,18 @@ export const reportResult = z
     limitation: z.string().max(1500),
   })
   .strict();
-// Keep the saved/export schema permissive for older reports. Enforce this
-// contract only on newly generated reports; never truncate advice to make it fit.
-const conciseText = (label: string, words: number, max: number) =>
-  z
-    .string()
-    .trim()
-    .min(1)
-    .max(max)
-    .refine(
-      (value) => value.split(/\s+/u).length <= words,
-      `${label} must contain at most ${words} words`,
-    )
-    .describe(`${label}: maximum ${words} words`);
-export const conciseReportResult = reportResult.extend({
+/** New reports require actionable practice; saved reports retain the legacy contract. */
+export const targetedReportResult = reportResult.extend({
   findings: z
     .array(
       findingInput.extend({
-        title: conciseText('Habit', 6, 200),
-        action: conciseText('Next time', 25, 2000),
-        explanation: conciseText('Why', 35, 2000),
+        title: z.string().trim().min(1).max(200),
+        action: z.string().trim().min(1).max(600),
+        exercise: text,
+        successCheck: z.string().trim().min(1).max(1000),
       }),
     )
-    .max(6),
-});
-
-/** New reports require actionable practice; saved reports retain the legacy contract. */
-export const targetedReportResult = reportResult.extend({
-  findings: z.array(findingInput.extend({
-    title: z.string().trim().min(1).max(200),
-    action: z.string().trim().min(1).max(600),
-    exercise: text,
-    successCheck: z.string().trim().min(1).max(1000),
-  })).max(3),
+    .max(3),
 });
 
 export type ObservationInput = z.infer<typeof observationInput>;
@@ -125,6 +98,7 @@ export interface InsightReport {
   durationMs: number;
 }
 export interface InsightStatus {
+  reportActivity?: string | null;
   runner?: TutorRunnerStatus;
   enabled: boolean;
   hidden: boolean;

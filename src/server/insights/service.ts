@@ -5,11 +5,10 @@ import { type AttemptRecord, attempts, getAttempt, NEWEST } from '../attempts/at
 import {
   ANALYSIS_VERSION,
   REPORT_VERSION,
-  REPORT_WRITING_RULES,
   EMBEDDING_MODEL,
   EMBEDDING_REVISION,
   extractionResult,
-  conciseReportResult,
+  targetedReportResult,
   type Correction,
   type InsightJob,
   type InsightReport,
@@ -88,6 +87,7 @@ const reportView = ({ id, findings, topicPriorities, ...r }: ReportRow): Insight
   evidenceIds: JSON.parse(r.evidenceIds) as string[],
 });
 export class Insights {
+  reportActivity: string | null = null;
   embeddingStatus: InsightStatus['embeddingStatus'] = 'idle';
   error: string | null = null;
   /** A learning report can only be claimed once local search is ready. */
@@ -372,7 +372,6 @@ export class Insights {
     const attempts = new Map(this.attempts().map((a) => [a.id, a]));
     return {
       reportVersion: REPORT_VERSION,
-      writingRules: REPORT_WRITING_RULES,
       ...this.coverage(),
       observationCount: rows.length,
       retrievedCount: evidence.length,
@@ -459,6 +458,25 @@ export class Insights {
       corrections: this.corrections(a.id),
     };
   }
+  reportAttempt(id: string, claimId: string, attemptId: string) {
+    const job = this.currentJob(id, claimId);
+    if (
+      job.attemptId ||
+      !this.observations().some((o) => o.attemptId === attemptId && job.evidenceIds.includes(o.id))
+    )
+      throw new ApiError(403, 'EVIDENCE', 'Attempt is outside the claimed report evidence');
+    const attempt = getAttempt(this.db, attemptId);
+    if (attempt.status !== 'completed')
+      throw new ApiError(403, 'EVIDENCE', 'Only completed attempts may be inspected');
+    return {
+      id: attempt.id,
+      language: attempt.language,
+      studyDate: attempt.studyDate,
+      status: attempt.status,
+      evidence: attempt.evidence,
+      ...source(attempt),
+    };
+  }
   currentJob(id: string, claimId: string) {
     assertMetadataVisible(this.db);
     const job = this.job(id);
@@ -518,7 +536,7 @@ export class Insights {
           data.limitation
         ).slice(0, 1000);
       } else {
-        const data = conciseReportResult.parse(result),
+        const data = targetedReportResult.parse(result),
           observations = new Map(this.observations().map((o) => [o.id, o]));
         for (const finding of data.findings) {
           const evidence = finding.evidenceIds.map((id) => observations.get(id));
@@ -706,6 +724,7 @@ export class Insights {
       report: hidden ? null : visible,
       stale,
       reportStatus,
+      reportActivity: hidden ? null : this.reportActivity,
       observations: hidden
         ? []
         : active

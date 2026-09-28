@@ -4,17 +4,6 @@ import type { Insights } from '../../src/server/insights/service.js';
 import { selectFocusTopics } from '../../src/server/tutor/topic-job.js';
 import { analyzeNext } from '../../src/server/tutor/insight-job.js';
 import type { GenerateRequest } from '../../src/server/tutor/generate.js';
-import { conciseReportResult, reportResult } from '../../src/shared/insights.js';
-const finding = {
-  title: 'Check your search bounds',
-  kind: 'focus',
-  action: 'Explain why both bounds contain the answer before searching.',
-  explanation: 'Two notes describe difficulty choosing the upper bound.',
-  evidenceIds: ['e1'],
-  caveat: 'Self-reported evidence.',
-  suggestions: [],
-};
-const valid = { findings: [finding], limitation: 'Retrieved evidence only.' };
 function harness(outputs: unknown[], failure?: ApiError) {
   const complete = vi.fn(() => {
     if (failure) throw failure;
@@ -34,47 +23,20 @@ function harness(outputs: unknown[], failure?: ApiError) {
     model: 'test',
     text: JSON.stringify(outputs.shift()),
   }));
-  return { complete, fail, generate, run: () => analyzeNext(insights, generate) };
+  return { insights, complete, fail, generate, run: () => analyzeNext(insights, generate) };
 }
-it('enforces writing limits without breaking legacy saved reports', () => {
-  for (const [field, words] of [
-    ['title', 7],
-    ['action', 26],
-    ['explanation', 36],
-  ] as const) {
-    const long = {
-      ...valid,
-      findings: [{ ...finding, [field]: Array(words).fill('word').join(' ') }],
-    };
-    expect(conciseReportResult.safeParse(long).success).toBe(false);
-    expect(reportResult.safeParse(long).success).toBe(true);
-  }
-  expect(conciseReportResult.safeParse(valid).success).toBe(true);
+it('delegates reports to Python and never calls the legacy generator', async () => {
+  const h = harness([]);
+  const report = vi.fn(async () => {});
+  await analyzeNext(h.insights, h.generate, 1000, report);
+  expect(report).toHaveBeenCalledOnce();
+  expect(h.generate).not.toHaveBeenCalled();
 });
-it('corrects invalid output once and sends specific errors back to the tutor', async () => {
-  const h = harness([
-    { ...valid, findings: [{ ...finding, title: 'one two three four five six seven' }] },
-    valid,
-  ]);
+it('fails a report clearly when Python is unavailable without a legacy fallback', async () => {
+  const h = harness([]);
   await h.run();
-  expect(h.generate).toHaveBeenCalledTimes(2);
-  expect(JSON.stringify(h.generate.mock.calls[1])).toContain('Habit must contain at most 6 words');
-  expect(h.complete).toHaveBeenCalledTimes(1);
-});
-it('stops after one failed correction and does not save invalid reports', async () => {
-  const h = harness([{}, {}]);
-  await h.run();
-  expect(h.generate).toHaveBeenCalledTimes(2);
-  expect(h.complete).not.toHaveBeenCalled();
-  expect(h.fail).toHaveBeenCalled();
-});
-it('corrects invalid citations but does not retry stale claims', async () => {
-  const evidence = harness([valid, valid], new ApiError(400, 'EVIDENCE', 'Unknown evidence ID'));
-  await evidence.run();
-  expect(evidence.generate).toHaveBeenCalledTimes(2);
-  const stale = harness([valid], new ApiError(409, 'CONFLICT', 'Evidence changed'));
-  await stale.run();
-  expect(stale.generate).toHaveBeenCalledTimes(1);
+  expect(h.generate).not.toHaveBeenCalled();
+  expect(h.fail).toHaveBeenCalledWith('report-job', 'claim', expect.stringContaining('Python'));
 });
 
 it('selects exactly three topics from all 18 in one request, preserving AI order', async () => {

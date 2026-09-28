@@ -1,3 +1,4 @@
+import { runInsightWorker, type GenerateReport } from './insight-worker.js';
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { z } from 'zod';
@@ -134,7 +135,7 @@ export class CodexWorker {
           while (
             !this.stopped &&
             (await this.ready()) &&
-            (await runNextJob(this.jobs, this.generate, CODEX_REPORT_BUDGET_MS))
+            (await runNextJob(this.jobs, this.generate, CODEX_REPORT_BUDGET_MS, this.report))
           );
         } catch {
           /* The job stays queued for the next wake. */
@@ -179,6 +180,28 @@ export class CodexWorker {
     this.resumeTimer = setTimeout(() => this.wake(), pause);
     this.resumeTimer.unref();
   }
+  private report: GenerateReport = async (request) => {
+    const settings = this.settings.get();
+    this.activeKind = 'report';
+    try {
+      await runInsightWorker(request, {
+        model: settings.model,
+        effort: settings.effort.report,
+        codexPath: this.codexPath,
+        signal: this.abort.signal,
+        progress: (text) => {
+          request.insights.reportActivity = text;
+        },
+      });
+      this.lastError = null;
+      this.lastSuccessAt = this.clock().toISOString();
+    } catch (error) {
+      if (error instanceof CodexError) this.fail(error);
+      throw error;
+    } finally {
+      this.activeKind = null;
+    }
+  };
   private generate: Generate = async (request) => {
     const settings = this.settings.get();
     this.codexPath = await findCodex(settings.codexPath);

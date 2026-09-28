@@ -259,6 +259,8 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
       kind: 'recurring',
       explanation: 'Two attempts report missed empty inputs.',
       action: 'Trace the empty input before submission.',
+      exercise: 'Trace an empty array.',
+      successCheck: 'Return before indexing an empty array.',
       evidenceIds: ids,
       caveat: 'Self-reported evidence only.',
       suggestions: [],
@@ -294,10 +296,10 @@ it('validates cross-problem recurrence, citations and suggestions; dismissal rem
       service.complete(
         report.job.id,
         report.job.claimId!,
-        { findings: [{ ...finding, action: Array(26).fill('word').join(' ') }], limitation: '' },
+        { findings: [{ ...finding, exercise: '' }], limitation: '' },
         'test',
       ),
-    ).toThrow('at most 25 words');
+    ).toThrow();
     expect(service.status().report).toBeNull();
     service.complete(
       report.job.id,
