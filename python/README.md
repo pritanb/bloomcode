@@ -130,10 +130,14 @@ policy; `insights/` owns targeted report policy. Both use the same SDK infrastru
 Fastify starts `insights_worker.py` for a claimed report job. Its LangGraph flow is
 `select → inspect → generate → validate`. The worker requests supporting attempts
 through the parent, which restricts reads to the current job's evidence. It inspects
-at most twelve attempts and 48,000 source characters. Retrieval anchors span the
-study history; inspection balances problems and strengths/difficulties, reserving
-space for earlier/later evidence on the same problem. It does not simply take the
-newest attempts. This is still a bounded sample, not an exhaustive diagnosis. Fastify validates citations,
+at most twelve attempts and 48,000 source characters. Similarity retrieval groups current observations across the full history into candidate patterns,
+ranked by distinct-problem support. Each candidate keeps an anchor, related cross-problem
+support and contrary evidence together. Python admits complete candidate bundles within
+the inspection budget, then uses spare capacity for related neighbours. It never selects
+attempts by recency or time sampling. Stale or omitted core evidence removes the candidate
+and is recorded as a limitation. Similarity is a hypothesis, not proof of a shared difficulty.
+The deterministic grouping threshold is a retrieval heuristic that still needs quality evaluation.
+Fastify validates citations,
 recurrence, corrections and current access before saving. There is normally one
 model call and at most one correction across all validation stages.
 

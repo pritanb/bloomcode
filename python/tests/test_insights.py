@@ -22,7 +22,7 @@ def read(id):
 
 class InsightsTests(unittest.TestCase):
     def test_selection_is_distinct_bounded_and_includes_strengths(self):
-        rows = [row(i) for i in range(20)] + [row('strength', 'strength'), row(0)]
+        rows = [row('strength', 'strength')] + [row(i) for i in range(20)] + [row(0)]
         ids = select_attempts(rows)
         self.assertEqual(len(ids), 12)
         self.assertEqual(len(set(ids)), 12)
@@ -82,20 +82,30 @@ class InsightsTests(unittest.TestCase):
         self.assertEqual(empty['properties']['findings']['maxItems'], 0)
         self.assertEqual(empty['$defs']['Finding']['properties']['suggestions']['maxItems'], 0)
 
-    def test_recent_attempts_cannot_crowd_out_older_related_evidence(self):
-        rows = [row(f'new-{i}', studyDate=f'2026-09-{i+1:02}') for i in range(12)]
-        rows += [row('old-difficulty', problemId='binary-search', studyDate='2025-01-01'),
-                 row('old-strength', 'strength', problemId='binary-search', studyDate='2025-02-01')]
-        selected = select_attempts(rows)
-        self.assertIn('old-difficulty', selected)
-        self.assertIn('old-strength', selected)
-        self.assertLessEqual(len(selected), 12)
-        self.assertEqual(selected, select_attempts(list(reversed(rows))))
 
-    def test_selection_spans_history_and_duplicate_observations_add_no_weight(self):
-        rows = [row(f'a{i:02}', studyDate=f'2026-01-{i+1:02}') for i in range(24)]
-        selected = select_attempts(rows)
-        self.assertIn('a00', selected)
-        self.assertIn('a23', selected)
-        self.assertTrue(any(7 <= int(id[1:]) <= 15 for id in selected))
-        self.assertEqual(selected, select_attempts(rows + [dict(rows[-1], id=f'copy-{i}') for i in range(20)]))
+    def test_patterns_drive_selection_even_when_related_attempts_are_old(self):
+        rows = [row(f'new-{i}', studyDate='2026-09-01') for i in range(20)]
+        rows += [row('old-a', studyDate='2025-01-01'), row('old-b', studyDate='2025-02-01'),
+                 row('contrary', 'strength', studyDate='2025-03-01')]
+        patterns = [{'requiredEvidenceIds': ['old-a', 'old-b', 'contrary'],
+                     'evidenceIds': ['old-a', 'old-b', 'contrary']}] + [
+                    {'requiredEvidenceIds': [f'new-{i}'], 'evidenceIds': [f'new-{i}']} for i in range(20)]
+        selected = select_attempts(rows, patterns)
+        self.assertEqual(selected[:3], ['old-a', 'old-b', 'contrary'])
+        self.assertEqual(len(selected), 12)
+        self.assertEqual(selected, select_attempts(list(reversed(rows)), patterns))
+
+    def test_budget_never_admits_half_a_pattern_bundle(self):
+        rows = [row(str(i)) for i in range(14)]
+        patterns = [{'requiredEvidenceIds': [str(i)], 'evidenceIds': [str(i)]} for i in range(11)]
+        patterns.append({'requiredEvidenceIds': ['11', '12', '13'], 'evidenceIds': ['11', '12', '13']})
+        self.assertEqual(len(select_attempts(rows, patterns)), 11)
+
+    def test_stale_counterevidence_removes_candidate_and_records_limitation(self):
+        context = {'evidence': [row('a'), row('b', 'strength')], 'candidatePatterns': [
+            {'anchorId': 'a', 'requiredEvidenceIds': ['a', 'b'], 'evidenceIds': ['a', 'b']}],
+            'candidatePatternCount': 1}
+        result = inspect(context, ['a', 'b'], lambda id: {
+            'id': id, 'status': 'completed', 'notes': 'bounds' if id == 'a' else 'changed'})
+        self.assertEqual(result['candidatePatterns'], [])
+        self.assertTrue(any('core evidence' in text for text in result['inspectionLimitations']))
