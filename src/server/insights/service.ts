@@ -423,7 +423,7 @@ export class Insights {
     const allEmbedded = this.observations().every((o) => vectors.has(o.id));
     const shouldReport =
       coverage.analyzed > 0 &&
-      report?.fingerprint !== fp &&
+      (report?.fingerprint !== fp || ['pending', 'running'].includes(oldReportJob?.status ?? '')) &&
       this.embeddingStatus === 'ready' &&
       allEmbedded &&
       (!pending.length || coverage.analyzed - (report?.analyzed ?? 0) >= 10);
@@ -449,6 +449,21 @@ export class Insights {
     };
     update(this.db, 'insight_jobs', job.id, claim);
     return { job: { ...job, ...claim }, context };
+  }
+  regenerateReport() {
+    assertMetadataVisible(this.db);
+    if (!this.enabled()) throw conflict('Enable automatic analysis before regenerating insights');
+    if (!this.coverage().analyzed) throw conflict('Analyze a completed attempt first');
+    const job = this.job('report-job');
+    if (job && ['pending', 'running'].includes(job.status)) return { ok: true };
+    this.queue([['report-job', null, this.corpusFingerprint()]]);
+    update(this.db, 'insight_jobs', 'report-job', {
+      status: 'pending',
+      claimId: null,
+      claimedAt: 0,
+      error: null,
+    });
+    return { ok: true };
   }
   extractionContext(attemptId: string) {
     const a = getAttempt(this.db, attemptId);
@@ -672,11 +687,13 @@ export class Insights {
           ? 'generating'
           : reportJob?.fingerprint === currentFingerprint && reportJob.status === 'failed'
             ? 'failed'
-            : report && !stale
-              ? 'ready'
-              : coverage.analyzed > 0
-                ? 'waiting'
-                : 'idle';
+            : reportJob?.fingerprint === currentFingerprint && reportJob.status === 'pending'
+              ? 'waiting'
+              : report && !stale
+                ? 'ready'
+                : coverage.analyzed > 0
+                  ? 'waiting'
+                  : 'idle';
     const ids = new Set(active.map((o) => o.id));
     // Remove invalidated findings immediately; an older report must never repeat a correction.
     const visible = report

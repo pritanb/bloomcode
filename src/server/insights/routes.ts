@@ -77,6 +77,10 @@ export function registerInsights(
     insights.reconcile();
     return status();
   });
+  app.post('/api/insights/regenerate', (req) => {
+    z.object({}).strict().parse(req.body);
+    return insights.regenerateReport();
+  });
   app.post('/api/insights/retry', (req) => {
     assertMetadataVisible(db);
     z.object({}).strict().parse(req.body);

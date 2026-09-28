@@ -311,6 +311,25 @@ function StatusPanel({
                   Save a completed attempt to start building your learning memory.
                 </p>
               )}
+              {data.analyzed > 0 && data.failed === 0 && data.embeddingStatus !== 'failed' && (
+                <div>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      action.isPending ||
+                      data.reportStatus === 'waiting' ||
+                      data.reportStatus === 'generating'
+                    }
+                    onClick={() => action.mutate({ path: 'regenerate', body: {} })}
+                  >
+                    {data.reportStatus === 'generating'
+                      ? 'Regenerating insights…'
+                      : data.reportStatus === 'waiting'
+                        ? 'Report queued…'
+                        : 'Regenerate insights'}
+                  </Button>
+                </div>
+              )}
               {(data.failed > 0 || data.embeddingStatus === 'failed') && (
                 <div role="alert">
                   <Button
