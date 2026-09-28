@@ -4,7 +4,7 @@ BloomCode uses Electron to package its interface, local server and runtime in on
 
 ## Install and open
 
-1. Download the Apple silicon ZIP from the [v0.2.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.2.0), unzip it and move the app to Applications. The application is named **BloomCode.app**.
+1. Download the Apple silicon ZIP from the [v0.3.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.3.0), unzip it and move the app to Applications. The application is named **BloomCode.app**.
 2. Open it, then drag its icon to the Dock for one-click access.
 3. For a new workspace, choose your timezone, daily target and starter question list.
 
@@ -50,3 +50,20 @@ The packaged app does not read `.env`. It uses the standard workspace and port `
 The app owns its local server. Quitting stops it; opening the app twice brings the existing window forward. Keep the app open while an MCP client is connected. If another server already holds the workspace or port, the app reports it rather than stopping that process.
 
 For tutor reports, choose **Settings → AI tutor → Codex**. MCP clients connect to the same workspace and port through the adapter built from this repository, which needs Node.js; see [tutor setup](tutor-integration.md).
+
+## Optional AI setup for the v0.3.0 preview
+
+Python workflow sources and the MCP adapter are included in the app. The Python
+interpreter and its packages remain a separate, one-time setup (Python 3.11+):
+
+```sh
+python3 -m venv "$HOME/Library/Application Support/BloomCode/ai-runtime"
+"$HOME/Library/Application Support/BloomCode/ai-runtime/bin/python" -m pip install -r /Applications/BloomCode.app/Contents/Resources/ai/python/requirements.txt
+```
+
+Restart BloomCode after setup. AI also requires file-based Codex sign-in
+(`~/.codex/auth.json` or `CODEX_HOME/auth.json`). No credentials or study records
+are included in the release. The packaged tutor uses Electron's Node runtime and
+its bundled MCP adapter, so AI does not require a development checkout or `npm ci`.
+`BLOOMCODE_PYTHON` can override the interpreter path. Updates preserve this Python
+environment and your study workspace. Ordinary study features work without AI setup.

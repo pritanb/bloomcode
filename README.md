@@ -98,9 +98,9 @@ See the [Python AI guide](python/README.md) for terminal chat, configuration, an
 
 ### Download the desktop preview
 
-An [Apple silicon macOS preview (v0.2.0)](https://github.com/pritanb/bloomcode/releases/tag/v0.2.0) is available. Unzip it, move **BloomCode.app** to Applications, and follow [installation instructions](docs/desktop.md).
+An [Apple silicon macOS preview (v0.3.0)](https://github.com/pritanb/bloomcode/releases/tag/v0.3.0) is available. Unzip it, move **BloomCode.app** to Applications, and follow [installation instructions](docs/desktop.md).
 
-Use the current source setup for the AI features described here. Python is not yet bundled in desktop builds. The app is not signed or notarized, and packaged builds currently target Apple silicon Macs.
+The preview includes the AI workflows; follow the [one-time Python setup](docs/desktop.md#optional-ai-setup-for-the-v030-preview) to enable them. The Python interpreter is installed separately. The app is not signed or notarized, and packaged builds currently target Apple silicon Macs.
 
 ### Explore sample data
 

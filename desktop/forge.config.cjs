@@ -10,10 +10,16 @@ module.exports = {
     appBundleId: 'io.github.pritanb.bloomcode',
     appCategoryType: 'public.app-category.education',
     icon: path.join(__dirname, 'assets/icon.icns'),
+    extraResource: [path.join(__dirname, 'ai')],
     // Native embedding dependencies load sibling shared libraries outside ASAR.
     asar: { unpack: '**/node_modules/{@img,onnxruntime-node}/**' },
     // The staging directory is an explicit allowlist. Never package the checkout.
-    ignore: [/^\/forge\.config\.cjs$/, /^\/package-lock\.json$/, /^\/\.installed-lock$/],
+    ignore: [
+      /^\/ai(?:\/|$)/,
+      /^\/forge\.config\.cjs$/,
+      /^\/package-lock\.json$/,
+      /^\/\.installed-lock$/,
+    ],
   },
   rebuildConfig: { onlyModules: ['better-sqlite3'] },
   makers: [{ name: '@electron-forge/maker-zip', platforms: ['darwin'] }],

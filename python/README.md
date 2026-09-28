@@ -26,7 +26,7 @@ python/.venv/bin/python -m pip install -r python/requirements.txt
 **Ask Bloom**; the tutor connects and resumes automatically. For desktop development, use `npm run electron:dev`; it sets
 `BLOOMCODE_TUTOR_ROOT` so the staged app can find this worktree's Python files.
 Set `BLOOMCODE_PYTHON` to an absolute interpreter path if using another environment.
-Python is not yet bundled in the desktop release.
+The desktop preview includes these Python sources. Install its interpreter and dependencies with the [desktop AI setup](../docs/desktop.md#optional-ai-setup-for-the-v030-preview).
 
 **In the terminal:**
 
@@ -145,7 +145,7 @@ Reports use Settings' model and report reasoning effort. They require the same
 Python dependencies and file-based sign-in as Bloom, but use temporary isolated
 sessions without Bloom's conversation lock. Missing setup fails the report clearly;
 saved reports remain readable. Attempt extraction, attempt reviews, topic picks and the connection test also
-run through Python. Fastify sends task data, never model prompts. Python is not yet bundled for release.
+run through Python. Fastify sends task data, never model prompts. The desktop release includes workflow sources; the Python interpreter and dependencies are installed separately.
 
 New reports include up to six distinct habits, each with a specific action, exercise and success check. Source verification
 checks provenance, not whether a diagnosis is correct. Sparse evidence can produce

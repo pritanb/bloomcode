@@ -34,6 +34,26 @@ for (const [source, target] of [
   await cp(join(root, source), destination, { recursive: true });
 }
 
+// Python cannot read ASAR archives. Stage only runtime sources, never environments or state.
+const aiRoot = join(stage, 'ai');
+await rm(aiRoot, { recursive: true, force: true });
+for (const name of [
+  'ai_core',
+  'insights',
+  'tutor',
+  'reviews',
+  'recommendations',
+  'worker.py',
+  'ai_worker.py',
+  'insights_worker.py',
+  'requirements.txt',
+]) {
+  await cp(join(root, 'python', name), join(aiRoot, 'python', name), {
+    recursive: true,
+    filter: (source) => !source.includes('__pycache__') && !source.endsWith('.pyc'),
+  });
+}
+
 function run(executable, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, { cwd: stage, stdio: 'inherit' });

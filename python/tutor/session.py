@@ -269,8 +269,9 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
         host_data = None
 
         if token_file is not None:
-            node = shutil.which("node")
-            if not node or not (repo / "node_modules/tsx").is_dir():
+            packaged_mcp = os.environ.get("BLOOMCODE_MCP_ENTRY")
+            node = os.environ.get("BLOOMCODE_MCP_COMMAND") if packaged_mcp else shutil.which("node")
+            if not node or (not packaged_mcp and not (repo / "node_modules/tsx").is_dir()):
                 raise RuntimeError("Install Node.js and run npm ci in the worktree first.")
             url = urlsplit(api_url)
             if (url.scheme != "http" or url.hostname != "127.0.0.1"
@@ -294,12 +295,14 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
             if token_link.is_symlink():
                 token_link.unlink()
             token_link.symlink_to(scoped_token)
-            tool_args = ["--import", "tsx", str(repo / "src/integrations/mcp.ts")]
+            tool_args = [packaged_mcp] if packaged_mcp else ["--import", "tsx", str(repo / "src/integrations/mcp.ts")]
+            tool_cwd = os.environ.get("BLOOMCODE_MCP_CWD", str(repo)) if packaged_mcp else str(repo)
             mcp_config = (
                 "[mcp_servers.bloomcode]\n"
                 f"command = {json.dumps(node)}\n"
                 f"args = {json.dumps(tool_args)}\n"
-                f"cwd = {json.dumps(str(repo))}\n"
+                f"cwd = {json.dumps(tool_cwd)}\n"
+                + ('env.ELECTRON_RUN_AS_NODE = "1"\n' if packaged_mcp else "") +
                 f"env.DATA_DIR = {json.dumps(str(api_data))}\n"
                 f"env.PORT = {json.dumps(str(url.port or 80))}\n"
                 f"enabled_tools = {json.dumps(list(TOOL_ACTIVITY))}\n"
