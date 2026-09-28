@@ -8,8 +8,9 @@ import {
 } from 'react';
 
 type Position = { x: number; y: number };
+type SavedPosition = Position & { relative?: Position };
 const margin = 12;
-const readPosition = (key: string): Position | null => {
+const readPosition = (key: string): SavedPosition | null => {
   try {
     const value = JSON.parse(localStorage.getItem(key) ?? 'null');
     return value && Number.isFinite(value.x) && Number.isFinite(value.y) ? value : null;
@@ -21,35 +22,74 @@ const readPosition = (key: string): Position | null => {
 /** Position only: dragging never touches tutor or study state. */
 export function useFloatingPosition<T extends HTMLElement>(key: string, visible: boolean) {
   const ref = useRef<T>(null);
-  const [position, setPosition] = useState<Position | null>(() => readPosition(key));
+  const [position, setPosition] = useState<SavedPosition | null>(() => readPosition(key));
+  const savedRelative = position?.relative;
+  const relative = useRef<Position | null>(
+    savedRelative && Number.isFinite(savedRelative.x) && Number.isFinite(savedRelative.y)
+      ? {
+          x: Math.max(0, Math.min(1, savedRelative.x)),
+          y: Math.max(0, Math.min(1, savedRelative.y)),
+        }
+      : null,
+  );
   const positionRef = useRef(position);
   const drag = useRef<{ id: number; startX: number; startY: number; origin: Position } | null>(
     null,
   );
   const moved = useRef(false);
-  const bounds = (point: Position): Position => {
+  const space = (): Position => {
     const rect = ref.current?.getBoundingClientRect();
     return {
-      x: Math.max(margin, Math.min(point.x, window.innerWidth - (rect?.width ?? 0) - margin)),
-      y: Math.max(margin, Math.min(point.y, window.innerHeight - (rect?.height ?? 0) - margin)),
+      x: Math.max(0, window.innerWidth - (rect?.width ?? 0) - margin * 2),
+      y: Math.max(0, window.innerHeight - (rect?.height ?? 0) - margin * 2),
+    };
+  };
+  const bounds = (point: Position): Position => {
+    const available = space();
+    return {
+      x: Math.max(margin, Math.min(point.x, available.x + margin)),
+      y: Math.max(margin, Math.min(point.y, available.y + margin)),
     };
   };
   const place = (point: Position, save = false) => {
     const next = bounds(point);
+    const available = space();
+    relative.current = {
+      x: available.x ? (next.x - margin) / available.x : (relative.current?.x ?? 1),
+      y: available.y ? (next.y - margin) / available.y : (relative.current?.y ?? 1),
+    };
     positionRef.current = next;
     setPosition((previous) => (previous?.x === next.x && previous?.y === next.y ? previous : next));
     if (save) {
       try {
-        localStorage.setItem(key, JSON.stringify(next));
+        localStorage.setItem(key, JSON.stringify({ ...next, relative: relative.current }));
       } catch {
         /* Storage is optional. */
       }
     }
   };
-  const reset = () => place({ x: window.innerWidth, y: window.innerHeight }, true);
+  const reset = () => {
+    relative.current = { x: 1, y: 1 };
+    place({ x: window.innerWidth, y: window.innerHeight }, true);
+  };
   useLayoutEffect(() => {
     if (!visible || !ref.current) return;
-    const fit = () => place(positionRef.current ?? { x: window.innerWidth, y: window.innerHeight });
+    const fit = () => {
+      if (!relative.current) {
+        // Migrate old pixel positions once; new positions default to bottom right.
+        place(positionRef.current ?? { x: window.innerWidth, y: window.innerHeight }, true);
+        return;
+      }
+      const available = space();
+      const next = {
+        x: margin + relative.current.x * available.x,
+        y: margin + relative.current.y * available.y,
+      };
+      positionRef.current = next;
+      setPosition((previous) =>
+        previous?.x === next.x && previous?.y === next.y ? previous : next,
+      );
+    };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(ref.current);
