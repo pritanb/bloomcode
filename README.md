@@ -86,7 +86,7 @@ The app backs up once a day at startup; run `npm run backup` while it is running
 
 - [Question packs and extensions](docs/extensions.md) — add your own lists or integrations.
 - [Learning Insights](docs/learning-insights.md) — local semantic retrieval, evidence-backed learning patterns, and optional practice suggestions.
-- [Optional AI tutor](docs/tutor-integration.md) — automatic reports through the Codex CLI, plus MCP tools for chatting with a tutor about your study data.
+- [Optional AI tutor](docs/tutor-integration.md) — automatic reports through the Python AI layer and Codex SDK, plus MCP tools for chatting with a tutor about your study data.
 - [Contributing](CONTRIBUTING.md) · [Testing](docs/testing.md)
 
 ## Why BloomCode?

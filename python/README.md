@@ -46,7 +46,10 @@ Without a token file, chat runs without platform context or tools.
 python/
 ├── chat.py                 # Terminal entry point
 ├── worker.py               # JSON-lines bridge for the app
-├── insights_worker.py      # Stateless report worker
+├── ai_worker.py            # Task dispatch for background LLM work
+├── insights_worker.py      # Report graph and host validation protocol
+├── reviews/                # Attempt feedback
+├── recommendations/        # Topic priorities
 ├── ai_core/                # Shared runtime, model, evidence and protocol
 ├── insights/               # Targeted Learning Insights graph
 ├── tutor/
@@ -134,8 +137,8 @@ model call and at most one correction across all validation stages.
 Reports use Settings' model and report reasoning effort. They require the same
 Python dependencies and file-based sign-in as Bloom, but use temporary isolated
 sessions without Bloom's conversation lock. Missing setup fails the report clearly;
-saved reports remain readable. Attempt extraction, attempt reviews and topic picks
-still use the TypeScript Codex runner. Python is not yet bundled for release.
+saved reports remain readable. Attempt extraction, attempt reviews, topic picks and the connection test also
+run through Python. Fastify sends task data, never model prompts. Python is not yet bundled for release.
 
 New reports include a specific action, exercise and success check. Source verification
 checks provenance, not whether a diagnosis is correct. Sparse evidence can produce
@@ -154,3 +157,17 @@ are saved to ignored `private/insights-comparison/`. Review `comparison.md` for
 specificity, supporting evidence, exercise relevance and a useful success check;
 a valid response is not automatically a better one. The legacy prompt exists only
 in the evaluation harness and is not a production fallback.
+
+## Responsibility boundary
+
+All application LLM behavior lives here: prompts, Codex calls, response schemas,
+feedback formatting, conversation policy and LangGraph workflows. The ordinary
+background tasks in `reviews/`, `insights/extract.py` and `recommendations/` use one
+structured model call; they do not need a graph. Fastify owns queue priority,
+deadlines, permissions, validation against authoritative records, and persistence.
+The shared TypeScript process bridge only transports requests and results.
+
+Local embedding inference, vector storage and ranking remain retrieval infrastructure
+in the backend. They do not use an LLM. The retired TypeScript inference runner has
+been removed; its remaining `codex.ts` module only discovers the executable/version
+and defines the host error type.

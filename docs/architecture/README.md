@@ -6,7 +6,7 @@
 
 Read top to bottom, then follow either background AI path from left to right.
 Purple steps call Codex and OpenAI; blue steps run locally; green steps save to
-the same SQLite workspace. The report step now runs in a Python worker; extraction remains in TypeScript.
+the same SQLite workspace. All LLM calls run in Python; Fastify owns the queues and validates writes.
 Bloom's interactive conversation is a separate Python worker, detailed below.
 
 ## Bloom AI tutor
@@ -84,5 +84,8 @@ only evidence reads and candidate validation cross back to the parent. At most t
 model calls share one deadline. Access changes, cancellation or stale evidence stop
 work. Missing Python/sign-in is an explicit report error, not a legacy fallback.
 
-Reviews, extraction and topic recommendations still use the TypeScript runner.
-They can adopt shared Python capabilities later without changing study storage.
+Reviews, extraction, topic recommendations and the connection test run through
+`python/ai_worker.py` using the same runtime. Each uses one structured call;
+only multi-step workflows use LangGraph. TypeScript contains no application LLM
+prompts or inference runner. Embedding inference, vector storage and ranking
+remain backend retrieval infrastructure.

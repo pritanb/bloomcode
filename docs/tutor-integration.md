@@ -27,7 +27,7 @@ The adapter only provides tools; it runs no background work. Ask your tutor to r
 
 **Settings → AI tutor** chooses who generates tutor reports, Learning Insights and topic picks:
 
-- **Codex (your ChatGPT plan)**: the app runs your signed-in Codex CLI for each job. No MCP client needs to be open. **Test Codex** checks the setup.
+- **Codex (your ChatGPT plan)**: the app sends tasks to its Python AI layer, which uses the signed-in Codex SDK. No MCP client needs to be open. **Test Codex** checks the setup.
 - **Off**: the default, so no plan usage is spent until you choose Codex. Jobs stay queued and saved work is unaffected.
 
 The MCP tools work with either setting. An older workspace saved with the removed MCP-sampling provider loads as **Off**.
@@ -35,7 +35,8 @@ The MCP tools work with either setting. An older workspace saved with the remove
 ### Codex
 
 - **Detection**: the app looks for the Codex CLI bundled in ChatGPT.app first, then `~/.local/bin`, `/opt/homebrew/bin` and `/usr/local/bin`. Older standalone CLIs may reject newer models for ChatGPT accounts. You can set the path under **Advanced**; it must end in `codex`.
-- **Isolation**: each job runs in an empty temporary directory with a read-only sandbox, with the user configuration ignored (no MCP servers), with shell, browser and other tools disabled, and with no session files. The prompt is sent on stdin. Codex's own instructions are replaced with a short generator instruction, which leaves about 8k tokens of fixed overhead per call. Only the final message is used, and it passes the same validation as every tutor result.
+- **Python setup**: install the dependencies in [python/README.md](../python/README.md). All LLM features require Python and file-based Codex sign-in. Keyring-only sign-in is not supported. **Test Codex** checks this same runtime.
+- **Isolation**: each background job uses an isolated temporary Codex configuration, an empty workspace, a read-only sandbox and disabled model tools. Python owns prompts and structured generation. Only task data crosses the host bridge; Fastify validates results before saving. Conversations use their separate persistent runtime.
 - **Defaults**: model `gpt-6-luna`. Reasoning effort is high for tutor reports, attempt analysis and topic picks, and xhigh for the learning report. All of these can be changed under **Advanced**.
 - **Usage**: usage counts toward your ChatGPT plan limits. After a usage-limit, sign-in, missing-install or unavailable-model error, the app pauses and shows the reason instead of failing every queued job. Saving the settings or a successful test resumes work.
 - **Privacy**: saved code, notes and problem metadata for each job go to OpenAI.
