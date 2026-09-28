@@ -23,7 +23,10 @@ it('reads legacy reports and requires exercises for newly generated reports', ()
   expect(targetedReportResult.parse(report)).toEqual(report);
   expect(reportResult.parse(JSON.parse(JSON.stringify(report)))).toEqual(report);
   expect(
-    targetedReportResult.safeParse({ ...report, findings: Array(4).fill(finding) }).success,
+    targetedReportResult.safeParse({ ...report, findings: Array(6).fill(finding) }).success,
+  ).toBe(true);
+  expect(
+    targetedReportResult.safeParse({ ...report, findings: Array(7).fill(finding) }).success,
   ).toBe(false);
 });
 
