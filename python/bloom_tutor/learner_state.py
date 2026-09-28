@@ -10,7 +10,7 @@ import tomllib
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from goal_progress import goal_progress
+from bloom_tutor.goal_progress import goal_progress
 
 
 def summarize_attempts(data: dict) -> dict:

@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-from learner_state import load_snapshot, summarize_attempts
+from bloom_tutor.learner_state import load_snapshot, summarize_attempts
 
 
 def attempt(id, problem, help="none"):

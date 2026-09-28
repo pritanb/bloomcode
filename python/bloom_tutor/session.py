@@ -12,8 +12,8 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from openai_codex import ApprovalMode, Codex, CodexConfig, Sandbox, Thread
-from learner_state import load_snapshot, save_confirmed_change
-from session_lock import session_lock
+from bloom_tutor.learner_state import load_snapshot, save_confirmed_change
+from bloom_tutor.session_lock import session_lock
 
 
 TUTOR_INSTRUCTIONS = """You are BloomCode's supportive DSA tutor.
@@ -255,7 +255,7 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
             "an existing auth.json in CODEX_HOME (normally ~/.codex)."
         )
 
-    repo = Path(__file__).resolve().parent.parent
+    repo = Path(__file__).resolve().parents[2]
     workspace_key = str(token_file.resolve()) if token_file else "standalone"
     root = (state_dir or ((token_file.resolve().parent if token_file else repo / "private") / "tutor")).resolve()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -336,11 +336,11 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
                                  context_config=codex_home / "config.toml" if token_file else None,
                                  host_data=host_data)
             if token_file:
-                from answer_graph import AnswerFlow
+                from bloom_tutor.answer_graph import AnswerFlow
                 tutor.answer_flow = AnswerFlow(tutor.context_config, tutor.chat_reply)
                 try:
-                    from coaching import Coaching
-                    from coaching_model import StructuredCodex
+                    from bloom_tutor.coaching.controller import Coaching
+                    from bloom_tutor.coaching.model import StructuredCodex
                     if new:
                         (root / 'active-coaching.json').write_text('null')
                         (root / 'coaching-routing.json').write_text('{}')

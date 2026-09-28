@@ -1,8 +1,8 @@
 """Route on-demand coaching without replacing ordinary Codex conversations."""
 import json
 from uuid import uuid4
-from coaching_evidence import Evidence
-from coaching_graph import CoachingGraph
+from bloom_tutor.coaching.evidence import Evidence
+from bloom_tutor.coaching.graph import CoachingGraph
 
 
 class Coaching:

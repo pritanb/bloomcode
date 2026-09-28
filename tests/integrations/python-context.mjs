@@ -194,7 +194,7 @@ try {
       resolve('python/.venv/bin/python'),
       [
         '-c',
-        'import json,sys; from pathlib import Path; from learner_state import load_snapshot; print(json.dumps(load_snapshot(Path(sys.argv[1]))))',
+        'import json,sys; from pathlib import Path; from bloom_tutor.learner_state import load_snapshot; print(json.dumps(load_snapshot(Path(sys.argv[1]))))',
         snapshotConfig,
       ],
       { env: { ...process.env, PYTHONPATH: resolve('python') }, timeout: 30000 },
@@ -236,7 +236,7 @@ try {
         `
 import os
 from pathlib import Path
-from tutor import open_tutor
+from bloom_tutor.session import open_tutor
 with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN']), new=True) as tutor:
     answer = tutor.reply('How am I progressing on my active learning goal? Use only practice since I agreed to it.')
     assert os.environ['TEST_ATTEMPT'] in answer, answer
@@ -285,7 +285,7 @@ print('PASS: goal follow-up cites subsequent evidence without proposing unsuppor
 import os
 import tomllib
 from pathlib import Path
-from tutor import open_tutor
+from bloom_tutor.session import open_tutor
 with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN'])) as tutor:
     config = tomllib.loads((tutor.session_file.parent / 'codex-home/config.toml').read_text())
     assert set(config['mcp_servers']['bloomcode']['enabled_tools']) == {
@@ -334,8 +334,8 @@ with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST
         `
 import os
 from pathlib import Path
-from tutor import open_tutor
-from learner_state import load_snapshot
+from bloom_tutor.session import open_tutor
+from bloom_tutor.learner_state import load_snapshot
 options = dict(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN']), new=True)
 text = 'Solve two distinct sliding-window problems without hints'
 with open_tutor(**options) as tutor:
@@ -375,8 +375,8 @@ print('PASS: live proposal stayed unsaved until host confirmation and a fresh co
         `
 import os
 from pathlib import Path
-from tutor import open_tutor
-from learner_state import load_snapshot
+from bloom_tutor.session import open_tutor
+from bloom_tutor.learner_state import load_snapshot
 options = dict(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN']))
 with open_tutor(**options, new=True) as tutor:
     print(tutor.reply('Please remember that I prefer detailed explanations and question-based hints. Propose those settings for confirmation.'), flush=True)

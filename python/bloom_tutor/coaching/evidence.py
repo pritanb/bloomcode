@@ -3,7 +3,7 @@ import asyncio
 import hashlib
 import json
 from uuid import UUID
-from learner_state import platform_session, load_snapshot
+from bloom_tutor.learner_state import platform_session, load_snapshot
 
 
 async def call(session, tool, args):

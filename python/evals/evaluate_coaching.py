@@ -6,7 +6,7 @@ import re
 import time
 from pathlib import Path
 from datetime import datetime, timezone
-from tutor import open_tutor
+from bloom_tutor.session import open_tutor
 
 
 def main():
@@ -17,7 +17,7 @@ def main():
     p.add_argument('--known-attempts', default='')
     p.add_argument('--cases', default='diagnostic,correct-answer,direct-explanation')
     args = p.parse_args()
-    cases = json.loads((Path(__file__).parent / 'evals/scenarios.json').read_text())
+    cases = json.loads((Path(__file__).parent / 'scenarios.json').read_text())
     if args.cases != 'all': cases = [c for c in cases if c['id'] in args.cases.split(',')]
     report = {'createdAt': datetime.now(timezone.utc).isoformat(), 'model': 'gpt-6-sol',
               'coachingModel': os.environ.get('BLOOMCODE_COACHING_MODEL', 'gpt-6-sol'),

@@ -48,7 +48,7 @@ try {
     const child = spawn(
       resolve('python/.venv/bin/python'),
       [
-        'python/evaluate_coaching.py',
+        'python/evals/evaluate_coaching.py',
         '--api-url',
         url,
         '--token-file',
@@ -60,7 +60,7 @@ try {
         '--cases',
         cases,
       ],
-      { stdio: 'inherit' },
+      { stdio: 'inherit', env: { ...process.env, PYTHONPATH: resolve('python') } },
     );
     child.once('error', reject);
     child.once('exit', done);

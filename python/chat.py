@@ -7,7 +7,7 @@ from pathlib import Path
 
 from openai_codex import CodexError
 
-from tutor import open_tutor
+from bloom_tutor.session import open_tutor
 
 
 def show_activity(message: str) -> None:

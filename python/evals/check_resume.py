@@ -6,7 +6,7 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 
-chat = Path(__file__).with_name("chat.py")
+chat = Path(__file__).resolve().parents[1] / "chat.py"
 with TemporaryDirectory(prefix="bloomcode-resume-check-") as directory:
     state = Path(directory)
 

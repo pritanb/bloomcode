@@ -83,13 +83,38 @@ the app-to-Python flow, evidence retrieval, coaching loop and storage boundaries
 
 ## Follow the code
 
-- `chat.py`: terminal input and output.
-- `worker.py`: JSON-lines bridge and conversation history for the in-app tutor.
-- `session_lock.py`: exclusive access shared by the terminal and app.
-- `tutor.py`: teaching instructions, Codex session, and dedicated MCP configuration.
-- `learner_state.py`: loads recent attempts through MCP and calculates a compact snapshot.
-- `../src/integrations/mcp.ts`: shared attempt, Learning Insights and evidence-search tools.
-- `../src/server/attempts/attempts.ts`: lists completed attempts through the authenticated API.
+```text
+python/
+├── chat.py                 # Terminal entry point
+├── worker.py               # App subprocess entry point
+├── bloom_tutor/            # Runtime implementation
+│   ├── session.py          # Codex session, instructions and proposals
+│   ├── answer_graph.py     # Snapshot → evidence → ordinary answer
+│   ├── learner_state.py    # MCP access and learner snapshot
+│   ├── goal_progress.py    # Deterministic goal progress facts
+│   ├── session_lock.py     # Protect shared session storage
+│   └── coaching/
+│       ├── controller.py   # Explicit coaching commands and handoffs
+│       ├── graph.py        # Durable teaching loop and checkpoints
+│       ├── evidence.py     # Retrieve and compact supporting records
+│       └── model.py        # Structured Codex teaching decisions
+├── tests/                  # Fast, offline unit tests
+├── evals/                  # Explicit live comparisons and resume check
+│   ├── evaluate_answers.py
+│   ├── evaluate_coaching.py
+│   ├── check_resume.py
+│   └── scenarios.json
+└── requirements.txt
+```
+
+Start with `chat.py` or `worker.py`, then follow `bloom_tutor/session.py` into
+`answer_graph.py` for ordinary chat or `coaching/controller.py` for coaching.
+The shared platform tools remain in `../src/integrations/mcp.ts`; Python does
+not duplicate them. The app and terminal launch commands are unchanged.
+
+Run unit tests with the command below. Live evaluation fixtures configure the
+Python import path automatically; use `npm run eval:tutor` for coaching and
+`node --import tsx tests/integrations/answer-evidence.mjs --live` for answers.
 
 `get_recent_attempts` returns summaries newest first, optionally filtered by
 problem title (up to 20 results). `hasMore` indicates older matches. The tutor
@@ -213,7 +238,7 @@ validation. Explicit before/after evaluations are documented below.
 ## Verify
 
 ```sh
-python/.venv/bin/python -m unittest discover -s python -p 'test_*.py'
+python/.venv/bin/python -m unittest discover -s python/tests -t python -p 'test_*.py'
 node --import tsx tests/integrations/python-context.mjs
 ```
 
@@ -226,7 +251,7 @@ That option consumes signed-in account usage.
 To verify persistence across separate Python processes in disposable storage:
 
 ```sh
-python/.venv/bin/python python/check_resume.py
+python/.venv/bin/python python/evals/check_resume.py
 ```
 
 This is a live Codex check and consumes signed-in account usage.
@@ -259,7 +284,7 @@ This also uses disposable data and signed-in account usage.
 
 ## Evidence-first answers (LangGraph)
 
-Ordinary messages now run through `answer_graph.py` before the existing Codex
+Ordinary messages now run through `bloom_tutor/answer_graph.py` before the existing Codex
 chat turn: **snapshot → retrieve and inspect evidence → answer**. This is also
 used when active coaching hands a message back to chat. It adds no classifier or
 planning model call. Codex still streams the answer, keeps conversation history,
