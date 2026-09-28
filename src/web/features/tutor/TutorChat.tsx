@@ -8,37 +8,13 @@ import { Panel, ScrollRegion } from '../../components/kit';
 import { ErrorNotice, Loading } from '../../components/ui';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
+import { TutorMessage } from './TutorMessage';
 
 const suggestions = [
   'What should I practise next?',
   'How am I progressing on my goals?',
   'Help me reflect on my latest attempt.',
 ];
-
-function MessageText({ text, evidence }: { text: string; evidence: ChatState['evidence'] }) {
-  return (
-    <>
-      {text
-        .split(/(\*\*[^*]+\*\*|`[^`]+`|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})/gi)
-        .map((part, index) => {
-          const record = evidence?.find((item) => item.id === part.replace(/^`|`$/g, ''));
-          if (record)
-            return (
-              <Link key={index} to={`/attempts/${record.id}`} className="underline">
-                {record.title} ↗
-              </Link>
-            );
-          if (part.startsWith('`') && part.endsWith('`'))
-            return <code key={index}>{part.slice(1, -1)}</code>;
-          return part.startsWith('**') && part.endsWith('**') ? (
-            <strong key={index}>{part.slice(2, -2)}</strong>
-          ) : (
-            part
-          );
-        })}
-    </>
-  );
-}
 
 export function TutorChat({
   request,
@@ -230,17 +206,19 @@ export function TutorChat({
                     <p className="mb-2 text-xs font-semibold text-muted-foreground">
                       {item.role === 'user' ? 'You' : 'Tutor'}
                     </p>
-                    <div className="whitespace-pre-wrap break-words leading-relaxed">
-                      <MessageText text={item.text} evidence={state.evidence} />
-                    </div>
+                    {item.role === 'assistant' ? (
+                      <TutorMessage text={item.text} evidence={state.evidence} />
+                    ) : (
+                      <div className="whitespace-pre-wrap break-words leading-relaxed">
+                        {item.text}
+                      </div>
+                    )}
                   </article>
                 ))}
                 {state.draft && (
                   <article aria-label="Tutor response" className="rounded-2xl border bg-card p-5">
                     <p className="mb-2 text-xs font-semibold text-muted-foreground">Tutor</p>
-                    <div className="whitespace-pre-wrap break-words leading-relaxed">
-                      {state.draft}
-                    </div>
+                    <TutorMessage text={state.draft} evidence={state.evidence} />
                   </article>
                 )}
                 {state.proposals.map((proposal) => (
