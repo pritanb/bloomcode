@@ -4,6 +4,7 @@ from insights.extract import extract
 from reviews.review import review, review_context
 from recommendations.topics import recommend
 from recommendations.plan import draft
+from interview.hint import hint
 from ai_core.errors import model_error
 
 class Model:
@@ -50,6 +51,19 @@ class TaskTests(unittest.TestCase):
             draft(Model({'summary': 'x', 'items': []}), context)
         with self.assertRaises(ValueError):
             draft(Model({'summary': 'x', 'items': [{'candidateNumber': 1}]}), context)
+
+    def test_hint_sends_only_the_attempt_in_progress_and_grades_help(self):
+        good = {'reply': 'What happens with [3, 3]?', 'hint': 'Check duplicates.', 'level': 'small', 'analysis': None}
+        model = Model(good)
+        context = {'problem': {'title': 'Two Sum'}, 'language': 'python', 'code': 'x' * 30000,
+                   'stuckAt': '12:30', 'newStuck': True, 'messages': [{'role': 'user', 'text': 'Stuck'}] * 30,
+                   'notes': 'private', 'tags': ['Hash Table']}
+        self.assertEqual(json.loads(hint(model, context)), good)
+        data = model.calls[0][2]
+        self.assertEqual(set(data), {'problem', 'language', 'code', 'stuckAt', 'newStuck', 'messages'})
+        self.assertEqual((len(data['code']), len(data['messages'])), (20000, 20))
+        for bad in [{**good, 'level': 'solution'}, {**good, 'extra': 1}, {**good, 'hint': 'x' * 301}]:
+            with self.assertRaises(ValueError): hint(Model(bad), context)
 
     def test_errors_are_classified_without_echoing_model_requests(self):
         for message, kind in [('401 unauthorized private code','not_signed_in'),

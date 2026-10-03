@@ -163,7 +163,8 @@ export function TutorChat({
         {state.status === 'blocked' ? (
           <Panel title="Finish practice first">
             <p className="text-muted-foreground">
-              The tutor is paused during active practice. Finish or cancel your attempt to continue.
+              Chat is paused during active practice. Open your attempt and ask Bloom there for
+              interview-style help, or finish or cancel it to chat.
             </p>
             <Button asChild variant="outline" className="mt-4">
               <Link to="/">Back to study desk</Link>

@@ -43,6 +43,7 @@ for (const name of [
   'tutor',
   'reviews',
   'recommendations',
+  'interview',
   'worker.py',
   'ai_worker.py',
   'insights_worker.py',
