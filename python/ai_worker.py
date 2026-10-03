@@ -14,9 +14,7 @@ def main():
     id = request['id']
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     try:
-        from ai_core.runtime import background_runtime
-        from ai_core.model import StructuredModel
-        from openai_codex.generated.v2_all import ReasoningEffort
+        from ai_core.providers import background_model
         from insights.extract import extract
         from reviews.review import review
         from recommendations.topics import recommend
@@ -31,8 +29,7 @@ def main():
             return Connection.model_validate_json(value).model_dump_json()
         tasks = {'extraction': extract, 'review': review, 'topics': recommend, 'plan': draft, 'connection': connection}
         handler = tasks[request['kind']]
-        with background_runtime(request.get('codexPath')) as (codex, options):
-            model = StructuredModel(codex, options, request['model'], ReasoningEffort(request['effort']))
+        with background_model(request) as model:
             text = handler(model, request['context'])
             emit('result', id, text=text, model=request['model'], trace=model.trace)
     except Exception as error:
@@ -44,7 +41,7 @@ def main():
         elif isinstance(error, ValueError):
             kind, message = 'invalid_output', 'The AI response did not match the required task format.'
         else:
-            kind, message = 'crashed', 'AI task failed. Check Python dependencies and file-based Codex sign-in.'
+            kind, message = 'crashed', 'AI task failed. Check Python dependencies and the AI provider sign-in.'
         emit('error', id, kind=kind, message=message)
         sys.exit(1)
 

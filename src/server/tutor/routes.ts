@@ -2,10 +2,10 @@ import type { FastifyInstance } from 'fastify';
 import { dirname } from 'node:path';
 import type { TutorSettings } from '../../shared/tutor.js';
 import type { TutorJobs } from './jobs.js';
-import { CodexWorker, TutorSettingsFile, tutorSettingsSchema } from './worker.js';
+import { TutorWorker, TutorSettingsFile, tutorSettingsSchema } from './worker.js';
 
 export interface TutorControl {
-  status(): ReturnType<CodexWorker['status']>;
+  status(): ReturnType<TutorWorker['status']>;
   active(): boolean;
   wake(): void;
 }
@@ -17,7 +17,7 @@ export function registerTutor(
   jobs: TutorJobs,
 ): TutorControl {
   const settings = new TutorSettingsFile(dbPath === ':memory:' ? null : dirname(dbPath));
-  const worker = new CodexWorker(settings, jobs, clock);
+  const worker = new TutorWorker(settings, jobs, clock);
   app.addHook('onReady', async () => {
     worker.start();
   });

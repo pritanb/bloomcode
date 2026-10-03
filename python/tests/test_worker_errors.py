@@ -56,3 +56,24 @@ class WorkerErrorsTests(unittest.TestCase):
         self.assertEqual(messages[-1]['type'], 'error')
         self.assertIn('validation', messages[-1]['message'])
         self.assertFalse(any(message['type'] == 'result' for message in messages))
+
+    def test_claude_provider_runs_the_task_through_the_selected_model(self):
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+        seen = {}
+        model = MagicMock(trace=[{'model': 'opus'}])
+        model.generate.return_value = '{"status": "ready"}'
+        @contextmanager
+        def selected(request):
+            seen.update(request)
+            yield model
+        request = {'v': 1, 'type': 'start', 'id': 'claude-job', 'kind': 'connection', 'provider': 'claude',
+                   'cliPath': '/bin/claude', 'model': 'opus', 'effort': 'low', 'context': {}}
+        output = StringIO()
+        with patch('signal.signal'), patch('ai_core.providers.background_model', selected), \
+                patch.object(ai_worker, 'receive', return_value=request), redirect_stdout(output):
+            ai_worker.main()
+        message = json.loads(output.getvalue())
+        self.assertEqual((message['type'], message['model']), ('result', 'opus'))
+        self.assertEqual(json.loads(message['text']), {'status': 'ready'})
+        self.assertEqual((seen['provider'], seen['cliPath']), ('claude', '/bin/claude'))

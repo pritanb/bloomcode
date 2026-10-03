@@ -28,7 +28,8 @@ The adapter only provides tools; it runs no background work. Ask your tutor to r
 **Settings → AI tutor** chooses who generates tutor reports, Learning Insights, topic picks and today's plan:
 
 - **Codex (your ChatGPT plan)**: the app sends tasks to its Python AI layer, which uses the signed-in Codex SDK. No MCP client needs to be open. **Test Codex** checks the setup.
-- **Off**: the default, so no plan usage is spent until you choose Codex. Jobs stay queued and saved work is unaffected.
+- **Claude Code (your Claude plan)**: the same Python AI layer uses the Claude Agent SDK with your signed-in Claude Code CLI. **Test Claude Code** checks the setup.
+- **Off**: the default, so no plan usage is spent until you choose a provider. Jobs stay queued and saved work is unaffected.
 
 The MCP tools work with either setting. An older workspace saved with the removed MCP-sampling provider loads as **Off**.
 
@@ -41,11 +42,21 @@ The MCP tools work with either setting. An older workspace saved with the remove
 - **Usage**: usage counts toward your ChatGPT plan limits. After a usage-limit, sign-in, missing-install or unavailable-model error, the app pauses and shows the reason instead of failing every queued job. Saving the settings or a successful test resumes work.
 - **Privacy**: saved code, notes and problem metadata for each job go to OpenAI.
 
+### Claude Code
+
+- **Detection**: the app looks for the Claude Code CLI in `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin` and `/usr/local/bin`, and otherwise uses the CLI bundled with the Python `claude-agent-sdk` package. You can set the path under **Advanced**; it must end in `claude`.
+- **Sign-in**: run `claude auth login` once in a terminal. The standalone CLI has its own login, separate from Claude Code in the Claude desktop app. Jobs always use this plan login: `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are removed from the AI worker's environment, so a stray key never switches to pay-per-request billing.
+- **Isolation**: each background job runs with no built-in tools, no MCP servers, no user or project settings, safe mode (no CLAUDE.md, skills, plugins or hooks), no saved session and an empty temporary workspace. The prompt replaces Claude Code's system prompt, and the output is constrained to the task's JSON schema.
+- **Defaults**: model `opus` (the CLI's alias for the latest Opus). Reasoning effort uses the same per-job settings as Codex. The CLI also makes a small Haiku call per run.
+- **Usage**: usage counts toward your Claude plan limits, with the same pause-and-resume behaviour as Codex.
+- **Bloom chat**: with Claude Code selected, Ask Bloom and coaching also run on Claude Code (otherwise they use Codex). The chat keeps its session under `~/.claude/projects/` so conversations resume, and connects only the BloomCode MCP server with the same nine read and propose tools as Codex; every other BloomCode tool is hidden and denied. Safe mode is off for chat because it would disable that server; user settings, CLAUDE.md, hooks, plugins, skills and built-in tools stay off. Switching provider starts a new conversation.
+- **Privacy**: saved code, notes and problem metadata for each job go to Anthropic.
+
 Settings are stored in `tutor-settings.json` beside the database. They are machine-specific and not included in backups.
 
 ## Automatic reports
 
-With Codex selected, a report sends the submitted code, notes, problem metadata and recent attempt summaries to Codex, and saves the result through the normal review rules. Submitted code is never run.
+With a provider selected, a report sends the submitted code, notes, problem metadata and recent attempt summaries to it, and saves the result through the normal review rules. Submitted code is never run.
 
 With the tutor off or paused, attempts still save normally and you can request feedback later. The report queue is not persisted, so request a report again after restarting the app. BloomCode never changes your MCP client's configuration.
 
@@ -70,4 +81,4 @@ Finishing a check moves the original idea's schedule on; the check problem gets 
 
 ## Learning Insights
 
-Codex also analyzes learning evidence across completed attempts. Enable **Learning insights** in the app to download local embeddings and queue history. Immediate attempt reports take priority. See [Learning Insights](learning-insights.md) for privacy, evaluation, the two additional MCP tools, and restart/retry behavior.
+The selected provider also analyzes learning evidence across completed attempts. Enable **Learning insights** in the app to download local embeddings and queue history. Immediate attempt reports take priority. See [Learning Insights](learning-insights.md) for privacy, evaluation, the two additional MCP tools, and restart/retry behavior.
