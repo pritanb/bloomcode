@@ -78,8 +78,8 @@ If insights are disabled, empty, stale or fail, use available attempt records an
 explain the limits. Do not repeatedly retry unavailable evidence search.
 If insights say hidden or a tool denies assessment access, stop requesting study
 records for that turn; offer only general guidance until the assessment ends.
-Recommend one or two concrete practice actions, explain their evidence, and
-acknowledge sparse or conflicting data. Treat recent results as a limited sample;
+Outside planning a day, recommend one or two concrete practice actions, explain
+their evidence, and acknowledge sparse or conflicting data. Treat recent results as a limited sample;
 hasMore means older attempts exist. Do not request the entire study history.
 Use active goals in the snapshot when discussing priorities. To save a new goal
 or change its state, call propose_learning_goal with the exact proposed change.
@@ -88,6 +88,32 @@ alone are not goals. The terminal asks for confirmation after your answer.
 Proposals do not save anything: say "proposed", never "saved" or "completed".
 Only a later snapshot showing the saved change confirms persistence. For a state
 change use get_learning_goals if you need a current ID/version/text or inactive goal.
+You drive the learner's practice. You plan each day's questions in the background;
+in chat you explain and adjust them when asked. Recommendations follow a per-topic
+training ladder, not curated lists. trainingLevels give each topic's level on the
+problem-rating scale (contest ratings; estimates are approximate) and the target
+rating (FAANG-screen level; never push above it). Each attempt is strong, ok or
+struggled, from outcome, help, solve time, first-try acceptance and confidence; a
+level rises with strong results and falls with struggles. Problems never repeat:
+an idea comes back as a different problem (a transfer check, shown without its
+topic so the learner must spot the approach; never name the idea a transfer check
+tests before they finish it). todayPlan shows what is planned, started or finished.
+To recommend, call get_shortlist: unseen problems near the learner's level in each
+topic, weakest first, plus due checks. Choose by goals, then weak topics and recent
+struggles; prefer popular problems (popularity is the LeetCode likes percentile, a
+proxy for how often they come up in interviews); order easier before harder. If the
+learner says they struggled with a problem, call get_shortlist for its topic and
+choose problems rated below it; the level itself only moves from recorded attempts,
+so suggest recording the attempt's results if they have not.
+When they ask for today's questions, propose a full day: about questionsPerDay
+problems minus started or finished work, with propose_plan_change mode "replace".
+When they ask to add a few, use mode "add". Give each pick a one-sentence reason
+tied to a goal or evidence, in plain words (for example "a bit easier than the
+1,873 you found hard"). If propose_plan_change says picks are not on the shortlist,
+choose again from get_shortlist. If titles are unmatched, offer the closest returned
+titles or ask; never invent IDs. The host shows a card and changes nothing until
+the learner confirms; say "proposed", never "added". Only propose plan changes the
+learner asked for or agreed to.
 Never change scores, schedules or settings. Never infer goal completion as fact.
 For goal follow-up, use goalProgress: Python counts distinct problems and recorded
 outcomes only for attempts started since agreement. These are activity counts,
@@ -119,7 +145,17 @@ TOOL_ACTIVITY = {
     "propose_tutor_preferences": ("Preparing preference changes…", "Preference proposal"),
     "get_learning_goals": ("Reading learning goals…", "Learning goals"),
     "propose_learning_goal": ("Preparing a goal proposal…", "Goal proposal"),
+    "get_today_plan": ("Reading today's plan…", "Today's plan"),
+    "get_training_levels": ("Reading your training levels…", "Training levels"),
+    "get_shortlist": ("Finding problems at your level…", "Shortlist"),
+    "propose_plan_change": ("Checking problems for your plan…", "Plan proposal"),
     "retrieve_learning_evidence": ("Finding supporting evidence…", "Evidence search"),
+}
+
+PROPOSAL_TOOLS = {
+    "propose_learning_goal": "pending_goals",
+    "propose_tutor_preferences": "pending_preferences",
+    "propose_plan_change": "pending_plan",
 }
 
 
@@ -137,12 +173,16 @@ class TutorSession:
     last_usage: dict | None = None
     pending_goals: list[dict] = field(default_factory=list)
     pending_preferences: list[dict] = field(default_factory=list)
+    pending_plan: list[dict] = field(default_factory=list)
 
     def confirm_goal(self, proposal: dict, approved: bool) -> dict | None:
         return self._confirm(proposal, approved, self.pending_goals, "confirm_learning_goal")
 
     def confirm_preferences(self, proposal: dict, approved: bool) -> dict | None:
         return self._confirm(proposal, approved, self.pending_preferences, "confirm_tutor_preferences")
+
+    def confirm_plan(self, proposal: dict, approved: bool) -> dict | None:
+        return self._confirm(proposal, approved, self.pending_plan, "confirm_plan_change")
 
     def _confirm(self, proposal: dict, approved: bool, pending: list[dict], tool: str) -> dict | None:
         if proposal not in pending:
@@ -199,14 +239,14 @@ class TutorSession:
                 if item.type == "agentMessage" and (item.phase is None or item.phase.value == "final_answer"):
                     answer_ids.add(item.id)
                 if (event.method == "item/completed" and item.type == "mcpToolCall"
-                        and item.server == "bloomcode" and item.tool in {"propose_learning_goal", "propose_tutor_preferences"}
+                        and item.server == "bloomcode" and item.tool in PROPOSAL_TOOLS
                         and item.error is None and item.result is not None):
                     for content in item.result.content:
                         if content.get("type") == "text":
                             data = json.loads(content["text"])
                             if "proposal" in data:
                                 change = data["proposal"]
-                                pending = self.pending_goals if item.tool == "propose_learning_goal" else self.pending_preferences
+                                pending = getattr(self, PROPOSAL_TOOLS[item.tool])
                                 if not any(p["change"] == change for p in pending):
                                     pending.append({"change": change, "key": str(uuid4())})
                 if (item.type == "mcpToolCall" and item.server == "bloomcode"

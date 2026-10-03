@@ -2,23 +2,27 @@
 import type { DailyPlan, PlanItem } from '../../shared/contracts.js';
 import { type Db, many, maybe, one, run, update } from '../db/db.js';
 import { conflict, missing } from '../db/errors.js';
+import { problemRating } from '../topics/ratings.js';
 import type { AttemptRecord } from '../attempts/attempt-model.js';
 export type PlanRecord = Omit<DailyPlan, 'items'>;
 export interface ItemRecord extends PlanItem {
   planId: string;
   position: number;
 }
-type ItemRow = Omit<ItemRecord, 'recommendationKind'> & {
+type ItemRow = Omit<ItemRecord, 'recommendationKind' | 'rating'> & {
   recommendationKind: PlanItem['recommendationKind'] | null;
+  slug: string;
+  difficulty: string | null;
 };
 /** Plan items with their problem's title and link. `where` may refer to the item as `i`. */
 export function planItems(db: Db, where = '', ...params: string[]): ItemRecord[] {
   return many<ItemRow>(
     db,
-    `SELECT i.*, p.title, p.url FROM plan_items i JOIN problems p ON p.id = i.problemId ${where} ORDER BY i.rowid`,
+    `SELECT i.*, p.title, p.url, p.slug, p.difficulty FROM plan_items i JOIN problems p ON p.id = i.problemId ${where} ORDER BY i.rowid`,
     ...params,
-  ).map(({ recommendationKind, ...i }) => ({
+  ).map(({ recommendationKind, slug, difficulty, ...i }) => ({
     ...i,
+    rating: problemRating(db, { slug, difficulty }),
     ...(recommendationKind ? { recommendationKind } : {}),
   }));
 }

@@ -49,7 +49,8 @@ def state(tutor):
     return {"conversationId": tutor.thread.id, "messages": messages[-100:],
             "coaching": coaching, "coachingError": tutor.coaching_error, "proposals": [
         {"kind": kind, **proposal} for kind, pending in [
-            ("goal", tutor.pending_goals), ("preferences", tutor.pending_preferences)
+            ("goal", tutor.pending_goals), ("preferences", tutor.pending_preferences),
+            ("plan", tutor.pending_plan),
         ] for proposal in pending
     ]}
 
@@ -82,13 +83,18 @@ def main():
                     tutor.coaching.control(request['action'])
                 elif method == "confirm":
                     kind = request["kind"]
-                    pending = tutor.pending_goals if kind == "goal" else tutor.pending_preferences
+                    pending, confirm, label = {
+                        "goal": (tutor.pending_goals, tutor.confirm_goal, "Goal"),
+                        "preferences": (tutor.pending_preferences, tutor.confirm_preferences, "Teaching preferences"),
+                        "plan": (tutor.pending_plan, tutor.confirm_plan, "Plan"),
+                    }[kind]
                     proposal = next(p for p in pending if p["key"] == request["key"])
-                    confirm = tutor.confirm_goal if kind == "goal" else tutor.confirm_preferences
-                    confirm(proposal, request["approved"] is True)
-                    activity = ("Goal" if kind == "goal" else "Teaching preferences") + (
-                        " saved." if request["approved"] is True else " change discarded."
-                    )
+                    saved = confirm(proposal, request["approved"] is True)
+                    if kind == "plan" and saved is not None:
+                        activity = ("Updated today's plan." if saved["added"] or saved["removed"]
+                                    else "Today's plan already had those problems.")
+                    else:
+                        activity = label + (" saved." if request["approved"] is True else " change discarded.")
                 elif method == "new":
                     stack.close()
                     tutor = stack.enter_context(open_tutor(api_url=args.api_url, token_file=args.token_file, new=True))

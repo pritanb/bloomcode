@@ -18,6 +18,7 @@ def review_changes(tutor) -> None:
     for label, pending, confirm in [
         ("goal", tutor.pending_goals, tutor.confirm_goal),
         ("preferences", tutor.pending_preferences, tutor.confirm_preferences),
+        ("plan", tutor.pending_plan, tutor.confirm_plan),
     ]:
         _review_proposals(label, pending, confirm)
 

@@ -22,6 +22,39 @@ CREATE TABLE tutor_preferences (
 );
 INSERT INTO tutor_preferences VALUES (1, 'concise', 'progressive', 0, NULL, NULL);
 `;
+/**
+ * Bloom planning each day, fitted rating estimates, popularity and the learner's extra
+ * attempt signals. Plan items may check the idea of an earlier problem (reviewOf).
+ */
+export const PLAN_DRAFT_SCHEMA = `
+CREATE TABLE plan_drafts (
+  planId TEXT PRIMARY KEY REFERENCES daily_plans (id),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'applied', 'failed', 'superseded')),
+  claimId TEXT,
+  claimedAt INTEGER NOT NULL,
+  summary TEXT,
+  items TEXT CHECK (items IS NULL OR json_valid(items)),
+  error TEXT
+);
+CREATE TABLE rating_estimates (
+  slug TEXT PRIMARY KEY,
+  rating REAL NOT NULL,
+  method TEXT NOT NULL,
+  fittedAt TEXT NOT NULL
+);
+CREATE TABLE problem_popularity (
+  slug TEXT PRIMARY KEY,
+  likes INTEGER NOT NULL,
+  dislikes INTEGER NOT NULL,
+  percentile INTEGER NOT NULL CHECK (percentile BETWEEN 0 AND 100)
+);
+CREATE TABLE attempt_signals (
+  attemptId TEXT PRIMARY KEY REFERENCES attempts (id),
+  acceptedFirstTry INTEGER CHECK (acceptedFirstTry IN (0, 1)),
+  difficulty TEXT CHECK (difficulty IN ('too_easy', 'too_hard')),
+  recordedAt TEXT NOT NULL
+);
+`;
 export const SCHEMA =
   PREFERENCE_SCHEMA +
   GOAL_SCHEMA +
@@ -95,7 +128,8 @@ CREATE TABLE plan_items (
   attemptId TEXT REFERENCES attempts (id),
   status TEXT NOT NULL CHECK (status IN ('active', 'queued', 'optional', 'completed', 'skipped')),
   reason TEXT NOT NULL,
-  recommendationKind TEXT CHECK (recommendationKind IN ('topic', 'refresher', 'balanced'))
+  recommendationKind TEXT CHECK (recommendationKind IN ('topic', 'refresher', 'balanced')),
+  reviewOf TEXT REFERENCES problems (id)
 );
 CREATE INDEX plan_items_plan ON plan_items (planId);
 CREATE TABLE attempts (

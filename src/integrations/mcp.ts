@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { LocalApi, ApiError } from './local-api.js';
 import { goalChange, confirmedGoalChange } from '../shared/learning-goals.js';
 import { preferenceChange, confirmedPreferenceChange } from '../shared/tutor-preferences.js';
+import { confirmedPlanChange } from '../shared/plan-changes.js';
 const id = z
   .string()
   .min(1)
@@ -29,6 +30,22 @@ const schemas = {
   }),
   propose_learning_goal: z.strictObject({ change: goalChange }),
   confirm_learning_goal: confirmedGoalChange.extend({ idempotencyKey: key }),
+  get_today_plan: z.strictObject({}),
+  get_training_levels: z.strictObject({}),
+  get_shortlist: z.strictObject({ topic: z.string().trim().min(1).max(100).optional() }),
+  propose_plan_change: z.strictObject({
+    mode: z.enum(['add', 'replace']).optional(),
+    items: z
+      .array(
+        z.strictObject({
+          title: z.string().trim().min(1).max(200),
+          reason: z.string().trim().min(1).max(500),
+        }),
+      )
+      .min(1)
+      .max(10),
+  }),
+  confirm_plan_change: confirmedPlanChange.extend({ idempotencyKey: key }),
   get_topic_scores: z.strictObject({ limit: z.number().int().min(1).max(50).optional() }),
   get_recent_attempts: z.strictObject({
     startedAfter: z.iso.datetime({ offset: true }).optional(),
@@ -120,6 +137,16 @@ const descriptions: Record<keyof typeof schemas, string> = {
     'Propose a goal or state change for the learner to review. This does NOT save anything. The host will ask for explicit confirmation. Never claim a proposal is saved. For state changes use the current goal ID and version.',
   confirm_learning_goal:
     'Host-only: commit a change AFTER explicit learner confirmation. Requires full host credential; unavailable to the conversational tutor. Retry uncertain writes with the SAME idempotency key and payload.',
+  get_training_levels:
+    "Read the learner's per-topic training level on the problem-rating scale (Elo-like; contest ratings, estimates marked), their target rating, which topics are at target, and the last change with its result (strong, ok or struggled). Hidden during mixed assessments.",
+  get_shortlist:
+    'Read what fits the learner now: for each topic below target (weakest first), unseen problems near their level with ratings and popularity, plus ideas due for a check (repair after a struggle, or a transfer check served as a different problem). Optional topic narrows it. Propose ONLY candidates from this list; propose_plan_change refuses others. Hidden during mixed assessments.',
+  get_today_plan:
+    "Read today's plan without creating it: items in order with status, reason and whether each is started, plus the learner's questions-per-day setting. Null plan means none generated yet. Hidden during mixed assessments.",
+  propose_plan_change:
+    "Propose problems for today's plan by exact library title, each with a one-sentence reason addressed to the learner. mode 'add' (default) appends; 'replace' swaps every unstarted item for these picks, keeping started and finished work. Up to ten items. This does NOT change anything; the host asks the learner to confirm. Unmatched titles return close library titles instead of a proposal. Problems already on the plan are reported, not proposed again (in replace mode, unstarted ones stay proposed so they are kept).",
+  confirm_plan_change:
+    'Host-only: apply a confirmed plan change AFTER explicit learner confirmation, using the full credential. Retry uncertain writes with the SAME key and payload.',
   get_topic_scores:
     'Read topic scores, lowest scored topics first and unscored topics last. Limit 1–50 (default 20). Includes provisional flags, coverage counts and hasMore; null scores mean unknown, not weak. No notes or attempt history. Hidden during mixed assessments.',
   get_recent_attempts:
@@ -151,6 +178,10 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
       'propose_tutor_preferences',
       'get_learning_goals',
       'propose_learning_goal',
+      'get_today_plan',
+      'get_training_levels',
+      'get_shortlist',
+      'propose_plan_change',
       'get_topic_scores',
       'get_tutor_access',
       'get_recent_attempts',
@@ -185,6 +216,64 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
     } else if (name === 'confirm_learning_goal') {
       const { idempotencyKey, ...body } = schemas.confirm_learning_goal.parse(args);
       result = await api.request('POST', '/api/learning-goals', body, idempotencyKey);
+    } else if (name === 'get_training_levels') {
+      schemas.get_training_levels.parse(args);
+      result = await api.request('GET', '/api/training-levels');
+    } else if (name === 'get_shortlist') {
+      const { topic } = schemas.get_shortlist.parse(args);
+      result = await api.request(
+        'GET',
+        `/api/recommendations/shortlist${topic ? `?${new URLSearchParams({ topic })}` : ''}`,
+      );
+    } else if (name === 'get_today_plan') {
+      schemas.get_today_plan.parse(args);
+      result = await api.request('GET', '/api/daily-plan/today');
+    } else if (name === 'propose_plan_change') {
+      const { mode = 'add', items } = schemas.propose_plan_change.parse(args);
+      const params = new URLSearchParams(items.map((i) => ['title', i.title]));
+      const { results } = (await api.request('GET', `/api/daily-plan/lookup?${params}`)) as {
+        results: {
+          requested: string;
+          problemId: string | null;
+          title?: string;
+          onPlan?: boolean;
+          started?: boolean;
+          onShortlist?: boolean;
+          candidates?: string[];
+        }[];
+      };
+      const unmatched = results.filter((r) => !r.problemId);
+      // Only the app's shortlist fits the learner's level. Problems already on today's plan
+      // are skipped or kept below, never refused.
+      const unfit = results.filter((r) => r.problemId && !r.onShortlist && !r.onPlan);
+      // Replacing keeps unstarted picks only if they stay in the proposal.
+      const skip = (r: (typeof results)[number]) => (mode === 'add' ? r.onPlan : r.started);
+      const alreadyOnPlan = results.filter(skip).map((r) => r.title!);
+      const seen = new Set<string>();
+      const proposed = items.flatMap((item, i) => {
+        const r = results[i]!;
+        if (!r.problemId || skip(r) || seen.has(r.problemId)) return [];
+        seen.add(r.problemId);
+        return [{ problemId: r.problemId, title: r.title!, reason: item.reason }];
+      });
+      result = unfit.length
+        ? {
+            saved: false,
+            notOnShortlist: unfit.map((r) => r.title),
+            note: "No proposal was made. These don't fit the learner's current training levels or were done recently. Choose from get_shortlist.",
+          }
+        : unmatched.length
+          ? {
+              saved: false,
+              unmatched: unmatched.map((r) => ({ title: r.requested, closest: r.candidates })),
+              note: 'No proposal was made. Use exact library titles or ask the learner.',
+            }
+          : proposed.length
+            ? { proposal: { mode, items: proposed }, alreadyOnPlan, saved: false }
+            : { saved: false, alreadyOnPlan, note: "These are already on today's plan." };
+    } else if (name === 'confirm_plan_change') {
+      const { idempotencyKey, ...body } = schemas.confirm_plan_change.parse(args);
+      result = await api.request('POST', '/api/daily-plan/changes', body, idempotencyKey);
     } else if (name === 'get_topic_scores') {
       const { limit = 20 } = schemas.get_topic_scores.parse(args);
       result = await api.request('GET', `/api/topics/scores?limit=${limit}`);

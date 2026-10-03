@@ -87,8 +87,10 @@ request; in-app requests time out after three minutes.
 
 ## State and boundaries
 
-- Goals and preferences require explicit confirmation before backend writes.
-  The model uses restricted tools and cannot directly change scores or schedules.
+- Bloom plans each day in the background (`recommendations/plan.py`): its picks
+  become the plan. In chat, goals, preferences and plan changes require explicit
+  confirmation before backend writes. The model uses restricted tools and cannot
+  directly change scores or schedules.
 - Active practice blocks tutor access and stops an in-flight app response.
 - Completed conversations resume automatically. One process can use a session
   directory at a time; quit BloomCode before using that session in the terminal.

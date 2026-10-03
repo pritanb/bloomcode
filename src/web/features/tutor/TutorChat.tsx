@@ -56,6 +56,10 @@ export function TutorChat({
       mutate({ path: 'open' });
     }
   }, [visible, state?.status, isPending, mutate]);
+  const planUpdate = state?.activity === "Updated today's plan." ? state.activity : '';
+  useEffect(() => {
+    if (planUpdate) void cache.invalidateQueries({ queryKey: ['dashboard'] });
+  }, [planUpdate, cache]);
   useEffect(() => {
     if (following.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [state?.messages.length, state?.draft, state?.proposals.length]);
@@ -227,33 +231,54 @@ export function TutorChat({
                     title={
                       proposal.kind === 'goal'
                         ? 'Review goal change'
-                        : 'Review teaching preferences'
+                        : proposal.kind === 'plan'
+                          ? proposal.change.mode === 'replace'
+                            ? "Replace today's plan"
+                            : "Add to today's plan"
+                          : 'Review teaching preferences'
                     }
                   >
-                    <dl className="mb-4 space-y-2">
-                      {Object.entries(proposal.change)
-                        .filter(([key]) => !['expectedVersion', 'goalId'].includes(key))
-                        .map(([key, value]) => (
-                          <div key={key}>
-                            <dt className="text-xs text-muted-foreground">
-                              {(
-                                {
-                                  explanationDepth: 'Explanation depth',
-                                  hintStyle: 'Hint style',
-                                  text: 'Goal',
-                                  state: 'New state',
-                                  action: 'Action',
-                                } as Record<string, string>
-                              )[key] ?? key}
-                            </dt>
-                            <dd className="whitespace-pre-wrap break-words">
-                              {String(value).replaceAll('_', ' ')}
-                            </dd>
-                          </div>
-                        ))}
-                    </dl>
+                    {proposal.kind === 'plan' ? (
+                      <ul className="mb-4 space-y-2">
+                        {(proposal.change.items as { title: string; reason: string }[]).map(
+                          (item) => (
+                            <li key={item.title}>
+                              <p className="font-medium">{item.title}</p>
+                              <p className="text-sm text-muted-foreground">{item.reason}</p>
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    ) : (
+                      <dl className="mb-4 space-y-2">
+                        {Object.entries(proposal.change)
+                          .filter(([key]) => !['expectedVersion', 'goalId'].includes(key))
+                          .map(([key, value]) => (
+                            <div key={key}>
+                              <dt className="text-xs text-muted-foreground">
+                                {(
+                                  {
+                                    explanationDepth: 'Explanation depth',
+                                    hintStyle: 'Hint style',
+                                    text: 'Goal',
+                                    state: 'New state',
+                                    action: 'Action',
+                                  } as Record<string, string>
+                                )[key] ?? key}
+                              </dt>
+                              <dd className="whitespace-pre-wrap break-words">
+                                {String(value).replaceAll('_', ' ')}
+                              </dd>
+                            </div>
+                          ))}
+                      </dl>
+                    )}
                     <p className="mb-3 text-sm text-muted-foreground">
-                      Nothing is saved until you confirm.
+                      {proposal.kind !== 'plan'
+                        ? 'Nothing is saved until you confirm.'
+                        : proposal.change.mode === 'replace'
+                          ? 'Unstarted questions are swapped for these; started and finished work stays. Nothing changes until you confirm.'
+                          : 'Nothing is added until you confirm.'}
                     </p>
                     <div className="flex gap-2">
                       {[true, false].map((approved) => (
@@ -273,7 +298,13 @@ export function TutorChat({
                             })
                           }
                         >
-                          {approved ? 'Confirm and save' : 'Discard'}
+                          {approved
+                            ? proposal.kind === 'plan'
+                              ? proposal.change.mode === 'replace'
+                                ? 'Use this plan'
+                                : 'Add to plan'
+                              : 'Confirm and save'
+                            : 'Discard'}
                         </Button>
                       ))}
                     </div>

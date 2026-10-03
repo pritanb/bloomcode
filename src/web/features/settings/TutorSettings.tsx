@@ -23,6 +23,7 @@ const jobLabels: Record<TutorJobKind, string> = {
   extraction: 'Attempt analysis',
   report: 'Learning report',
   topics: 'Topic picks',
+  plan: "Today's plan",
 };
 
 export function TutorSettings() {

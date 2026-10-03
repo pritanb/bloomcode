@@ -141,7 +141,9 @@ test('version 8 workspaces migrate without losing study records', async () => {
   await app.close();
   const path = join(dir, 'study.sqlite');
   const old = openDb(path);
-  old.exec('DROP TABLE learning_goals; DROP TABLE tutor_preferences');
+  old.exec(
+    'DROP TABLE learning_goals; DROP TABLE tutor_preferences; DROP TABLE plan_drafts; DROP TABLE rating_estimates; DROP TABLE problem_popularity; DROP TABLE attempt_signals; ALTER TABLE plan_items DROP COLUMN reviewOf',
+  );
   old.pragma('user_version = 8');
   old.close();
   app = await createApp({ dbPath: path, token: 'host' });
@@ -216,7 +218,9 @@ test('version 9 migration adds preferences while retaining agreed goals', async 
   await app.close();
   const path = join(dir, 'study.sqlite'),
     old = openDb(path);
-  old.exec('DROP TABLE tutor_preferences');
+  old.exec(
+    'DROP TABLE tutor_preferences; DROP TABLE plan_drafts; DROP TABLE rating_estimates; DROP TABLE problem_popularity; DROP TABLE attempt_signals; ALTER TABLE plan_items DROP COLUMN reviewOf',
+  );
   old.pragma('user_version = 9');
   old.close();
   app = await createApp({ dbPath: path, token: 'host' });

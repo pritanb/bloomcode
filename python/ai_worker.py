@@ -20,6 +20,7 @@ def main():
         from insights.extract import extract
         from reviews.review import review
         from recommendations.topics import recommend
+        from recommendations.plan import draft
         from pydantic import BaseModel, ConfigDict
         from typing import Literal
         class Connection(BaseModel):
@@ -28,7 +29,7 @@ def main():
         def connection(model, _):
             value = model.generate(Connection.model_json_schema(), 'Return status ready.', {})
             return Connection.model_validate_json(value).model_dump_json()
-        tasks = {'extraction': extract, 'review': review, 'topics': recommend, 'connection': connection}
+        tasks = {'extraction': extract, 'review': review, 'topics': recommend, 'plan': draft, 'connection': connection}
         handler = tasks[request['kind']]
         with background_runtime(request.get('codexPath')) as (codex, options):
             model = StructuredModel(codex, options, request['model'], ReasoningEffort(request['effort']))

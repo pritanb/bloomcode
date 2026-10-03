@@ -35,6 +35,7 @@ export const importSchema = z
           exposed: z.boolean().optional(),
           tags: z.array(name).optional(),
           lists: z.array(name).optional(),
+          leetcodeTopics: z.array(name).max(30).optional(),
         })
         .strict(),
     ),
@@ -179,6 +180,9 @@ export function applyImport(db: Db, b: ImportPayload, clock: () => Date): Import
           : p.notes,
       legacyCompleted: !!p.legacyCompleted || !!input.legacyCompleted,
       exposed: !!p.exposed || !!input.exposed || !!input.legacyCompleted,
+      ...(!p.leetcodeTopics && input.leetcodeTopics
+        ? { leetcodeTopics: input.leetcodeTopics }
+        : {}),
     });
     problems.set(input.key, p.id);
     const tagIds = (input.tags ?? []).map((n) => {

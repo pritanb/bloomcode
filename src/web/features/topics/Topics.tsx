@@ -65,6 +65,15 @@ export function Topics() {
 }
 
 const Dot = () => <span aria-hidden="true">·</span>;
+type TrainingLevels = {
+  target: number;
+  levels: {
+    topic: string;
+    level: number;
+    atTarget: boolean;
+    lastChange: { delta: number; problem: string; rating: number; estimated: boolean } | null;
+  }[];
+};
 
 function DecisionList({ items }: { items: ScoreDecision[] }) {
   if (!items.length)
@@ -196,6 +205,10 @@ export function TopicDetail() {
     queryKey: ['topic', id],
     queryFn: () => api.get<TopicData>(`/topics/${id}`),
   });
+  const ladder = useQuery({
+    queryKey: ['training-levels'],
+    queryFn: () => api.get<TrainingLevels>('/training-levels'),
+  });
   if (query.isPending) return <Loading />;
   if (query.isError) return <ErrorNotice error={query.error} retry={() => void query.refetch()} />;
   const d = query.data;
@@ -206,6 +219,9 @@ export function TopicDetail() {
       (!difficulty || a.problem.difficulty === difficulty),
   );
   const score: ReactNode = d.topic.score === null ? 'Unrated' : d.topic.score;
+  const level = ladder.data?.levels.find(
+    (l) => l.topic.toLowerCase() === d.topic.name.toLowerCase(),
+  );
   return (
     <>
       <Link
@@ -227,7 +243,7 @@ export function TopicDetail() {
         }
       />
       <FillPage>
-        <div className="grid shrink-0 gap-4 md:grid-cols-3">
+        <div className="grid shrink-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatTile
             label="Current score"
             icon={Gauge}
@@ -242,6 +258,22 @@ export function TopicDetail() {
               )
             }
           />
+          {level && (
+            <StatTile
+              label="Training level"
+              icon={TrendingUp}
+              tone="brand"
+              value={level.level.toLocaleString()}
+              unit={`/ ${ladder.data!.target.toLocaleString()}`}
+              sub={
+                level.lastChange
+                  ? `${level.lastChange.delta >= 0 ? '+' : ''}${level.lastChange.delta} after ${level.lastChange.problem} (${level.lastChange.estimated ? '≈' : ''}${level.lastChange.rating})`
+                  : level.atTarget
+                    ? 'At target: reviews only'
+                    : 'No rated attempts yet'
+              }
+            />
+          )}
           <StatTile
             label="Recorded attempts"
             icon={ListChecks}

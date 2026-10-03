@@ -7,6 +7,8 @@ import type { Generate } from './generate.js';
 import { reviewNext } from './review-job.js';
 import { analyzeNext } from './insight-job.js';
 import { analyzeTopicsNext } from './topic-job.js';
+import { draftPlanNext } from './plan-job.js';
+import type { PlanDrafts } from '../plans/plan-drafts.js';
 
 /** The queues the Codex worker takes work from. */
 export interface TutorJobs {
@@ -15,8 +17,9 @@ export interface TutorJobs {
   reviews: AutoReviewQueue;
   insights: Insights;
   topics: TopicAnalysis;
+  drafts: PlanDrafts;
 }
-/** Run the next queued job: attempt reports first, then learning insights, then topic picks. */
+/** Run the next queued job: attempt reports, today's plan draft, learning insights, then topic picks. */
 export async function runNextJob(
   jobs: TutorJobs,
   generate: Generate,
@@ -25,6 +28,7 @@ export async function runNextJob(
 ): Promise<boolean> {
   return (
     (await reviewNext(jobs, generate)) ||
+    (await draftPlanNext(jobs.drafts, generate)) ||
     (await analyzeNext(jobs.insights, generate, reportBudgetMs, report)) ||
     (await analyzeTopicsNext(jobs.topics, generate))
   );

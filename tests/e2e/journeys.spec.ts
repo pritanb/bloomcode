@@ -15,6 +15,9 @@ test('result report autosaves notes and code, reloads, and saves LeetCode time w
 }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make room for practice' })).toBeVisible();
+  // The default problem bank downloads from LeetCode; this flow needs no network.
+  await page.getByRole('combobox', { name: 'Start with' }).click();
+  await page.getByRole('option', { name: /Empty library/ }).click();
   await page.getByRole('button', { name: 'Create my workspace' }).click();
   await expect(
     page.getByRole('heading', { name: /^Good (morning|afternoon|evening)$/ }),

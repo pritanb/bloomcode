@@ -3,6 +3,7 @@ import unittest
 from insights.extract import extract
 from reviews.review import review, review_context
 from recommendations.topics import recommend
+from recommendations.plan import draft
 from ai_core.errors import model_error
 
 class Model:
@@ -36,6 +37,19 @@ class TaskTests(unittest.TestCase):
         for ids in [(1,1,2),(1,2,8),(1,)]:
             with self.assertRaises(ValueError):
                 recommend(Model({'topics': [{'topicNumber':i,'reason':'Evidence'} for i in ids]}),context)
+
+    def test_plan_mixes_practice_repairs_and_transfer_checks_by_number(self):
+        context = {'candidates': [{'candidateNumber': i} for i in range(1, 5)],
+                   'checks': [{'checkNumber': 1, 'kind': 'transfer'}, {'checkNumber': 2, 'kind': 'repair'}],
+                   'picksRequired': 3}
+        item = lambda c, k, same=(), reason='Goal': {'candidateNumber': c, 'checkNumber': k, 'sameIdea': list(same), 'reason': reason}
+        good = {'summary': 'Graphs today.', 'items': [item(None, 1, ['Capacity To Ship Packages Within D Days'], ''), item(2, 2), item(4, None)]}
+        self.assertEqual(json.loads(draft(Model(good), context)), good)
+        # The host resolves or skips individual items; only an empty or malformed plan fails here.
+        with self.assertRaises(ValueError):
+            draft(Model({'summary': 'x', 'items': []}), context)
+        with self.assertRaises(ValueError):
+            draft(Model({'summary': 'x', 'items': [{'candidateNumber': 1}]}), context)
 
     def test_errors_are_classified_without_echoing_model_requests(self):
         for message, kind in [('401 unauthorized private code','not_signed_in'),

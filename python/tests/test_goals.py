@@ -41,6 +41,16 @@ class GoalConfirmationTests(unittest.TestCase):
         self.assertEqual(self.tutor.pending_preferences, [])
         self.assertEqual(self.tutor.pending_goals, [self.proposal])
 
+    def test_plan_confirmation_uses_its_own_queue_and_tool(self):
+        plan = {"change": {"mode": "add", "items": [{"problemId": "p1", "title": "Two Sum", "reason": "Warm-up"}]}, "key": "plan-key"}
+        self.tutor.pending_plan.append(plan)
+        with patch("tutor.session.save_confirmed_change", new_callable=AsyncMock) as save:
+            save.return_value = {"added": ["Two Sum"]}
+            self.tutor.confirm_plan(plan, True)
+            self.assertEqual(save.call_args.kwargs, {"tool": "confirm_plan_change"})
+        self.assertEqual(self.tutor.pending_plan, [])
+        self.assertEqual(self.tutor.pending_goals, [self.proposal])
+
     def test_cannot_save_a_proposal_that_is_not_pending(self):
         self.tutor.pending_goals.clear()
         with self.assertRaises(ValueError):

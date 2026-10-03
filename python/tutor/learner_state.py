@@ -36,6 +36,35 @@ def summarize_attempts(data: dict) -> dict:
 
 
 
+def summarize_levels(data: dict) -> dict:
+    return {
+        "status": "available",
+        "target": data["target"],
+        "topics": [
+            {"topic": l["topic"], "level": l["level"], "atTarget": l["atTarget"],
+             "attempts": l["attempts"],
+             "lastChange": l["lastChange"] and {
+                 "delta": l["lastChange"]["delta"], "problem": l["lastChange"]["problem"][:200],
+                 "rating": l["lastChange"]["rating"], "estimated": l["lastChange"]["estimated"],
+                 "result": l["lastChange"]["result"]}}
+            for l in data["levels"]
+        ],
+    }
+
+
+def summarize_plan(data: dict) -> dict:
+    plan = data["plan"]
+    return {
+        "status": "available",
+        "questionsPerDay": data["questionsPerDay"],
+        "date": plan["date"] if plan else None,
+        "items": [
+            {"title": i["title"][:200], "status": i["status"], "reason": i["reason"][:300],
+             "started": bool(i["attemptId"]) or i["status"] in {"completed", "skipped"}}
+            for i in (plan["items"] if plan else [])
+        ],
+    }
+
 
 async def _read_snapshot(config_file: Path) -> dict:
     async with platform_session(config_file) as session:
@@ -63,6 +92,22 @@ async def _read_snapshot(config_file: Path) -> dict:
             snapshot["topicScores"] = {"status": "unavailable"}
         else:
             snapshot["topicScores"] = {"status": "available", **data}
+        result = await session.call_tool("get_training_levels", {})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            if data["error"].get("status") == 403:
+                return {"status": "blocked"}
+            snapshot["trainingLevels"] = {"status": "unavailable"}
+        else:
+            snapshot["trainingLevels"] = summarize_levels(data)
+        result = await session.call_tool("get_today_plan", {})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            if data["error"].get("status") == 403:
+                return {"status": "blocked"}
+            snapshot["todayPlan"] = {"status": "unavailable"}
+        else:
+            snapshot["todayPlan"] = summarize_plan(data)
         result = await session.call_tool("get_learning_goals", {})
         data = json.loads(result.content[0].text)
         if result.isError:

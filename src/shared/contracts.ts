@@ -34,6 +34,7 @@ export type SubmissionSummary = Pick<
   | 'nextReviewDate'
 >;
 export interface Problem {
+  rating?: { value: number; estimated: boolean } | null;
   leetcodeTopics?: string[];
   latestSubmission?: SubmissionSummary | null;
   latestConfidence?: number | null;
@@ -123,6 +124,9 @@ export interface ReviewTarget {
 }
 export interface PlanItem {
   recommendationKind?: 'topic' | 'refresher' | 'balanced';
+  rating?: { value: number; estimated: boolean } | null;
+  /** Set when this item checks the idea of an earlier problem (a repair or transfer check). */
+  reviewOf?: string | null;
   id: string;
   problemId: string;
   title: string;
@@ -181,6 +185,7 @@ export interface ImportProblem {
   exposed?: boolean;
   tags?: string[];
   lists?: string[];
+  leetcodeTopics?: string[];
 }
 export interface ImportAttempt {
   confidence?: number | null;

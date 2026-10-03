@@ -17,6 +17,7 @@
     "backup": "node --env-file-if-exists=.env --import tsx scripts/backup.ts",
     "import:pack": "node --env-file-if-exists=.env --import tsx scripts/import-pack.ts",
     "import:lists": "node --env-file-if-exists=.env --import tsx scripts/import-lists.ts",
+    "problem-bank": "node --env-file-if-exists=.env --import tsx scripts/problem-bank.ts",
     "demo": "node --import tsx scripts/demo.mjs",
     "electron:dev": "npm run build && node scripts/electron.mjs dev",
     "electron:package": "npm run build && node scripts/electron.mjs package",

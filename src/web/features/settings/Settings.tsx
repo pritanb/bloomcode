@@ -1,30 +1,63 @@
 import { Disclosure } from '@/components/disclosure';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { SelectField, SelectOption } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, Database, HardDriveDownload, Palette, RefreshCw, Save } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Settings as SettingsData, Dashboard, DailyPlan } from '../../../shared/contracts';
-import {
-  defaultRecommendations,
-  type RecommendationOptions,
-  type RecommendationSettings,
-} from '../../../shared/recommendations';
+import { defaultRecommendations } from '../../../shared/recommendations';
 import { api } from '../../app/api';
 import { TutorSettings } from './TutorSettings';
 import { AccentPicker } from '../../app/theme';
 import { Icon, dateLabel, ErrorNotice, Field, Loading, useAction } from '../../components/ui';
-import {
-  FillPage,
-  IconTile,
-  PageHeader,
-  Panel,
-  ScrollRegion,
-  ToneBadge,
-} from '../../components/kit';
+import { FillPage, IconTile, PageHeader, Panel, ScrollRegion } from '../../components/kit';
 import { Help, SettingsGroup } from './settings-parts';
+
+type BankStatus = {
+  state: 'idle' | 'running' | 'done' | 'failed';
+  message: string | null;
+  problems: number;
+  method: string | null;
+  fittedAt: string | null;
+};
+function ProblemBank() {
+  const status = useQuery({
+    queryKey: ['problem-bank'],
+    queryFn: () => api.get<BankStatus>('/problem-bank'),
+    refetchInterval: (q) => (q.state.data?.state === 'running' ? 2000 : false),
+  });
+  const refresh = useAction(() => api.send<BankStatus>('/problem-bank/refresh', 'POST', {}));
+  const data = status.data;
+  const running = data?.state === 'running' || refresh.isPending;
+  return (
+    <div className="flex flex-col gap-2" role="status">
+      <p className="text-[0.9375rem]">
+        {data?.problems
+          ? `Problem bank: ${data.problems.toLocaleString()} problems rated up to 2,000.`
+          : 'No problem bank yet. Download it so Bloom can pick questions at your level.'}
+      </p>
+      {data?.message && <Help>{data.message}</Help>}
+      {data?.fittedAt && !running && (
+        <Help>
+          Ratings updated {dateLabel(data.fittedAt.slice(0, 10))}. Contest problems use their real
+          rating; others are estimated from difficulty, acceptance rate and topics (about ±150).
+        </Help>
+      )}
+      <div>
+        <Button type="button" variant="outline" disabled={running} onClick={() => refresh.mutate()}>
+          <RefreshCw aria-hidden="true" className={running ? 'motion-safe:animate-spin' : ''} />
+          {running
+            ? 'Updating…'
+            : data?.problems
+              ? 'Refresh problem bank'
+              : 'Download problem bank'}
+        </Button>
+      </div>
+      <ErrorNotice error={status.error ?? refresh.error} />
+    </div>
+  );
+}
 
 export function Settings() {
   const query = useQuery({
@@ -56,15 +89,6 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
     autoScore !== (settings.autoScore ?? true) ||
     JSON.stringify(recommendations) !==
       JSON.stringify(settings.recommendations ?? defaultRecommendations);
-  const change = (update: Partial<RecommendationSettings>) =>
-    setRecommendations((current) => ({ ...current, ...update }));
-  const options = useQuery({
-    queryKey: ['recommendation-options', recommendations.listId, recommendations.startTopic],
-    queryFn: () =>
-      api.get<RecommendationOptions>(
-        `/recommendations/options?${new URLSearchParams({ listId: recommendations.listId ?? '', startTopic: recommendations.startTopic ?? '' })}`,
-      ),
-  });
   const rebuild = useAction(async () => {
     const current = await api.get<Dashboard>('/dashboard');
     if (!current.plan) return api.send<DailyPlan>('/daily-plan/ensure', 'POST', {});
@@ -110,106 +134,25 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
               </Help>
             </SettingsGroup>
             <SettingsGroup title="Which questions">
-              <Field label="List">
-                <SelectField
-                  value={recommendations.listId ?? 'all'}
-                  onValueChange={(value) =>
-                    change({ listId: value === 'all' ? null : value, startTopic: null })
-                  }
-                >
-                  <SelectOption value="all">All questions</SelectOption>
-                  {options.data?.lists.map((list) => (
-                    <SelectOption key={list.id} value={list.id}>
-                      {list.name}
-                    </SelectOption>
-                  ))}
-                </SelectField>
+              <Field label="Target rating">
+                <Input
+                  className="w-28"
+                  required
+                  type="number"
+                  min="1200"
+                  max="2600"
+                  step="50"
+                  value={recommendations.targetRating}
+                  onChange={(e) => setRecommendations({ targetRating: Number(e.target.value) })}
+                  aria-describedby="target-help"
+                />
               </Field>
-              <Field label="Order">
-                <SelectField
-                  value={recommendations.strategy}
-                  onValueChange={(value) =>
-                    change({
-                      strategy: value as RecommendationSettings['strategy'],
-                      ...(value === 'topic' && recommendations.completed === 'legacy'
-                        ? { completed: 'exclude' as const }
-                        : {}),
-                    })
-                  }
-                >
-                  <SelectOption value="balanced">Mix topics</SelectOption>
-                  <SelectOption value="topic">One topic at a time</SelectOption>
-                </SelectField>
-              </Field>
-              {recommendations.strategy === 'topic' && (
-                <>
-                  <Field label="Start from">
-                    <SelectField
-                      value={recommendations.startTopic ?? 'automatic'}
-                      onValueChange={(value) =>
-                        change({ startTopic: value === 'automatic' ? null : value })
-                      }
-                    >
-                      <SelectOption value="automatic">First unfinished topic</SelectOption>
-                      {options.data?.topics.map((topic) => (
-                        <SelectOption key={topic.name} value={topic.name}>
-                          {topic.name} ({topic.completed}/{topic.total} completed)
-                        </SelectOption>
-                      ))}
-                    </SelectField>
-                  </Field>
-                  <p className="flex flex-wrap items-center gap-2 text-[0.9375rem]" role="status">
-                    <span className="text-muted-foreground">
-                      {unsaved ? 'Next topic' : 'Current topic'}:
-                    </span>{' '}
-                    <ToneBadge tone="brand" className="text-[0.8125rem]">
-                      {options.data?.currentTopic ?? 'No unfinished topic'}
-                    </ToneBadge>
-                  </p>
-                  <Disclosure quiet title="When a topic is finished">
-                    <Help>
-                      {options.data?.orderDescription} The topic advances only after every question
-                      has completion evidence. A saved queue is not a completion. Imported
-                      completions and recorded solves count, and a later retry does not erase them.
-                      Snoozed questions wait for their review date.
-                    </Help>
-                  </Disclosure>
-                </>
-              )}
-              <Field label="Completed questions">
-                <SelectField
-                  value={recommendations.completed}
-                  onValueChange={(value) =>
-                    change({ completed: value as RecommendationSettings['completed'] })
-                  }
-                >
-                  <SelectOption value="legacy">No extra limit</SelectOption>
-                  <SelectOption value="exclude">Leave them out</SelectOption>
-                  <SelectOption value="refreshers">Allow a few refreshers</SelectOption>
-                </SelectField>
-              </Field>
-              {recommendations.completed === 'refreshers' && (
-                <>
-                  <Field label="Refresher slots per day">
-                    <Input
-                      className="w-24"
-                      type="number"
-                      min="0"
-                      max="20"
-                      step="1"
-                      required
-                      value={recommendations.refresherSlots}
-                      onChange={(e) => change({ refresherSlots: Number(e.target.value) })}
-                    />
-                  </Field>
-                  <Help>
-                    These count toward the daily total and can revisit earlier topics within your
-                    list. Blind 75 / NeetCode 150 questions are preferred as a curated core, not a
-                    popularity rating. Manual review dates and “no review” choices still apply.
-                  </Help>
-                </>
-              )}
-              <ErrorNotice error={options.error} retry={() => void options.refetch()} />
+              <Help id="target-help">
+                Bloom trains each topic up to this problem rating, then keeps it fresh with reviews.
+                1,850 covers most Mediums asked in FAANG screens; Hards usually start around 2,100.
+                Questions come from the LeetCode problem bank, not from lists.
+              </Help>
+              <ProblemBank />
             </SettingsGroup>
             <SettingsGroup title="Scores">
               <div className="flex items-start gap-2.5">
@@ -255,9 +198,9 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
       <ScrollRegion className="flex flex-col gap-4">
         <Panel title="Today’s plan" icon={RefreshCw}>
           <Help>
-            Rebuilds only unstarted questions in today’s plan. In-progress drafts, finished and
-            skipped items stay, even outside the selected list. Saved attempts, scores and manual
-            review choices are never changed.
+            Plans today’s unstarted questions again: Bloom re-plans them when the tutor is on,
+            otherwise the built-in rules do. In-progress drafts, finished and skipped items stay.
+            Saved attempts, scores and review choices are never changed.
           </Help>
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -265,14 +208,14 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
               disabled={unsaved || rebuild.isPending || save.isPending}
               onClick={() => rebuild.mutate()}
             >
-              {rebuild.isPending ? 'Rebuilding…' : 'Rebuild today’s plan'}
+              {rebuild.isPending ? 'Re-planning…' : 'Re-plan today'}
             </Button>
             {unsaved && <p className="text-[0.8125rem] text-muted-foreground">Save first.</p>}
           </div>
           <ErrorNotice error={rebuild.error} />
           {rebuild.isSuccess && (
             <p className="text-[0.9375rem] font-semibold" role="status">
-              Today’s plan now uses your saved settings.
+              Today’s plan is being re-planned with your saved settings.
             </p>
           )}
         </Panel>

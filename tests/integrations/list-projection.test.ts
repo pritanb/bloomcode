@@ -82,10 +82,6 @@ test('projects verified slug memberships without rewriting stored history', asyn
         'NeetCode 250',
       ].sort(),
     );
-    const options = (await api.request('GET', '/api/recommendations/options')) as {
-      lists: { id: string; name: string }[];
-    };
-    expect(options.lists).toEqual(lists.map(({ id, name }) => ({ id, name })));
     expect(readTables(app.tutorJobs.db)).toEqual(before);
     const page = (await api.request('GET', '/api/problems')) as ProblemPage;
     expect(page.total).toBe(3);

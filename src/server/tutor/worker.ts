@@ -39,7 +39,7 @@ export const tutorSettingsSchema = z
       .max(100)
       .regex(/^[a-zA-Z0-9._:-]+$/),
     effort: z
-      .object({ review: effort, extraction: effort, report: effort, topics: effort })
+      .object({ review: effort, extraction: effort, report: effort, topics: effort, plan: effort })
       .strict(),
   })
   .strict();
@@ -49,6 +49,7 @@ const TIMEOUT_MS: Record<TutorJobKind, number> = {
   extraction: 180_000,
   report: 240_000,
   topics: 120_000,
+  plan: 150_000,
 };
 export const CODEX_REPORT_BUDGET_MS = 540_000;
 // Retrying these immediately would only fail every queued job the same way.
