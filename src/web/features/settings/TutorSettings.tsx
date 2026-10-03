@@ -77,8 +77,8 @@ function TutorForm({ saved, status }: { saved: Settings; status: TutorRunnerStat
   return (
     <Panel title="AI tutor" icon={Bot}>
       <Help>
-        Writes tutor reports, learning insights and topic picks. Practice and saving work without
-        it.
+        Plans your day and writes tutor reports, learning insights and topic picks. Practice and
+        saving work without it.
       </Help>
       <form
         className="flex flex-col gap-4"

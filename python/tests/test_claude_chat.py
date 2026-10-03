@@ -14,12 +14,13 @@ from tutor.session import TOOL_ACTIVITY, TutorSession, open_tutor
 PROPOSAL = {"action": "create", "text": "Solve three graph problems"}
 
 
-def turn_messages(answer="Proposed a goal for you.", tool="propose_learning_goal", proposal=PROPOSAL):
+def turn_messages(answer="Proposed a goal for you.", tool="propose_learning_goal", proposal=PROPOSAL, before=None):
     return [
         StreamEvent(uuid="1", session_id="s", event={"type": "content_block_delta",
                     "delta": {"type": "text_delta", "text": "Proposed "}}),
-        AssistantMessage(content=[ToolUseBlock(id="t1", name=f"mcp__bloomcode__{tool}",
-                                               input={})], model="claude-opus-5"),
+        AssistantMessage(content=[*([TextBlock(text=before)] if before else []),
+                                  ToolUseBlock(id="t1", name=f"mcp__bloomcode__{tool}", input={})],
+                         model="claude-opus-5"),
         UserMessage(content=[ToolResultBlock(tool_use_id="t1", is_error=False, content=[
             {"type": "text", "text": json.dumps({"proposal": proposal, "saved": False})}])]),
         StreamEvent(uuid="2", session_id="s", event={"type": "content_block_delta",
@@ -59,17 +60,20 @@ class ClaudeChatTests(unittest.TestCase):
         self.assertEqual(sessions, [{"session_id": first_id}, {"resume": first_id}])
         self.assertEqual(saved, {"thread_id": first_id, "workspace": "test", "provider": "claude"})
 
-    def test_a_plan_proposal_waits_for_confirmation(self):
+    def test_a_plan_proposal_waits_for_confirmation_and_keeps_the_explanation(self):
         plan = {"mode": "add", "items": [{"problemId": "p1", "reason": "A bit easier than Course Schedule."}]}
         async def query(prompt, options):
-            for message in turn_messages(tool="propose_plan_change", proposal=plan):
+            for message in turn_messages("Proposed, not added yet.", "propose_plan_change", plan,
+                                         before="Island Perimeter is a gentler grid problem."):
                 yield message
         chat = ClaudeChat(lambda **session: session, workspace=Path("/tmp/w"))
         with tempfile.TemporaryDirectory() as directory, patch("claude_agent_sdk.query", query):
             tutor = TutorSession(chat, Path(directory) / "last-session.json", "test", False, provider="claude")
-            tutor.chat_reply("Add an easier graph problem")
+            response = tutor.chat_reply("Add an easier graph problem")
         self.assertEqual([p["change"] for p in tutor.pending_plan], [plan])
         self.assertEqual(tutor.pending_goals, [])
+        # The explanation written before the tool call is part of the answer.
+        self.assertEqual(response, "Island Perimeter is a gentler grid problem.\n\nProposed, not added yet.")
 
     def test_a_failed_turn_raises_and_a_failed_first_turn_never_reuses_its_id(self):
         async def failing(prompt, options):

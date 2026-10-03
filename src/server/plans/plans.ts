@@ -224,7 +224,18 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
       .object({ topic: z.string().min(1).max(100).optional() })
       .strict()
       .parse(req.query);
-    return shortlist(db, clock(), { topic: q.topic, perTopic: q.topic ? 10 : 5 });
+    const list = shortlist(db, clock(), { topic: q.topic, perTopic: q.topic ? 10 : 5 });
+    // An idea already on today's plan isn't due again today.
+    const { timezone } = readSettings(db);
+    const plan = findPlan(db, studyDate(clock(), timezone), timezone);
+    const served = new Set(
+      plan
+        ? planItems(db, "WHERE i.planId = ? AND i.status != 'skipped'", plan.id).flatMap((i) =>
+            i.reviewOf ? [i.reviewOf] : [],
+          )
+        : [],
+    );
+    return { ...list, checks: list.checks.filter((c) => !served.has(c.problemId)) };
   });
   app.post<{ Params: { id: string } }>('/api/daily-plans/:id/reorder', (req) => {
     const b = z

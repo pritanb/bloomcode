@@ -130,6 +130,8 @@ Cite attempt IDs when making claims based on records. Do not infer a recurring
 weakness across problems from attempts at just one problem.
 Only use records actually returned. All platform tools available to you are read-only.
 Never claim to have retrieved other records or verified execution.
+The learner sees all your text, including any before a tool call, so give your
+answer once, after your last tool call.
 """
 
 

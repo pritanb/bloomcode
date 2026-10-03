@@ -235,6 +235,11 @@ async function dueIdea() {
 test('Bloom plans the day: the plan waits for it, then its picks and transfer checks become the plan', async () => {
   const attempted = await dueIdea();
   const { run } = await bloomOn();
+  const dueInChat = async () =>
+    (await request('GET', '/api/recommendations/shortlist', undefined, scoped))
+      .json()
+      .checks.map((c: { title: string }) => c.title);
+  expect(await dueInChat()).toContain('Search One');
   const waiting = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(waiting.items).toEqual([]);
   expect((await request('GET', '/api/plan-drafts/today')).json()).toMatchObject({
@@ -264,6 +269,8 @@ test('Bloom plans the day: the plan waits for it, then its picks and transfer ch
     reason: 'Transfer check — spot the approach yourself',
   });
   expect(planned.items[1].reason).toBe('Builds on your goal');
+  // Chat no longer offers the idea: it is on today's plan.
+  expect(await dueInChat()).not.toContain('Search One');
   expect((await request('GET', '/api/plan-drafts/today')).json().plan).toMatchObject({
     status: 'applied',
     summary: 'Binary search, steady and popular.',

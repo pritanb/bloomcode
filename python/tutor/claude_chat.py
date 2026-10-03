@@ -34,17 +34,20 @@ class ClaudeChat:
         from claude_agent_sdk import (AssistantMessage, ResultMessage, StreamEvent, TextBlock,
                                       ToolResultBlock, ToolUseBlock, UserMessage, query)
         session = {"resume": self.id} if self.started else {"session_id": self.id}
-        tools, last_text, result = {}, None, None
+        tools, texts, result, streamed = {}, [], None, False
         async for item in query(prompt=message, options=self.options(**session)):
             if isinstance(item, StreamEvent):
                 event = item.event
-                if (on_text and item.parent_tool_use_id is None and event.get("type") == "content_block_delta"
-                        and event.get("delta", {}).get("type") == "text_delta"):
-                    on_text(event["delta"]["text"])
+                if on_text and item.parent_tool_use_id is None:
+                    if (streamed and event.get("type") == "content_block_start"
+                            and event.get("content_block", {}).get("type") == "text"):
+                        on_text("\n\n")
+                    elif (event.get("type") == "content_block_delta"
+                            and event.get("delta", {}).get("type") == "text_delta"):
+                        on_text(event["delta"]["text"])
+                        streamed = True
             elif isinstance(item, AssistantMessage) and item.parent_tool_use_id is None:
-                texts = [block.text for block in item.content if isinstance(block, TextBlock)]
-                if texts:
-                    last_text = "".join(texts)
+                texts += [block.text for block in item.content if isinstance(block, TextBlock) and block.text.strip()]
                 for block in item.content:
                     if isinstance(block, ToolUseBlock) and block.name.startswith(PREFIX):
                         tools[block.id] = block.name.removeprefix(PREFIX)
@@ -60,7 +63,9 @@ class ClaudeChat:
                 result = item
         if result is None or result.is_error:
             raise RuntimeError("The tutor did not complete a response.")
-        response = result.result or last_text
+        # Claude often explains before a tool call and only signs off after it, so the
+        # answer is every text of the turn; result.result holds just the last one.
+        response = "\n\n".join(texts) or result.result
         if not response:
             raise RuntimeError("The tutor did not complete a response.")
         return response, result.usage
@@ -83,8 +88,8 @@ class ClaudeChat:
                 messages.append({"role": "user", "text": learner_text(text)})
             elif entry.type == "assistant" and entry.parent_tool_use_id is None:
                 text = "".join(part.get("text", "") for part in content or [] if part.get("type") == "text")
-                if text:
-                    answer = text  # the last text before the next learner message is the answer
+                if text.strip():
+                    answer = f"{answer}\n\n{text}" if answer else text  # every text until the next learner message
         if answer:
             messages.append({"role": "assistant", "text": answer})
         return messages
