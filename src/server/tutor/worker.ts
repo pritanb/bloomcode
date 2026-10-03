@@ -60,6 +60,8 @@ const TIMEOUT_MS: Record<TutorJobKind, number> = {
   plan: 150_000,
 };
 export const REPORT_BUDGET_MS = 540_000;
+// Interview help runs while the learner waits, so it gets a shorter ceiling and fixed effort.
+const HINT_TIMEOUT_MS = 90_000;
 // Retrying these immediately would only fail every queued job the same way.
 const PAUSE_MS: Partial<Record<TutorErrorKind, number>> = {
   usage_limit: 30 * 60_000,
@@ -264,27 +266,41 @@ export class TutorWorker {
       });
     });
   private generate: Generate = (request) =>
-    this.run(request.kind === 'connection' ? null : request.kind, (provider) => {
-      const settings = this.settings.get();
-      return runAIWorker(
-        {
-          id: randomUUID(),
-          kind: request.kind,
-          context: request.context,
-          timeoutMs:
-            request.kind === 'connection'
-              ? 90_000
-              : Math.min(TIMEOUT_MS[request.kind], request.timeoutMs),
-        },
-        {
-          provider,
-          cliPath: this.cliPath,
-          model: PROVIDERS[provider].model(settings),
-          effort: request.kind === 'connection' ? 'low' : settings.effort[request.kind],
-          signal: this.abort.signal,
-        },
-      );
-    });
+    this.run(
+      request.kind === 'connection' || request.kind === 'hint' ? null : request.kind,
+      (provider) => {
+        const settings = this.settings.get();
+        return runAIWorker(
+          {
+            id: randomUUID(),
+            kind: request.kind,
+            context: request.context,
+            timeoutMs:
+              request.kind === 'connection'
+                ? 90_000
+                : request.kind === 'hint'
+                  ? Math.min(HINT_TIMEOUT_MS, request.timeoutMs)
+                  : Math.min(TIMEOUT_MS[request.kind], request.timeoutMs),
+          },
+          {
+            provider,
+            cliPath: this.cliPath,
+            model: PROVIDERS[provider].model(settings),
+            effort:
+              request.kind === 'connection'
+                ? 'low'
+                : request.kind === 'hint'
+                  ? 'medium'
+                  : settings.effort[request.kind],
+            signal: this.abort.signal,
+          },
+        );
+      },
+    );
+  /** Interview help for the attempt in progress, run straight away rather than queued. */
+  help(context: unknown) {
+    return this.generate({ kind: 'hint', context, timeoutMs: HINT_TIMEOUT_MS });
+  }
   status(): TutorRunnerStatus {
     const settings = this.settings.get();
     return {

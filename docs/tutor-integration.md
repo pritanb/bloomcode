@@ -60,6 +60,22 @@ With a provider selected, a report sends the submitted code, notes, problem meta
 
 With the tutor off or paused, attempts still save normally and you can request feedback later. The report queue is not persisted, so request a report again after restarting the app. BloomCode never changes your MCP client's configuration.
 
+## Stuck during practice
+
+Bloom chat is paused while an attempt is in progress, so it cannot read your study records mid-assessment. On the attempt page, the Bloom panel offers **Interview help** instead: enter the time you got stuck (mm:ss on your LeetCode timer) and say what's blocking you. Your current code goes with each message.
+
+Bloom answers like an interviewer: a question, a failing case or one nudge at a time, never the full solution. Only the problem title, link and difficulty, your code and the help thread are sent to the selected provider. Tags, notes and history are not sent, and nothing is saved on the server.
+
+Each help moment is added to the attempt notes:
+
+```
+[Stuck at 12:30] Asked Bloom for help.
+Where I was: <Bloom's read of the attempt at that time>
+Hint (small): <the nudge>
+```
+
+Bloom grades each hint **small** (a nudge that leaves the key insight to you) or **major** (it gave away the key idea). **Help used** is prefilled with the highest grade reached until you pick a value yourself. Under the usual rules, a small hint caps the result at OK. Major help makes it Struggled, so the level drops and the idea comes back as easier practice. The attempt report reads these notes and says where you got stuck and what unlocked it. The thread itself is kept only until the app reloads.
+
 ## Today's plan
 
 Bloom decides each day's questions; with the tutor off, paused or failing, simple built-in rules do instead. Lists never drive the plan.

@@ -51,3 +51,10 @@ export interface TutorTestResult {
   ms: number;
   error: { kind: TutorErrorKind; message: string } | null;
 }
+/** One interview-help reply during an attempt; `analysis` only follows a new stuck time. */
+export interface InterviewHelp {
+  reply: string;
+  hint: string;
+  level: 'small' | 'major';
+  analysis: string | null;
+}

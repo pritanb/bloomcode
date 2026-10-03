@@ -2,7 +2,7 @@ import type { TutorJobKind } from '../../shared/tutor.js';
 
 /** Task data only. Python owns prompts, schemas and model calls. */
 export interface GenerateRequest {
-  kind: Exclude<TutorJobKind, 'report'> | 'connection';
+  kind: Exclude<TutorJobKind, 'report'> | 'connection' | 'hint';
   context: unknown;
   timeoutMs: number;
 }

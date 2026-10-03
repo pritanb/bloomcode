@@ -19,6 +19,7 @@ def main():
         from reviews.review import review
         from recommendations.topics import recommend
         from recommendations.plan import draft
+        from interview.hint import hint
         from pydantic import BaseModel, ConfigDict
         from typing import Literal
         class Connection(BaseModel):
@@ -27,7 +28,7 @@ def main():
         def connection(model, _):
             value = model.generate(Connection.model_json_schema(), 'Return status ready.', {})
             return Connection.model_validate_json(value).model_dump_json()
-        tasks = {'extraction': extract, 'review': review, 'topics': recommend, 'plan': draft, 'connection': connection}
+        tasks = {'extraction': extract, 'review': review, 'topics': recommend, 'plan': draft, 'hint': hint, 'connection': connection}
         handler = tasks[request['kind']]
         with background_model(request) as model:
             text = handler(model, request['context'])

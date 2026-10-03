@@ -1,4 +1,4 @@
-import { useTutor } from '../tutor/TutorDock';
+import { usePracticeHelp, useTutor } from '../tutor/TutorDock';
 import { enumLabel, helpLabel, languageLabel } from '../../lib/labels';
 import { DateField } from '@/components/date-field';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import CodeMirror, { EditorView } from '@uiw/react-codemirror';
@@ -165,6 +165,36 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
     }
   }, [initial.id, queue]);
   const completed = attempt.status === 'completed';
+  // Interview help from the Bloom dock writes graded hints into the notes; the help prefill
+  // follows the strongest one, so it survives a reload.
+  const helpLevel = /^Hint \(major\):/m.test(draft.notes)
+    ? 'major'
+    : /^Hint \(small\):/m.test(draft.notes)
+      ? 'small'
+      : null;
+  const notesLocked = useRef(false);
+  notesLocked.current = completed || submitting || !!error;
+  const helpSession = useMemo(
+    () =>
+      completed
+        ? null
+        : {
+            attemptId: initial.id,
+            getDraft: () => ({
+              code: draftRef.current.code,
+              language: draftRef.current.language,
+            }),
+            onNote: (text: string, newBlock: boolean) => {
+              if (notesLocked.current) return;
+              setDraft((old) => ({
+                ...old,
+                notes: old.notes.trim() ? `${old.notes}${newBlock ? '\n\n' : '\n'}${text}` : text,
+              }));
+            },
+          },
+    [completed, initial.id],
+  );
+  usePracticeHelp(helpSession);
   const notesField = (
     <Field label="Attempt notes">
       <Textarea
@@ -404,6 +434,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
       {!completed && (
         <FinishForm
           draft={draft}
+          helpLevel={helpLevel}
           languageField={languageField}
           notesField={notesField}
           codeField={codeField}
@@ -441,6 +472,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
 }
 function FinishForm({
   draft,
+  helpLevel,
   busy,
   locked,
   languageField,
@@ -450,6 +482,7 @@ function FinishForm({
   onFinish,
 }: {
   draft: Draft;
+  helpLevel: 'small' | 'major' | null;
   busy: boolean;
   locked: boolean;
   languageField: ReactNode;
@@ -459,7 +492,12 @@ function FinishForm({
   onFinish: (fields: Record<string, unknown>) => Promise<void>;
 }) {
   const [outcome, setOutcome] = useState<Outcome>('solved');
-  const [help, setHelp] = useState<Help>('unknown');
+  const [help, setHelp] = useState<Help>(helpLevel ?? 'unknown');
+  // Bloom's graded help fills this in until you choose a value yourself.
+  const [helpTouched, setHelpTouched] = useState(false);
+  useEffect(() => {
+    if (helpLevel && !helpTouched) setHelp(helpLevel);
+  }, [helpLevel, helpTouched]);
   const [seconds, setSeconds] = useState('');
   const [review, setReview] = useState('recommended');
   const [date, setDate] = useState('');
@@ -519,7 +557,13 @@ function FinishForm({
                 </SelectField>
               </Field>
               <Field label="Help used">
-                <SelectField value={help} onValueChange={(value) => setHelp(value as Help)}>
+                <SelectField
+                  value={help}
+                  onValueChange={(value) => {
+                    setHelpTouched(true);
+                    setHelp(value as Help);
+                  }}
+                >
                   <SelectOption value="unknown">Unknown</SelectOption>
                   <SelectOption value="none">None</SelectOption>
                   <SelectOption value="small">Small hint</SelectOption>
