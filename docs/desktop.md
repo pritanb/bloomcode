@@ -49,7 +49,7 @@ The packaged app does not read `.env`. It uses the standard workspace and port `
 
 The app owns its local server. Quitting stops it; opening the app twice brings the existing window forward. Keep the app open while an MCP client is connected. If another server already holds the workspace or port, the app reports it rather than stopping that process.
 
-For tutor reports, choose **Settings → AI tutor → Codex**. MCP clients connect to the same workspace and port through the adapter built from this repository, which needs Node.js; see [tutor setup](tutor-integration.md).
+For tutor reports, choose **Settings → AI tutor → Codex** or **Claude Code**. MCP clients connect to the same workspace and port through the adapter built from this repository, which needs Node.js; see [tutor setup](tutor-integration.md).
 
 ## Optional AI setup for the v0.3.0 preview
 
@@ -61,8 +61,10 @@ python3 -m venv "$HOME/Library/Application Support/BloomCode/ai-runtime"
 "$HOME/Library/Application Support/BloomCode/ai-runtime/bin/python" -m pip install -r /Applications/BloomCode.app/Contents/Resources/ai/python/requirements.txt
 ```
 
-Restart BloomCode after setup. AI also requires file-based Codex sign-in
-(`~/.codex/auth.json` or `CODEX_HOME/auth.json`). No credentials or study records
+Restart BloomCode after setup, and re-run the `pip install` line after updating
+BloomCode, since new versions can add packages. AI also requires a signed-in
+provider: file-based Codex sign-in (`~/.codex/auth.json` or `CODEX_HOME/auth.json`),
+or for Claude Code, `claude auth login`. No credentials or study records
 are included in the release. The packaged tutor uses Electron's Node runtime and
 its bundled MCP adapter, so AI does not require a development checkout or `npm ci`.
 `BLOOMCODE_PYTHON` can override the interpreter path. Updates preserve this Python

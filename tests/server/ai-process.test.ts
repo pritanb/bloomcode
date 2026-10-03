@@ -8,7 +8,8 @@ const runtime = {
 const options = {
   model: 'configured-model',
   effort: 'low',
-  codexPath: null,
+  provider: 'codex' as const,
+  cliPath: null,
   signal: new AbortController().signal,
 };
 it('runs a task through the shared transport with data and model configuration', async () => {

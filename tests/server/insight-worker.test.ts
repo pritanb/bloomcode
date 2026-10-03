@@ -25,7 +25,7 @@ function fixture(mode = 'ok') {
   const run = () =>
     runInsightWorker(
       request,
-      { model: 'test', effort: 'low', codexPath: null, signal: controller.signal },
+      { model: 'test', effort: 'low', provider: 'codex', cliPath: null, signal: controller.signal },
       runtime,
     );
   return { insights, run, controller, request };
@@ -73,7 +73,8 @@ it('explains missing Python setup without saving', async () => {
       {
         model: 'test',
         effort: 'low',
-        codexPath: null,
+        provider: 'codex',
+        cliPath: null,
         signal: h.controller.signal,
       },
       { ...runtime, python: '/nonexistent/bloomcode-python' },

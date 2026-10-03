@@ -1,9 +1,10 @@
-// Python AI workers use the Codex SDK; Fastify configures and schedules their tasks.
-// Off until chosen in Settings, because Codex spends the learner's ChatGPT plan.
-export type TutorProvider = 'codex' | 'off';
+// Python AI workers use the Codex or Claude Agent SDK; Fastify configures and
+// schedules their tasks. Off until chosen in Settings, because each provider
+// spends the learner's ChatGPT or Claude plan.
+export type TutorProvider = 'codex' | 'claude' | 'off';
 export type TutorEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type TutorJobKind = 'review' | 'extraction' | 'report' | 'topics';
-export type CodexErrorKind =
+export type TutorErrorKind =
   | 'not_installed'
   | 'not_signed_in'
   | 'usage_limit'
@@ -17,22 +18,29 @@ export const TUTOR_JOB_KINDS: TutorJobKind[] = ['review', 'extraction', 'report'
 export interface TutorSettings {
   provider: TutorProvider;
   codexPath: string | null;
+  /** The Codex model. */
   model: string;
+  claudePath: string | null;
+  claudeModel: string;
+  /** Shared by both providers, which accept the same levels. */
   effort: Record<TutorJobKind, TutorEffort>;
 }
 export const defaultTutorSettings: TutorSettings = {
   provider: 'off',
   codexPath: null,
   model: 'gpt-6-luna',
+  claudePath: null,
+  claudeModel: 'opus',
   effort: { review: 'high', extraction: 'high', report: 'xhigh', topics: 'high' },
 };
 
 export interface TutorRunnerStatus {
   provider: TutorProvider;
-  codexPath: string | null;
+  /** The CLI the selected provider runs, once found or configured. */
+  cliPath: string | null;
   activeKind: TutorJobKind | null;
   pausedUntil: string | null;
-  lastError: { kind: CodexErrorKind; message: string; at: string } | null;
+  lastError: { kind: TutorErrorKind; message: string; at: string } | null;
   lastSuccessAt: string | null;
 }
 export interface TutorTestResult {
@@ -41,5 +49,5 @@ export interface TutorTestResult {
   version: string | null;
   model: string | null;
   ms: number;
-  error: { kind: CodexErrorKind; message: string } | null;
+  error: { kind: TutorErrorKind; message: string } | null;
 }

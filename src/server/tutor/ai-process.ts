@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { CodexError } from './codex.js';
+import { TutorError } from './cli.js';
+import type { TutorProvider } from '../../shared/tutor.js';
 import { tutorRuntimePaths } from './conversation.js';
 
 export interface WorkerResult {
@@ -11,7 +12,9 @@ export interface WorkerResult {
 export interface WorkerOptions {
   model: string;
   effort: string;
-  codexPath: string | null;
+  provider: Exclude<TutorProvider, 'off'>;
+  /** The CLI to run, found by the host; Python falls back to its own discovery when null. */
+  cliPath: string | null;
   signal: AbortSignal;
   progress?: (text: string | null) => void;
   entry?: string;
@@ -121,7 +124,7 @@ export function runAIWorker(
     const check = () => handlers.check?.();
     const cancel = () => finish(new Error('AI task cancelled.'));
     const timer = setTimeout(
-      () => finish(new CodexError('timeout', 'AI task timed out. Retry the task.')),
+      () => finish(new TutorError('timeout', 'AI task timed out. Retry the task.')),
       request.timeoutMs,
     );
     const accessTimer = setInterval(() => {
@@ -134,7 +137,7 @@ export function runAIWorker(
     options.signal.addEventListener('abort', cancel, { once: true });
     child.on('error', () =>
       finish(
-        new CodexError(
+        new TutorError(
           'not_installed',
           'Python AI runtime could not start. Install python/requirements.txt in python/.venv or set BLOOMCODE_PYTHON.',
         ),
@@ -154,7 +157,7 @@ export function runAIWorker(
     child.on('close', (code) => {
       if (!settled)
         finish(
-          new CodexError(
+          new TutorError(
             startupFailure === 'ModuleNotFoundError' || startupFailure === 'ImportError'
               ? 'not_installed'
               : 'crashed',
@@ -197,7 +200,7 @@ export function runAIWorker(
               error: handlers.candidate(event.report),
             });
           } else if (event.type === 'progress') options.progress?.(event.message);
-          else if (event.type === 'error') throw new CodexError(event.kind, event.message);
+          else if (event.type === 'error') throw new TutorError(event.kind, event.message);
           else {
             handlers.completed?.();
             finish(undefined, { text: event.text ?? '', model: event.model ?? options.model });
@@ -217,7 +220,10 @@ export function runAIWorker(
         kind: request.kind,
         model: options.model,
         effort: options.effort,
-        codexPath: options.codexPath,
+        provider: options.provider,
+        cliPath: options.cliPath,
+        // Read by the Codex runtime; kept so older Python sources still work.
+        codexPath: options.provider === 'codex' ? options.cliPath : null,
       }) + '\n',
     );
   });
