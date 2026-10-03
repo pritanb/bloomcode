@@ -160,9 +160,7 @@ export function InterviewHelp({
           value={message}
           maxLength={4000}
           rows={3}
-          placeholder={
-            validTime ? "What's blocking you?" : 'Enter when you got stuck (mm:ss) first'
-          }
+          placeholder="What's blocking you?"
           onChange={(event) => setMessage(event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
@@ -171,7 +169,10 @@ export function InterviewHelp({
           }}
           className="rounded-2xl"
         />
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          {!validTime && message.trim() && (
+            <p className="text-sm text-muted-foreground">Add the Stuck at time to send.</p>
+          )}
           <Button type="submit" disabled={pending || !validTime || !message.trim()}>
             <Send />
             Send
