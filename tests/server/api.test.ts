@@ -17,6 +17,21 @@ const request = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: unknow
     headers: { ...headers, ...extra },
     ...(payload === undefined ? {} : { payload: payload as object }),
   });
+/** A problem the training ladder can plan: a topic tag and a difficulty. */
+async function plannable(slug: string, title = slug) {
+  const tags = (await request('GET', '/api/tags')).json() as { id: string; name: string }[];
+  const tag: { id: string } =
+    tags.find((t) => t.name === 'Arrays & Hashing') ??
+    (await request('POST', '/api/tags', { name: 'Arrays & Hashing' })).json();
+  return (
+    await request('POST', '/api/problems', {
+      title,
+      url: `https://leetcode.com/problems/${slug}/`,
+      difficulty: 'Easy',
+      tags: [{ tagId: tag.id }],
+    })
+  ).json();
+}
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'lc-backend-'));
   now = new Date('2026-09-16T01:00:00Z');
@@ -465,28 +480,63 @@ it('commits tutor feedback and absolute scores together, rejects unsupported rep
   });
 });
 
-it('builds a stable budgeted day, resumes work across midnight and transitions assignments without fabricated attempts', async () => {
+it('builds a stable budgeted day, serves a due idea as a different problem, resumes across midnight and transitions assignments without fabricated attempts', async () => {
   expect((await request('GET', '/api/dashboard')).json().plan).toBeNull();
-  await request('POST', '/api/import', imported());
-  for (const slug of ['new-a', 'new-b', 'new-c'])
-    await request('POST', '/api/problems', {
+  // An idea practised earlier and due again today, plus fresh problems in the same topic.
+  const legacy = await plannable('legacy', 'Legacy');
+  const earlier = (
+    await request('POST', '/api/attempts', { problemId: legacy.id, context: 'targeted' })
+  ).json();
+  await request(
+    'POST',
+    `/api/attempts/${earlier.id}/finish`,
+    {
+      version: earlier.version,
+      outcome: 'solved',
+      help: 'small',
+      activeSeconds: 600,
+      reviewAction: 'manual',
+      reviewDate: '2026-09-16',
+    },
+    { 'idempotency-key': 'legacy-finish' },
+  );
+  // Imported like the problem bank: tagged, rated and not yet seen.
+  await request('POST', '/api/import', {
+    importId: 'fresh',
+    dryRun: false,
+    source: { retrievedAt: '2026-09-16T00:00:00Z' },
+    problems: ['new-a', 'new-b', 'new-c'].map((slug) => ({
+      key: slug,
       title: slug,
       url: `https://leetcode.com/problems/${slug}/`,
-    });
+      difficulty: 'Easy',
+      tags: ['Arrays & Hashing'],
+    })),
+    attempts: [],
+    topics: [],
+    movements: [],
+    records: [],
+  });
   const plan = await request('POST', '/api/daily-plan/ensure', {});
   expect(plan.statusCode).toBe(200);
   const day = plan.json();
   expect(day.items).toHaveLength(2);
-  expect(day.items[0].title).toBe('Legacy');
-  expect(day.items[0].reason).not.toContain('Arrays');
+  // The due idea comes back as a different problem from its topic: never the original.
+  // (Only Bloom names same-idea problems, so the rules label this as topic practice.)
+  expect(day.items[0]).toMatchObject({
+    reviewOf: legacy.id,
+    reason: 'Arrays & Hashing · practice after Legacy',
+  });
+  expect(day.items.map((i: { problemId: string }) => i.problemId)).not.toContain(legacy.id);
   expect((await request('POST', '/api/daily-plan/ensure', {})).json()).toEqual(day);
   const a = (
     await request('POST', '/api/attempts', {
       problemId: day.items[0].problemId,
       planItemId: day.items[0].id,
-      context: 'review',
+      context: 'mixed',
     })
   ).json();
+  expect(a.evidence).toBe('near_transfer');
   now = new Date('2026-09-17T01:00:00Z');
   expect((await request('POST', '/api/daily-plan/ensure', {})).json().id).toBe(day.id);
   expect(
@@ -506,7 +556,20 @@ it('builds a stable budgeted day, resumes work across midnight and transitions a
   );
   expect(previous.plan.items[0].status).toBe('active');
   expect(previous.activeAttempt).toBeNull();
-  expect(previous.topics[0].score).toBe(3.6); // retention miss auto-lowers 3.75 by 0.15
+  // The miss moves the original idea to repair; the check problem gets no schedule of its own.
+  const reviews = (await request('GET', '/api/reviews')).json() as {
+    problemId: string;
+    stage: string;
+    action: string;
+    effectiveDate: string | null;
+  }[];
+  expect(reviews.find((r) => r.problemId === legacy.id)).toMatchObject({
+    stage: 'repair',
+    effectiveDate: '2026-09-17',
+  });
+  expect(reviews.find((r) => r.problemId === day.items[0].problemId)).toMatchObject({
+    action: 'none',
+  });
   const swapped = (
     await request('POST', `/api/plan-items/${day.items[1].id}/disposition`, {
       action: 'swap',
@@ -757,11 +820,7 @@ it('returns only score history during mixed practice while keeping topic metadat
 });
 
 it('honors the daily question target and preserves existing plans', async () => {
-  for (const slug of ['count-a', 'count-b', 'count-c', 'count-d'])
-    await request('POST', '/api/problems', {
-      title: slug,
-      url: `https://leetcode.com/problems/${slug}/`,
-    });
+  for (const slug of ['count-a', 'count-b', 'count-c', 'count-d']) await plannable(slug);
   expect((await request('PATCH', '/api/settings', { questionsPerDay: 3 })).statusCode).toBe(200);
   const day = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(day.items).toHaveLength(3);
@@ -844,12 +903,7 @@ it('shows submission fields without code and retains the latest recorded confide
 });
 
 it('cancels an active attempt without recording a result and permits a fresh start', async () => {
-  const p = (
-    await request('POST', '/api/problems', {
-      title: 'Cancel fixture',
-      url: 'https://leetcode.com/problems/cancel-fixture/',
-    })
-  ).json();
+  const p = await plannable('cancel-fixture', 'Cancel fixture');
   const plan = (await request('POST', '/api/daily-plan/ensure', {})).json();
   const item = plan.items.find((i: { problemId: string }) => i.problemId === p.id);
   const a = (
@@ -898,11 +952,7 @@ it('cancels an active attempt without recording a result and permits a fresh sta
 
 it('persists plan order while rejecting stale or incomplete reorders', async () => {
   await request('PATCH', '/api/settings', { questionsPerDay: 3 });
-  for (const slug of ['order-a', 'order-b', 'order-c'])
-    await request('POST', '/api/problems', {
-      title: slug,
-      url: `https://leetcode.com/problems/${slug}/`,
-    });
+  for (const slug of ['order-a', 'order-b', 'order-c']) await plannable(slug);
   const plan = (await request('POST', '/api/daily-plan/ensure', {})).json();
   const ids = plan.items.map((i: { id: string }) => i.id).reverse();
   expect(

@@ -9,6 +9,7 @@ import { type Db, maybe } from '../db/db.js';
 import { ApiError, conflict } from '../db/errors.js';
 import { repoRoot } from '../paths.js';
 import type { ChatState } from '../../shared/tutor-chat.js';
+import { PROVIDERS, TutorSettingsFile } from './worker.js';
 
 const result = z.object({
   conversationId: z.string(),
@@ -26,7 +27,7 @@ const result = z.object({
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string() })).max(100),
   proposals: z.array(
     z.object({
-      kind: z.enum(['goal', 'preferences']),
+      kind: z.enum(['goal', 'preferences', 'plan']),
       key: z.string(),
       change: z.record(z.string(), z.unknown()),
     }),
@@ -54,6 +55,12 @@ export class TutorConversation {
     private args: string[],
     private timeout = 180_000,
   ) {}
+
+  /** The launch arguments without the provider options. */
+  baseArgs() {
+    const index = this.args.indexOf('--provider');
+    return index < 0 ? this.args : this.args.slice(0, index);
+  }
 
   start() {
     if (this.child) return;
@@ -146,6 +153,13 @@ export class TutorConversation {
     this.state.status = 'error';
     this.state.error = message;
   }
+  /** Use new launch arguments (another provider or model), restarting only if they changed. */
+  configure(args: string[]) {
+    if (JSON.stringify(args) === JSON.stringify(this.args)) return;
+    this.args = args;
+    if (this.child) this.stop();
+  }
+
   stop() {
     this.reopen = false;
     clearTimeout(this.timer);
@@ -218,6 +232,20 @@ export function tutorRuntimePaths(
   };
 }
 
+/** worker.py arguments for the saved tutor provider. Codex stays the default, as before. */
+export async function chatProviderArgs(settingsDir: string | null): Promise<string[]> {
+  const settings = new TutorSettingsFile(settingsDir).get();
+  if (settings.provider !== 'claude') return [];
+  const path = await PROVIDERS.claude.find(settings.claudePath);
+  return [
+    '--provider',
+    'claude',
+    '--model',
+    settings.claudeModel,
+    ...(path ? ['--cli-path', path] : []),
+  ];
+}
+
 export function registerConversation(
   app: FastifyInstance,
   db: Db,
@@ -266,8 +294,12 @@ export function registerConversation(
     });
     return { ...state, evidence };
   });
-  app.post('/api/tutor-chat/open', () => {
+  app.post('/api/tutor-chat/open', async () => {
     guard();
+    // An injected worker (tests) keeps its own arguments.
+    const provider = worker
+      ? []
+      : await chatProviderArgs(dbPath === ':memory:' ? null : dirname(dbPath));
     if (!chat) {
       const runtime = tutorRuntimePaths();
       if (!existsSync(runtime.python) || !existsSync(runtime.worker))
@@ -285,8 +317,9 @@ export function registerConversation(
         `http://127.0.0.1:${address.port}`,
         '--token-file',
         join(dirname(dbPath), 'api-token'),
+        ...provider,
       ]);
-    }
+    } else if (!worker) chat.configure([...chat.baseArgs(), ...provider]);
     chat.start();
     return chat.state;
   });
@@ -321,7 +354,7 @@ export function registerConversation(
       .object({
         id: z.string().uuid(),
         key: z.string().uuid(),
-        kind: z.enum(['goal', 'preferences']),
+        kind: z.enum(['goal', 'preferences', 'plan']),
         approved: z.boolean(),
       })
       .strict()

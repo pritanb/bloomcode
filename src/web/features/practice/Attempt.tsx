@@ -28,6 +28,7 @@ import { api, ApiError } from '../../app/api';
 import { AttemptQueue } from './attemptQueue';
 import { AttemptComparison } from './AttemptComparison';
 import { AttemptReflection } from './AttemptReflection';
+import { AttemptSignals } from './AttemptSignals';
 import { TutorReport } from './TutorReport';
 import { CopyButton, dateLabel, duration, ErrorNotice, Field, Loading } from '../../components/ui';
 import {
@@ -391,6 +392,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
                 setAttempt(saved);
               }}
             />
+            <AttemptSignals attemptId={attempt.id} />
             <AttemptComparison attempt={attempt} />
             <Panel title="Saved code" icon={CodeXml} meta={draftStatus}>
               {codeField}

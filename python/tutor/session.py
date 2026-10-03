@@ -1,4 +1,4 @@
-"""A conversation with BloomCode's tutor, backed by the Codex Python SDK."""
+"""A conversation with BloomCode's tutor, backed by the Codex or Claude Agent SDK."""
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -11,7 +11,6 @@ from typing import Callable, Iterator
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from openai_codex import ApprovalMode, Codex, Sandbox, Thread
 from tutor.learner_state import load_snapshot, save_confirmed_change
 from tutor.session_lock import session_lock
 
@@ -78,8 +77,8 @@ If insights are disabled, empty, stale or fail, use available attempt records an
 explain the limits. Do not repeatedly retry unavailable evidence search.
 If insights say hidden or a tool denies assessment access, stop requesting study
 records for that turn; offer only general guidance until the assessment ends.
-Recommend one or two concrete practice actions, explain their evidence, and
-acknowledge sparse or conflicting data. Treat recent results as a limited sample;
+Outside planning a day, recommend one or two concrete practice actions, explain
+their evidence, and acknowledge sparse or conflicting data. Treat recent results as a limited sample;
 hasMore means older attempts exist. Do not request the entire study history.
 Use active goals in the snapshot when discussing priorities. To save a new goal
 or change its state, call propose_learning_goal with the exact proposed change.
@@ -88,6 +87,32 @@ alone are not goals. The terminal asks for confirmation after your answer.
 Proposals do not save anything: say "proposed", never "saved" or "completed".
 Only a later snapshot showing the saved change confirms persistence. For a state
 change use get_learning_goals if you need a current ID/version/text or inactive goal.
+You drive the learner's practice. You plan each day's questions in the background;
+in chat you explain and adjust them when asked. Recommendations follow a per-topic
+training ladder, not curated lists. trainingLevels give each topic's level on the
+problem-rating scale (contest ratings; estimates are approximate) and the target
+rating (FAANG-screen level; never push above it). Each attempt is strong, ok or
+struggled, from outcome, help, solve time, first-try acceptance and confidence; a
+level rises with strong results and falls with struggles. Problems never repeat:
+an idea comes back as a different problem (a transfer check, shown without its
+topic so the learner must spot the approach; never name the idea a transfer check
+tests before they finish it). todayPlan shows what is planned, started or finished.
+To recommend, call get_shortlist: unseen problems near the learner's level in each
+topic, weakest first, plus due checks. Choose by goals, then weak topics and recent
+struggles; prefer popular problems (popularity is the LeetCode likes percentile, a
+proxy for how often they come up in interviews); order easier before harder. If the
+learner says they struggled with a problem, call get_shortlist for its topic and
+choose problems rated below it; the level itself only moves from recorded attempts,
+so suggest recording the attempt's results if they have not.
+When they ask for today's questions, propose a full day: about questionsPerDay
+problems minus started or finished work, with propose_plan_change mode "replace".
+When they ask to add a few, use mode "add". Give each pick a one-sentence reason
+tied to a goal or evidence, in plain words (for example "a bit easier than the
+1,873 you found hard"). If propose_plan_change says picks are not on the shortlist,
+choose again from get_shortlist. If titles are unmatched, offer the closest returned
+titles or ask; never invent IDs. The host shows a card and changes nothing until
+the learner confirms; say "proposed", never "added". Only propose plan changes the
+learner asked for or agreed to.
 Never change scores, schedules or settings. Never infer goal completion as fact.
 For goal follow-up, use goalProgress: Python counts distinct problems and recorded
 outcomes only for attempts started since agreement. These are activity counts,
@@ -105,10 +130,10 @@ Cite attempt IDs when making claims based on records. Do not infer a recurring
 weakness across problems from attempts at just one problem.
 Only use records actually returned. All platform tools available to you are read-only.
 Never claim to have retrieved other records or verified execution.
+The learner sees all your text, including any before a tool call, so give your
+answer once, after your last tool call.
 """
 
-from ai_core.runtime import auth_file as find_auth_file, runtime_config
-from ai_core.model import stream_events
 
 TOOL_ACTIVITY = {
     "get_recent_attempts": ("Finding recent attempts…", "Attempt search"),
@@ -119,13 +144,24 @@ TOOL_ACTIVITY = {
     "propose_tutor_preferences": ("Preparing preference changes…", "Preference proposal"),
     "get_learning_goals": ("Reading learning goals…", "Learning goals"),
     "propose_learning_goal": ("Preparing a goal proposal…", "Goal proposal"),
+    "get_today_plan": ("Reading today's plan…", "Today's plan"),
+    "get_training_levels": ("Reading your training levels…", "Training levels"),
+    "get_shortlist": ("Finding problems at your level…", "Shortlist"),
+    "propose_plan_change": ("Checking problems for your plan…", "Plan proposal"),
     "retrieve_learning_evidence": ("Finding supporting evidence…", "Evidence search"),
+}
+
+PROPOSAL_TOOLS = {
+    "propose_learning_goal": "pending_goals",
+    "propose_tutor_preferences": "pending_preferences",
+    "propose_plan_change": "pending_plan",
 }
 
 
 @dataclass
 class TutorSession:
-    thread: Thread
+    # The conversation backend (CodexChat or ClaudeChat): .id, .turn(), .history().
+    thread: object
     session_file: Path
     workspace_key: str
     resumed: bool
@@ -137,12 +173,17 @@ class TutorSession:
     last_usage: dict | None = None
     pending_goals: list[dict] = field(default_factory=list)
     pending_preferences: list[dict] = field(default_factory=list)
+    pending_plan: list[dict] = field(default_factory=list)
+    provider: str = "codex"
 
     def confirm_goal(self, proposal: dict, approved: bool) -> dict | None:
         return self._confirm(proposal, approved, self.pending_goals, "confirm_learning_goal")
 
     def confirm_preferences(self, proposal: dict, approved: bool) -> dict | None:
         return self._confirm(proposal, approved, self.pending_preferences, "confirm_tutor_preferences")
+
+    def confirm_plan(self, proposal: dict, approved: bool) -> dict | None:
+        return self._confirm(proposal, approved, self.pending_plan, "confirm_plan_change")
 
     def _confirm(self, proposal: dict, approved: bool, pending: list[dict], tool: str) -> dict | None:
         if proposal not in pending:
@@ -188,66 +229,81 @@ class TutorSession:
                     "blocked": "Finish or cancel active practice to continue.",
                 }[snapshot["status"]])
             message = json.dumps({"learner_message": message, "learner_snapshot": snapshot})
-        completed = None
-        final_response = None
-        fallback_response = None
-        answer_ids = set()
-        turn = self.thread.turn(message)
-        for event in stream_events(turn):
-            if event.method in {"item/started", "item/completed"}:
-                item = event.payload.item.root
-                if item.type == "agentMessage" and (item.phase is None or item.phase.value == "final_answer"):
-                    answer_ids.add(item.id)
-                if (event.method == "item/completed" and item.type == "mcpToolCall"
-                        and item.server == "bloomcode" and item.tool in {"propose_learning_goal", "propose_tutor_preferences"}
-                        and item.error is None and item.result is not None):
-                    for content in item.result.content:
-                        if content.get("type") == "text":
-                            data = json.loads(content["text"])
-                            if "proposal" in data:
-                                change = data["proposal"]
-                                pending = self.pending_goals if item.tool == "propose_learning_goal" else self.pending_preferences
-                                if not any(p["change"] == change for p in pending):
-                                    pending.append({"change": change, "key": str(uuid4())})
-                if (item.type == "mcpToolCall" and item.server == "bloomcode"
-                        and item.tool in TOOL_ACTIVITY and on_activity):
-                    started, label = TOOL_ACTIVITY[item.tool]
-                    if event.method == "item/started":
-                        on_activity(started)
-                    else:
-                        failed = item.error is not None or item.status.value == "failed"
-                        on_activity(f"{label} {'failed' if failed else 'completed'}.")
-                elif event.method == "item/completed" and item.type == "agentMessage":
-                    if item.phase is None:
-                        fallback_response = item.text
-                    elif item.phase.value == "final_answer":
-                        final_response = item.text
-            elif event.method == "item/agentMessage/delta" and on_text and event.payload.item_id in answer_ids:
-                on_text(event.payload.delta)
-            elif event.method == "thread/tokenUsage/updated":
-                self.last_usage = event.payload.token_usage.model_dump(mode='json')
-            elif event.method == "turn/completed":
-                completed = event.payload.turn
-        response = final_response or fallback_response
-        if completed and completed.error:
-            raise RuntimeError(completed.error.message)
-        if completed is None or completed.status.value != "completed" or not response:
-            raise RuntimeError("The tutor did not complete a response.")
+        def on_tool(tool, phase, failed, texts):
+            if phase == "completed" and texts is not None and tool in PROPOSAL_TOOLS:
+                for text in texts:
+                    data = json.loads(text)
+                    if "proposal" in data:
+                        change = data["proposal"]
+                        pending = getattr(self, PROPOSAL_TOOLS[tool])
+                        if not any(p["change"] == change for p in pending):
+                            pending.append({"change": change, "key": str(uuid4())})
+            if tool in TOOL_ACTIVITY and on_activity:
+                started, label = TOOL_ACTIVITY[tool]
+                on_activity(started if phase == "started" else f"{label} {'failed' if failed else 'completed'}.")
+        response, self.last_usage = self.thread.turn(message, on_text=on_text, on_tool=on_tool)
         # Save only after a completed turn: an unused --new chat keeps the old pointer.
         pending = self.session_file.with_suffix(".tmp")
-        pending.write_text(json.dumps({"thread_id": self.thread.id, "workspace": self.workspace_key}))
+        pending.write_text(json.dumps({"thread_id": self.thread.id, "workspace": self.workspace_key,
+                                       "provider": self.provider}))
         pending.replace(self.session_file)
         return response
 
 
-@contextmanager
-def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:4317",
-               token_file: Path | None = None, state_dir: Path | None = None,
-               new: bool = False) -> Iterator[TutorSession]:
-    # Reuse file-based CLI login without importing user MCP servers or rules.
-    # The symlink lets Codex refresh the existing credential when needed.
-    auth_file = find_auth_file()
+def _platform_launch(repo: Path, root: Path, api_url: str, token_file: Path, absolute_loader: bool):
+    """The BloomCode MCP server launch spec and the host-data directory for confirmed saves."""
+    packaged_mcp = os.environ.get("BLOOMCODE_MCP_ENTRY")
+    node = os.environ.get("BLOOMCODE_MCP_COMMAND") if packaged_mcp else shutil.which("node")
+    if not node or (not packaged_mcp and not (repo / "node_modules/tsx").is_dir()):
+        raise RuntimeError("Install Node.js and run npm ci in the worktree first.")
+    url = urlsplit(api_url)
+    if (url.scheme != "http" or url.hostname != "127.0.0.1"
+            or url.username or url.password or url.path not in {"", "/"}
+            or url.query or url.fragment):
+        raise ValueError("Use an API URL like http://127.0.0.1:4317.")
+    if not token_file.is_file():
+        raise ValueError("Cannot read the API token file. Check --token-file.")
+    scoped_token = token_file.resolve().parent / "tutor-token"
+    if not scoped_token.is_file():
+        raise ValueError("Restart the updated BloomCode backend to create tutor-token beside api-token.")
+    host_data = root / "host-data"
+    host_data.mkdir(exist_ok=True)
+    host_link = host_data / "api-token"
+    if host_link.is_symlink():
+        host_link.unlink()
+    host_link.symlink_to(token_file.resolve())
+    api_data = root / "api-data"
+    api_data.mkdir(exist_ok=True)
+    token_link = api_data / "api-token"
+    if token_link.is_symlink():
+        token_link.unlink()
+    token_link.symlink_to(scoped_token)
+    # Claude Code starts MCP servers without a cwd, so it loads tsx by absolute URL.
+    loader = (repo / "node_modules/tsx/dist/loader.mjs").as_uri() if absolute_loader else "tsx"
+    args = [packaged_mcp] if packaged_mcp else ["--import", loader, str(repo / "src/integrations/mcp.ts")]
+    env = {"ELECTRON_RUN_AS_NODE": "1"} if packaged_mcp else {}
+    env.update(DATA_DIR=str(api_data), PORT=str(url.port or 80))
+    cwd = os.environ.get("BLOOMCODE_MCP_CWD", str(repo)) if packaged_mcp else str(repo)
+    return {"command": node, "args": args, "cwd": cwd, "env": env}, host_data
 
+
+def _launch_toml(spec: dict, codex: bool = False) -> str:
+    """[mcp_servers.bloomcode]: Codex's config, and the spec platform_session reads."""
+    lines = ["[mcp_servers.bloomcode]", f"command = {json.dumps(spec['command'])}",
+             f"args = {json.dumps(spec['args'])}", f"cwd = {json.dumps(spec['cwd'])}",
+             *(f"env.{key} = {json.dumps(value)}" for key, value in spec["env"].items())]
+    if codex:
+        lines += [f"enabled_tools = {json.dumps(list(TOOL_ACTIVITY))}", "required = true", "tool_timeout_sec = 15"]
+    return "\n".join(lines) + "\n"
+
+
+@contextmanager
+def open_tutor(model: str | None = None, *, provider: str = "codex", cli_path: str | None = None,
+               api_url: str = "http://127.0.0.1:4317", token_file: Path | None = None,
+               state_dir: Path | None = None, new: bool = False) -> Iterator[TutorSession]:
+    if provider not in ("codex", "claude"):
+        raise ValueError("Unknown tutor provider.")
+    model = model or ("opus" if provider == "claude" else "gpt-6-sol")
     repo = Path(__file__).resolve().parents[2]
     workspace_key = str(token_file.resolve()) if token_file else "standalone"
     root = (state_dir or ((token_file.resolve().parent if token_file else repo / "private") / "tutor")).resolve()
@@ -257,82 +313,25 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
         saved = json.loads(session_file.read_text()) if session_file.exists() and not new else None
         if saved and saved["workspace"] != workspace_key:
             raise ValueError("This conversation belongs to a different data workspace. Use a separate --state-dir.")
-
-        codex_home = root / "codex-home"
-        codex_home.mkdir(exist_ok=True, mode=0o700)
-        auth_link = codex_home / "auth.json"
-        if not auth_link.exists():
-            auth_link.symlink_to(auth_file.resolve())
-        workspace = root / "workspace"
-        workspace.mkdir(exist_ok=True)
-        mcp_config = ""
-        host_data = None
-
-        if token_file is not None:
-            packaged_mcp = os.environ.get("BLOOMCODE_MCP_ENTRY")
-            node = os.environ.get("BLOOMCODE_MCP_COMMAND") if packaged_mcp else shutil.which("node")
-            if not node or (not packaged_mcp and not (repo / "node_modules/tsx").is_dir()):
-                raise RuntimeError("Install Node.js and run npm ci in the worktree first.")
-            url = urlsplit(api_url)
-            if (url.scheme != "http" or url.hostname != "127.0.0.1"
-                    or url.username or url.password or url.path not in {"", "/"}
-                    or url.query or url.fragment):
-                raise ValueError("Use an API URL like http://127.0.0.1:4317.")
-            if not token_file.is_file():
-                raise ValueError("Cannot read the API token file. Check --token-file.")
-            scoped_token = token_file.resolve().parent / "tutor-token"
-            if not scoped_token.is_file():
-                raise ValueError("Restart the updated BloomCode backend to create tutor-token beside api-token.")
-            host_data = root / "host-data"
-            host_data.mkdir(exist_ok=True)
-            host_link = host_data / "api-token"
-            if host_link.is_symlink():
-                host_link.unlink()
-            host_link.symlink_to(token_file.resolve())
-            api_data = root / "api-data"
-            api_data.mkdir(exist_ok=True)
-            token_link = api_data / "api-token"
-            if token_link.is_symlink():
-                token_link.unlink()
-            token_link.symlink_to(scoped_token)
-            tool_args = [packaged_mcp] if packaged_mcp else ["--import", "tsx", str(repo / "src/integrations/mcp.ts")]
-            tool_cwd = os.environ.get("BLOOMCODE_MCP_CWD", str(repo)) if packaged_mcp else str(repo)
-            mcp_config = (
-                "[mcp_servers.bloomcode]\n"
-                f"command = {json.dumps(node)}\n"
-                f"args = {json.dumps(tool_args)}\n"
-                f"cwd = {json.dumps(tool_cwd)}\n"
-                + ('env.ELECTRON_RUN_AS_NODE = "1"\n' if packaged_mcp else "") +
-                f"env.DATA_DIR = {json.dumps(str(api_data))}\n"
-                f"env.PORT = {json.dumps(str(url.port or 80))}\n"
-                f"enabled_tools = {json.dumps(list(TOOL_ACTIVITY))}\n"
-                'required = true\n'
-                'tool_timeout_sec = 15\n'
-            )
-        # Rebuild our own configuration so stale tool settings are not retained.
-        (codex_home / "config.toml").write_text(mcp_config)
-        config = runtime_config(codex_home, workspace)
-        with Codex(config) as codex:
-            options = dict(model=model, cwd=str(workspace), base_instructions=TUTOR_INSTRUCTIONS,
-                           sandbox=Sandbox.read_only, approval_mode=ApprovalMode.deny_all)
-            if saved:
-                # Failure is surfaced; never silently replace a saved conversation.
-                thread = codex.thread_resume(saved["thread_id"], **options)
-            else:
-                thread = codex.thread_start(ephemeral=False, **options)
+        if saved and saved.get("provider", "codex") != provider:
+            # A conversation cannot move between providers; start fresh. The old
+            # pointer is only replaced after the first completed reply.
+            saved = None
+        spec, host_data = (_platform_launch(repo, root, api_url, token_file, provider == "claude")
+                           if token_file is not None else (None, None))
+        opener = _open_claude if provider == "claude" else _open_codex
+        with opener(root, model, cli_path, spec, saved, new) as (thread, context_config, coach):
             tutor = TutorSession(thread, session_file, workspace_key, resumed=bool(saved),
-                                 context_config=codex_home / "config.toml" if token_file else None,
-                                 host_data=host_data)
+                                 context_config=context_config, host_data=host_data, provider=provider)
             if token_file:
                 from tutor.answer_graph import AnswerFlow
                 tutor.answer_flow = AnswerFlow(tutor.context_config, tutor.chat_reply)
                 try:
                     from tutor.coaching.controller import Coaching
-                    from tutor.coaching.model import StructuredCodex
                     if new:
                         (root / 'active-coaching.json').write_text('null')
                         (root / 'coaching-routing.json').write_text('{}')
-                    tutor.coaching = Coaching(root, StructuredCodex(codex, options), tutor.context_config)
+                    tutor.coaching = Coaching(root, coach(), tutor.context_config)
                     if new:
                         tutor.coaching.control('clear')
                     tutor.coaching.view()
@@ -346,3 +345,74 @@ def open_tutor(model: str = "gpt-6-sol", *, api_url: str = "http://127.0.0.1:431
             finally:
                 if tutor.coaching:
                     tutor.coaching.close()
+
+
+@contextmanager
+def _open_codex(root, model, cli_path, spec, saved, new):
+    from openai_codex import ApprovalMode, Codex, Sandbox
+    from ai_core.runtime import auth_file as find_auth_file, runtime_config
+    from tutor.codex_chat import CodexChat
+    # Reuse file-based CLI login without importing user MCP servers or rules.
+    # The symlink lets Codex refresh the existing credential when needed.
+    auth_file = find_auth_file()
+    codex_home = root / "codex-home"
+    codex_home.mkdir(exist_ok=True, mode=0o700)
+    auth_link = codex_home / "auth.json"
+    if not auth_link.exists():
+        auth_link.symlink_to(auth_file.resolve())
+    workspace = root / "workspace"
+    workspace.mkdir(exist_ok=True)
+    # Rebuild our own configuration so stale tool settings are not retained.
+    (codex_home / "config.toml").write_text(_launch_toml(spec, codex=True) if spec else "")
+    with Codex(runtime_config(codex_home, workspace, cli_path)) as codex:
+        options = dict(model=model, cwd=str(workspace), base_instructions=TUTOR_INSTRUCTIONS,
+                       sandbox=Sandbox.read_only, approval_mode=ApprovalMode.deny_all)
+        if saved:
+            # Failure is surfaced; never silently replace a saved conversation.
+            thread = codex.thread_resume(saved["thread_id"], **options)
+        else:
+            thread = codex.thread_start(ephemeral=False, **options)
+        def coach():
+            from tutor.coaching.model import StructuredCodex
+            return StructuredCodex(codex, options)
+        yield CodexChat(thread), (codex_home / "config.toml" if spec else None), coach
+
+
+def _hidden_tools(context_config):
+    """BloomCode tools outside the tutor's set, removed from Claude's context like Codex's
+    enabled_tools. If listing fails, permission mode still denies them."""
+    from ai_core.platform import platform_session
+    async def names():
+        async with platform_session(context_config) as session:
+            return [tool.name for tool in (await session.list_tools()).tools]
+    try:
+        return [f"mcp__bloomcode__{name}" for name in asyncio.run(names()) if name not in TOOL_ACTIVITY]
+    except Exception:
+        return []
+
+
+@contextmanager
+def _open_claude(root, model, cli_path, spec, saved, new):
+    from ai_core.claude import base_options, scrub_env
+    from tutor.claude_chat import ClaudeChat
+    scrub_env()
+    # A stable workspace: Claude Code stores and resumes sessions by directory.
+    workspace = root / "claude-workspace"
+    workspace.mkdir(exist_ok=True, mode=0o700)
+    context_config = None
+    servers = {}
+    if spec:
+        context_config = root / "platform.toml"
+        context_config.write_text(_launch_toml(spec))
+        servers = {"bloomcode": {"type": "stdio", "command": spec["command"], "args": spec["args"], "env": spec["env"]}}
+    hidden = _hidden_tools(context_config) if spec else []
+    def options(**session):
+        # Safe mode would disable the BloomCode MCP server; settings, skills and built-in tools stay off.
+        return base_options(cli_path=cli_path, cwd=workspace, model=model, instructions=TUTOR_INSTRUCTIONS,
+            persist=True, safe_mode=not servers, mcp_servers=servers, include_partial_messages=True,
+            allowed_tools=[f"mcp__bloomcode__{tool}" for tool in TOOL_ACTIVITY] if servers else [],
+            disallowed_tools=hidden, **session)
+    def coach():
+        from tutor.coaching.model import StructuredClaude
+        return StructuredClaude(cli_path, workspace, model)
+    yield ClaudeChat(options, workspace=workspace, session_id=saved["thread_id"] if saved else None), context_config, coach

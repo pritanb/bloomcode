@@ -220,6 +220,9 @@ try {
   );
   assert.equal((await call('get_recent_attempts', { startedAfter: 'invalid' })).isError, true);
   assert.equal(state.topicScores.status, 'available');
+  assert.equal(state.trainingLevels.status, 'available');
+  assert.equal(state.trainingLevels.target, 1850);
+  assert.equal(state.trainingLevels.topics.length, 18);
   assert.deepEqual(
     state.topicScores.topics.map((t) => t.score),
     [1.5, 3.5, null],
@@ -289,7 +292,9 @@ from tutor.session import open_tutor
 with open_tutor(api_url=os.environ['TEST_URL'], token_file=Path(os.environ['TEST_TOKEN'])) as tutor:
     config = tomllib.loads((tutor.session_file.parent / 'codex-home/config.toml').read_text())
     assert set(config['mcp_servers']['bloomcode']['enabled_tools']) == {
-        'get_recent_attempts', 'get_attempt_context', 'get_learning_insights', 'retrieve_learning_evidence', 'get_topic_scores', 'get_learning_goals', 'propose_learning_goal', 'get_tutor_preferences', 'propose_tutor_preferences'}
+        'get_recent_attempts', 'get_attempt_context', 'get_learning_insights', 'retrieve_learning_evidence', 'get_topic_scores', 'get_learning_goals', 'propose_learning_goal', 'get_tutor_preferences', 'propose_tutor_preferences',
+        'get_today_plan', 'propose_plan_change',
+        'get_training_levels', 'get_shortlist'}
     activity = []
     def report(message):
         activity.append(message)

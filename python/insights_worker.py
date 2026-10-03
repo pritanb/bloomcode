@@ -12,10 +12,8 @@ def main(request=None):
     # SIGTERM unwinds SDK/temp-directory contexts; the host enforces a hard kill fallback.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     try:
-        from ai_core.runtime import background_runtime
-        from ai_core.model import StructuredModel
+        from ai_core.providers import background_model
         from insights.report import ReportFlow
-        from openai_codex.generated.v2_all import ReasoningEffort
         serial = 0
         def exchange(kind, **data):
             nonlocal serial
@@ -31,15 +29,15 @@ def main(request=None):
             return exchange('evidence', attemptId=attempt_id)['attempt']
         def validate(report):
             return exchange('candidate', report=report).get('error')
-        with background_runtime(request.get('codexPath')) as (codex, options):
-            model = StructuredModel(codex, options, request['model'], ReasoningEffort(request['effort']))
+        with background_model(request) as model:
             flow = ReportFlow(model, read, validate, lambda text: emit('progress', id, message=text))
             flow.run(request['context'])
             emit('result', id, trace=model.trace)
     except Exception as error:
         # Do not send model output, source records, SDK request bodies, or credentials to logs.
         message = str(error) if isinstance(error, (RuntimeError, ModuleNotFoundError)) else 'Learning report worker failed.'
-        emit('error', id, message=message[:1000], kind=getattr(error, 'kind', 'crashed'))
+        kind = 'not_installed' if isinstance(error, ModuleNotFoundError) else getattr(error, 'kind', 'crashed')
+        emit('error', id, message=message[:1000], kind=kind)
         sys.exit(1)
 
 

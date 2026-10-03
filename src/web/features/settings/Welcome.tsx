@@ -61,7 +61,7 @@ function Welcome() {
   // The study day follows this computer's timezone.
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const [questionsPerDay, setQuestions] = useState(2);
-  const [list, setList] = useState('Blind 75');
+  const [list, setList] = useState('LeetCode problem bank');
   const setup = useAction(() => api.send('/setup', 'POST', { timezone, questionsPerDay, list }));
   return (
     <main
@@ -100,6 +100,9 @@ function Welcome() {
           </Field>
           <Field label="Start with">
             <SelectField value={list} onValueChange={setList}>
+              <SelectOption value="LeetCode problem bank">
+                LeetCode problem bank · recommended
+              </SelectOption>
               <SelectOption value="Blind 75">Blind 75 · 75 questions</SelectOption>
               <SelectOption value="NeetCode 150">NeetCode 150 · 150 questions</SelectOption>
               <SelectOption value="none">Empty library · add or import later</SelectOption>
@@ -109,8 +112,9 @@ function Welcome() {
             <li className="flex items-start gap-3">
               <IconTile icon={ListChecks} size="sm" className="bg-card" />
               <span>
-                Starter lists include question links and categories. Solve on LeetCode, then save
-                your code, notes and result here.
+                The problem bank downloads LeetCode's problems with difficulty ratings, so Bloom can
+                pick questions at your level in each topic. Solve on LeetCode, then save your code,
+                notes and result here.
               </span>
             </li>
             <li className="flex items-start gap-3">

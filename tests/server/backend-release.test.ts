@@ -52,10 +52,14 @@ it('refills the same untouched empty generated day after its first question arri
   const empty = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(empty.items).toEqual([]);
   expect((await request('POST', '/api/daily-plan/ensure', {})).json()).toEqual(empty);
+  // The training ladder plans problems with a topic and a difficulty.
+  const tag = (await request('POST', '/api/tags', { name: 'Arrays & Hashing' })).json();
   const p = (
     await request('POST', '/api/problems', {
       title: 'First',
       url: 'https://leetcode.com/problems/first/',
+      difficulty: 'Easy',
+      tags: [{ tagId: tag.id }],
     })
   ).json();
   const filled = (await request('POST', '/api/daily-plan/ensure', {})).json();

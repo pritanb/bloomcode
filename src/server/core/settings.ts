@@ -1,9 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { recommendationSchema } from '../../shared/recommendations.js';
-import { recommendationContext } from '../plans/recommendations.js';
-import { type Db, maybe } from '../db/db.js';
-import { ApiError } from '../db/errors.js';
+import type { Db } from '../db/db.js';
 import { readSettings, writeSettings } from '../db/settings.js';
 
 const validTimezone = (v: string) => {
@@ -36,14 +34,6 @@ export function registerSettings(app: FastifyInstance, db: Db) {
   app.get('/api/settings', () => readSettings(db));
   app.patch('/api/settings', (req) => {
     const update = settingsUpdate.parse(req.body);
-    const rec = update.recommendations;
-    if (rec?.listId && !maybe(db, 'SELECT 1 FROM lists WHERE id = ?', rec.listId))
-      throw new ApiError(400, 'VALIDATION', 'Choose an available list');
-    if (
-      rec?.startTopic &&
-      !recommendationContext(db, rec).options.topics.some((t) => t.name === rec.startTopic)
-    )
-      throw new ApiError(400, 'VALIDATION', 'Choose an available starting topic for this list');
     writeSettings(db, update);
     return readSettings(db);
   });

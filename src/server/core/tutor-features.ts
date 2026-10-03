@@ -8,6 +8,7 @@ import type { TutorJobs } from '../tutor/jobs.js';
 import { registerCloseout } from '../attempts/closeout.js';
 import { registerAutoReview } from '../attempts/auto-review.js';
 import { AutoReviewQueue } from '../attempts/auto-review-queue.js';
+import { PlanDrafts, registerPlanDrafts } from '../plans/plan-drafts.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -41,10 +42,16 @@ export function registerTutorFeatures(
 ) {
   const { insights, topics } = createInsights(app, db, clock, dbPath, embed);
   const reviews = new AutoReviewQueue();
-  const jobs: TutorJobs = { db, clock, reviews, insights, topics };
+  // Bloom plans the day only while the tutor can run; the worker exists just below.
+  let tutorActive = () => false;
+  const drafts = new PlanDrafts(db, clock, () => tutorActive());
+  const jobs: TutorJobs = { db, clock, reviews, insights, topics, drafts };
   const tutor = registerTutor(app, dbPath, clock, jobs);
   insights.onEmbeddingsReady = tutor.wake;
   app.decorate('tutorJobs', jobs);
+  tutorActive = tutor.active;
+  app.bloomPlanner = drafts;
+  registerPlanDrafts(app, db, drafts, clock);
   registerCloseout(app, db, clock, reviews);
   registerAutoReview(app, db, reviews, tutor.active);
   registerInsights(

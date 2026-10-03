@@ -1,4 +1,7 @@
 import { useTutor } from '../tutor/TutorDock';
+import { BloomPlanNote, useBloomPlan } from './BloomPlan';
+import { DifficultyButtons } from '../practice/AttemptSignals';
+import { RatingChip } from '../../components/rating-chip';
 import { DropdownMenu } from 'radix-ui';
 import { enumLabel } from '../../lib/labels';
 import { DateField } from '@/components/date-field';
@@ -228,6 +231,7 @@ function PlanRow({
           >
             {item.title}
           </h3>
+          <RatingChip rating={item.rating} className="ml-auto" />
           <span
             className={cn(
               'shrink-0 text-[0.8125rem] text-muted-foreground tabular-nums',
@@ -249,6 +253,7 @@ function PlanRow({
           {item.reason.split(' · ')[0]}
         </p>
         {featured && <PlanActions item={item} featured={featured} onChanged={onChanged} />}
+        {done && item.attemptId && <DifficultyButtons attemptId={item.attemptId} />}
       </div>
     </li>
   );
@@ -399,6 +404,7 @@ export function Dashboard() {
     },
     refetchInterval: 60000,
   });
+  const bloom = useBloomPlan();
   const recap = useQuery({ queryKey: ['recap', 'desk'], queryFn: () => api.get<Recap>('/recap') });
   const reviews = useQuery({
     queryKey: ['reviews'],
@@ -497,7 +503,7 @@ export function Dashboard() {
           />
           <StatTile
             className={statTile}
-            label="Reviews due"
+            label="Checks due"
             icon={CalendarClock}
             tone="amber"
             value={reviews.data ? overdue + dueToday : pending}
@@ -548,6 +554,13 @@ export function Dashboard() {
                   </Callout>
                 </div>
               )}
+              {d.plan && (
+                <BloomPlanNote
+                  state={bloom.data}
+                  planId={d.plan.id}
+                  hasItems={!!d.plan.items.length}
+                />
+              )}
               {d.plan?.items.length ? (
                 <PlanList
                   key={`${d.plan.id}-${d.plan.version}`}
@@ -568,15 +581,15 @@ export function Dashboard() {
                     );
                   }}
                 />
-              ) : (
+              ) : bloom.planning ? null : (
                 <EmptyState
                   icon={ListChecks}
-                  title="No eligible questions in this plan"
-                  description="Your selected list, completion policy or review dates may leave no questions available. Topic progression waits for completion; it does not skip a snoozed topic. No questions are pulled from outside your selected list."
+                  title="No questions at your level yet"
+                  description="Questions come from the LeetCode problem bank, chosen for your level in each topic. Download it in Settings, or wait for scheduled reviews."
                   action={
                     <>
                       <Button asChild>
-                        <Link to="/settings">Review recommendation settings</Link>
+                        <Link to="/settings">Get the problem bank</Link>
                       </Button>
                       <Button asChild variant="outline">
                         <Link to="/library">Open library</Link>

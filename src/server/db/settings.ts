@@ -1,5 +1,6 @@
 import type { Settings } from '../../shared/contracts.js';
 import { type Db, one, update } from './db.js';
+import { recommendationSchema } from '../../shared/recommendations.js';
 
 interface SettingsRow {
   timezone: string;
@@ -14,7 +15,11 @@ interface SettingsRow {
 /** The singleton settings row. Settings older installations never set stay absent. */
 export function readSettings(db: Db): Settings {
   const r = one<SettingsRow>(db, 'SELECT * FROM settings WHERE id = 1');
-  const recommendations = r.recommendations ? JSON.parse(r.recommendations) : null;
+  // Older list-based recommendation settings are ignored; only the target carries over.
+  const parsed = recommendationSchema.safeParse(
+    r.recommendations ? JSON.parse(r.recommendations) : null,
+  );
+  const recommendations = parsed.success ? parsed.data : null;
   return {
     timezone: r.timezone,
     primaryCount: r.primaryCount,

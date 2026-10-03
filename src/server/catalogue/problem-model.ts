@@ -1,4 +1,5 @@
 // Problems with their tags and lists, and the shared validation and visibility rules.
+import { problemRating } from '../topics/ratings.js';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Help, Outcome, Problem, ReviewTarget, Tag } from '../../shared/contracts.js';
@@ -134,6 +135,7 @@ export function problemViews(db: Db, where = '', ...params: (string | number)[])
     latestConfidence: r.latestConfidence,
     tags: tags.get(r.id) ?? [],
     lists: projection.forProblem(r),
+    rating: problemRating(db, r),
   }));
 }
 export function problemView(db: Db, id: string): Problem {

@@ -9,37 +9,45 @@ import type { Generate } from './generate.js';
 import {
   defaultTutorSettings,
   TUTOR_EFFORTS,
-  type CodexErrorKind,
+  type TutorErrorKind,
   type TutorJobKind,
+  type TutorProvider,
   type TutorRunnerStatus,
   type TutorSettings,
   type TutorTestResult,
 } from '../../shared/tutor.js';
-import { CodexError, codexVersion, findCodex } from './codex.js';
+import { TutorError, cliVersion } from './cli.js';
+import { findCodex } from './codex.js';
+import { findClaude } from './claude.js';
 
 const effort = z.enum(TUTOR_EFFORTS as [string, ...string[]]);
+// The server executes this path, so accept only an absolute path to the named executable.
+const cliPath = (name: string) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(1000)
+    .refine(
+      (p) => p.startsWith('/') && basename(p) === name,
+      `Use the absolute path to the ${name} executable`,
+    )
+    .nullable();
+const model = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^[a-zA-Z0-9._:-]+$/);
 export const tutorSettingsSchema = z
   .object({
-    provider: z.enum(['codex', 'off']),
-    // The server executes this path, so accept only an absolute path to a `codex` executable.
-    codexPath: z
-      .string()
-      .trim()
-      .min(1)
-      .max(1000)
-      .refine(
-        (p) => p.startsWith('/') && basename(p) === 'codex',
-        'Use the absolute path to the codex executable',
-      )
-      .nullable(),
-    model: z
-      .string()
-      .trim()
-      .min(1)
-      .max(100)
-      .regex(/^[a-zA-Z0-9._:-]+$/),
+    provider: z.enum(['codex', 'claude', 'off']),
+    codexPath: cliPath('codex'),
+    model,
+    claudePath: cliPath('claude'),
+    claudeModel: model,
     effort: z
-      .object({ review: effort, extraction: effort, report: effort, topics: effort })
+      .object({ review: effort, extraction: effort, report: effort, topics: effort, plan: effort })
       .strict(),
   })
   .strict();
@@ -49,10 +57,11 @@ const TIMEOUT_MS: Record<TutorJobKind, number> = {
   extraction: 180_000,
   report: 240_000,
   topics: 120_000,
+  plan: 150_000,
 };
-export const CODEX_REPORT_BUDGET_MS = 540_000;
+export const REPORT_BUDGET_MS = 540_000;
 // Retrying these immediately would only fail every queued job the same way.
-const PAUSE_MS: Partial<Record<CodexErrorKind, number>> = {
+const PAUSE_MS: Partial<Record<TutorErrorKind, number>> = {
   usage_limit: 30 * 60_000,
   not_signed_in: 5 * 60_000,
   model_unavailable: 5 * 60_000,
@@ -70,7 +79,7 @@ export class TutorSettingsFile {
     } catch {
       /* defaults */
     }
-    // The retired MCP sampling provider loads as off, keeping the Codex choices.
+    // The retired MCP sampling provider loads as off, keeping the CLI choices.
     if ((saved as { provider?: string })?.provider === 'mcp-sampling')
       saved = { ...(saved as object), provider: 'off' };
     const parsed = tutorSettingsSchema.safeParse({
@@ -95,8 +104,44 @@ export class TutorSettingsFile {
   }
 }
 
+// What differs between the providers; everything else in the worker is shared.
+type CliProvider = Exclude<TutorProvider, 'off'>;
+interface Provider {
+  label: string;
+  find(configured: string | null): Promise<string | null>;
+  path(settings: TutorSettings): string | null;
+  model(settings: TutorSettings): string;
+  installHint: string;
+}
+export const PROVIDERS: Record<CliProvider, Provider> = {
+  codex: {
+    label: 'Codex',
+    find: (configured) => findCodex(configured),
+    path: (s) => s.codexPath,
+    model: (s) => s.model,
+    installHint: 'Install the ChatGPT app or the Codex CLI, or set its path in Settings.',
+  },
+  claude: {
+    label: 'Claude Code',
+    find: (configured) => findClaude(configured),
+    path: (s) => s.claudePath,
+    model: (s) => s.claudeModel,
+    installHint: 'Install Claude Code, or set its path in Settings.',
+  },
+};
+function notFound(provider: CliProvider, settings: TutorSettings) {
+  const { label, path, installHint } = PROVIDERS[provider];
+  const configured = path(settings);
+  return new TutorError(
+    'not_installed',
+    configured
+      ? `No executable ${label} at ${configured}.`
+      : `${label} was not found. ${installHint}`,
+  );
+}
+
 // Idle until woken: the app calls wake() after anything that can create work.
-export class CodexWorker {
+export class TutorWorker {
   private stopped = true;
   private running = false;
   private again = false;
@@ -106,7 +151,7 @@ export class CodexWorker {
   private pausedUntil = 0;
   private lastError: TutorRunnerStatus['lastError'] = null;
   private lastSuccessAt: string | null = null;
-  private codexPath: string | null = null;
+  private cliPath: string | null = null;
   constructor(
     private settings: TutorSettingsFile,
     private jobs: TutorJobs,
@@ -137,7 +182,7 @@ export class CodexWorker {
           while (
             !this.stopped &&
             (await this.ready()) &&
-            (await runNextJob(this.jobs, this.generate, CODEX_REPORT_BUDGET_MS, this.report))
+            (await runNextJob(this.jobs, this.generate, REPORT_BUDGET_MS, this.report))
           );
         } catch {
           /* The job stays queued for the next wake. */
@@ -147,33 +192,36 @@ export class CodexWorker {
       this.running = false;
     }
   }
-  /** Codex is selected and not paused, so queued work will be written. */
+  /** A provider is selected and not paused, so queued work will be written. */
   active() {
-    return this.settings.get().provider === 'codex' && this.clock().getTime() >= this.pausedUntil;
+    return this.settings.get().provider !== 'off' && this.clock().getTime() >= this.pausedUntil;
   }
   /** Settings changed or a test succeeded: forget pauses so work resumes now. */
   reset() {
     this.pausedUntil = 0;
     this.lastError = null;
-    this.codexPath = null;
+    this.cliPath = null;
+  }
+  /** Find the selected CLI, pausing work when it is missing. */
+  private async locate(settings: TutorSettings, provider: CliProvider) {
+    this.cliPath = await PROVIDERS[provider].find(PROVIDERS[provider].path(settings));
+    if (this.cliPath) return this.cliPath;
+    const error = notFound(provider, settings);
+    this.fail(error);
+    throw error;
   }
   private async ready() {
     const settings = this.settings.get();
-    if (settings.provider !== 'codex' || this.clock().getTime() < this.pausedUntil) return false;
+    if (settings.provider === 'off' || this.clock().getTime() < this.pausedUntil) return false;
     // Check before claiming, so a missing install pauses work instead of failing queued jobs.
-    this.codexPath = await findCodex(settings.codexPath);
-    if (!this.codexPath)
-      this.fail(
-        new CodexError(
-          'not_installed',
-          settings.codexPath
-            ? `No executable Codex at ${settings.codexPath}.`
-            : 'Codex was not found. Install the ChatGPT app or the Codex CLI, or set its path in Settings.',
-        ),
-      );
-    return !!this.codexPath;
+    try {
+      await this.locate(settings, settings.provider);
+      return true;
+    } catch {
+      return false;
+    }
   }
-  private fail(error: CodexError) {
+  private fail(error: TutorError) {
     this.lastError = { kind: error.kind, message: error.message, at: this.clock().toISOString() };
     const pause = PAUSE_MS[error.kind];
     if (!pause) return;
@@ -182,44 +230,43 @@ export class CodexWorker {
     this.resumeTimer = setTimeout(() => this.wake(), pause);
     this.resumeTimer.unref();
   }
-  private report: GenerateReport = async (request) => {
+  /** Run one worker call for the selected provider, recording the outcome. */
+  private async run<T>(kind: TutorJobKind | null, call: (provider: CliProvider) => Promise<T>) {
     const settings = this.settings.get();
-    this.activeKind = 'report';
+    if (settings.provider === 'off') throw new TutorError('crashed', 'The AI tutor is off.');
+    const provider = settings.provider;
+    await this.locate(settings, provider);
+    this.activeKind = kind;
     try {
-      await runInsightWorker(request, {
-        model: settings.model,
+      const result = await call(provider);
+      this.lastError = null;
+      this.lastSuccessAt = this.clock().toISOString();
+      return result;
+    } catch (error) {
+      if (error instanceof TutorError) this.fail(error);
+      throw error;
+    } finally {
+      this.activeKind = null;
+    }
+  }
+  private report: GenerateReport = (request) =>
+    this.run('report', (provider) => {
+      const settings = this.settings.get();
+      return runInsightWorker(request, {
+        provider,
+        cliPath: this.cliPath,
+        model: PROVIDERS[provider].model(settings),
         effort: settings.effort.report,
-        codexPath: this.codexPath,
         signal: this.abort.signal,
         progress: (text) => {
           request.insights.reportActivity = text;
         },
       });
-      this.lastError = null;
-      this.lastSuccessAt = this.clock().toISOString();
-    } catch (error) {
-      if (error instanceof CodexError) this.fail(error);
-      throw error;
-    } finally {
-      this.activeKind = null;
-    }
-  };
-  private generate: Generate = async (request) => {
-    const settings = this.settings.get();
-    this.codexPath = await findCodex(settings.codexPath);
-    if (!this.codexPath) {
-      const error = new CodexError(
-        'not_installed',
-        settings.codexPath
-          ? `No executable Codex at ${settings.codexPath}.`
-          : 'Codex was not found. Install the ChatGPT app or the Codex CLI, or set its path in Settings.',
-      );
-      this.fail(error);
-      throw error;
-    }
-    this.activeKind = request.kind === 'connection' ? null : request.kind;
-    try {
-      const result = await runAIWorker(
+    });
+  private generate: Generate = (request) =>
+    this.run(request.kind === 'connection' ? null : request.kind, (provider) => {
+      const settings = this.settings.get();
+      return runAIWorker(
         {
           id: randomUUID(),
           kind: request.kind,
@@ -230,27 +277,21 @@ export class CodexWorker {
               : Math.min(TIMEOUT_MS[request.kind], request.timeoutMs),
         },
         {
-          codexPath: this.codexPath,
-          model: settings.model,
+          provider,
+          cliPath: this.cliPath,
+          model: PROVIDERS[provider].model(settings),
           effort: request.kind === 'connection' ? 'low' : settings.effort[request.kind],
           signal: this.abort.signal,
         },
       );
-      this.lastError = null;
-      this.lastSuccessAt = this.clock().toISOString();
-      return result;
-    } catch (error) {
-      if (error instanceof CodexError) this.fail(error);
-      throw error;
-    } finally {
-      this.activeKind = null;
-    }
-  };
+    });
   status(): TutorRunnerStatus {
     const settings = this.settings.get();
     return {
       provider: settings.provider,
-      codexPath: this.codexPath ?? settings.codexPath,
+      cliPath:
+        this.cliPath ??
+        (settings.provider === 'off' ? null : PROVIDERS[settings.provider].path(settings)),
       activeKind: this.activeKind,
       pausedUntil:
         this.pausedUntil > this.clock().getTime() ? new Date(this.pausedUntil).toISOString() : null,
@@ -260,32 +301,32 @@ export class CodexWorker {
   }
   async test(settings: TutorSettings): Promise<TutorTestResult> {
     const started = Date.now();
-    const path = await findCodex(settings.codexPath);
-    if (!path)
-      return {
-        ok: false,
-        path: null,
-        version: null,
-        model: null,
-        ms: 0,
-        error: {
-          kind: 'not_installed',
-          message:
-            'Codex was not found. Install the ChatGPT app or the Codex CLI, or set its path.',
-        },
-      };
-    const version = await codexVersion(path);
+    const failed = (path: string | null, version: string | null, error: TutorError) => ({
+      ok: false,
+      path,
+      version,
+      model: null,
+      ms: path ? Date.now() - started : 0,
+      error: { kind: error.kind, message: error.message },
+    });
+    if (settings.provider === 'off')
+      return failed(null, null, new TutorError('crashed', 'Choose a tutor to test.'));
+    const provider = PROVIDERS[settings.provider];
+    const path = await provider.find(provider.path(settings));
+    if (!path) return failed(null, null, notFound(settings.provider, settings));
+    const version = await cliVersion(path);
     try {
       const result = await runAIWorker(
         { id: randomUUID(), kind: 'connection', context: {}, timeoutMs: 90_000 },
         {
-          codexPath: path,
-          model: settings.model,
+          provider: settings.provider,
+          cliPath: path,
+          model: provider.model(settings),
           effort: 'low',
           signal: this.abort.signal,
         },
       );
-      if (settings.provider === 'codex') this.reset();
+      if (settings.provider === this.settings.get().provider) this.reset();
       return {
         ok: true,
         path,
@@ -295,16 +336,13 @@ export class CodexWorker {
         error: null,
       };
     } catch (error) {
-      const e =
-        error instanceof CodexError ? error : new CodexError('crashed', 'Codex test failed.');
-      return {
-        ok: false,
+      return failed(
         path,
         version,
-        model: null,
-        ms: Date.now() - started,
-        error: { kind: e.kind, message: e.message },
-      };
+        error instanceof TutorError
+          ? error
+          : new TutorError('crashed', `${provider.label} test failed.`),
+      );
     }
   }
 }

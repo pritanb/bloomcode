@@ -2,7 +2,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChartLine, Layers, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, ChartLine, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   ScrollRegion,
 } from '../../components/kit';
 import { TopicAnalysis } from './TopicAnalysis';
+import { TrainingLevels } from './TrainingLevels';
 import { topicHistory } from './topic-history';
 
 const axisDate = (time: number) =>
@@ -68,11 +69,12 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
     queryFn: () => api.get<TopicScoreHistory>(`/topics/${topic!.id}/history`),
     enabled: !!topic,
   });
+  // No topic scores yet (a fresh workspace): the training ladder is the whole story.
   if (!topic)
     return (
-      <Panel>
-        <EmptyState icon={Layers} title="No topics yet." />
-      </Panel>
+      <FillPage>
+        <TrainingLevels className="flex-1" />
+      </FillPage>
     );
   const { ordered, points } = topicHistory(query.data?.decisions ?? []);
   const latest = ordered.at(-1);
@@ -82,6 +84,7 @@ export function TopicProgress({ topics }: { topics: Topic[] }) {
   return (
     <FillPage>
       <TopicAnalysis />
+      <TrainingLevels className="shrink-0 lg:max-h-72" />
       <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] lg:grid-rows-[minmax(0,1fr)] [&>:only-child]:col-span-full">
         <Panel
           title="Score over time"

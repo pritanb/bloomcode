@@ -39,11 +39,11 @@ const batch = (): ImportPayload => ({
 const tables = async () => readTables(app.tutorJobs.db);
 async function importUnexposed() {
   expect((await request('POST', '/api/import', batch())).statusCode).toBe(200);
-  const plan = await request('POST', '/api/daily-plan/ensure', {});
-  expect(plan.statusCode).toBe(200);
-  const problemId: string = plan.json().items[0].problemId;
-  expect((await tables()).problems[0]).toMatchObject({ id: problemId, exposed: 0 });
-  return problemId;
+  // Planning the day must not disclose anything either.
+  expect((await request('POST', '/api/daily-plan/ensure', {})).statusCode).toBe(200);
+  const problem = (await tables()).problems[0]!;
+  expect(problem).toMatchObject({ exposed: 0 });
+  return problem.id as string;
 }
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'lc-disclosure-mutations-'));

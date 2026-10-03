@@ -158,7 +158,9 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   const old = openDb(dbPath);
   old.exec(`ALTER TABLE settings ADD COLUMN budgetMinutes INTEGER NOT NULL DEFAULT 40;
     ALTER TABLE plan_items ADD COLUMN suggestedMinutes INTEGER NOT NULL DEFAULT 13;`);
-  old.exec('DROP TABLE learning_goals; DROP TABLE tutor_preferences');
+  old.exec(
+    'DROP TABLE learning_goals; DROP TABLE tutor_preferences; DROP TABLE plan_drafts; DROP TABLE rating_estimates; DROP TABLE problem_popularity; DROP TABLE attempt_signals; ALTER TABLE plan_items DROP COLUMN reviewOf',
+  );
   old.pragma('user_version = 7');
   old.close();
   const app = await createApp({ dbPath, token: 'setup-test' });
@@ -167,7 +169,11 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
       method: 'POST',
       url: '/api/problems',
       headers,
-      payload: { title: 'Two Sum', url: 'https://leetcode.com/problems/two-sum/' },
+      payload: {
+        title: 'Two Sum',
+        url: 'https://leetcode.com/problems/two-sum/',
+        difficulty: 'Easy',
+      },
     });
     const plan = await app.inject({
       method: 'POST',
@@ -183,7 +189,8 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   const db = openDb(dbPath);
   const columns = (table: string) =>
     (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name);
-  expect(db.pragma('user_version', { simple: true })).toBe(10);
+  expect(db.pragma('user_version', { simple: true })).toBe(11);
+  expect(columns('plan_drafts')).toContain('items');
   expect(columns('settings')).not.toContain('budgetMinutes');
   expect(columns('plan_items')).not.toContain('suggestedMinutes');
   db.close();

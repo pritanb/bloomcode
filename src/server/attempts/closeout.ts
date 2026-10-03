@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { completeAssignment } from '../plans/plan-model.js';
+import { completeAssignment, getItem } from '../plans/plan-model.js';
 import { type Db, transaction, update } from '../db/db.js';
 import { date } from '../catalogue/problem-model.js';
 import { attemptView, checkVersion, getAttempt, version } from './attempt-model.js';
@@ -43,10 +43,22 @@ export function registerCloseout(
         if (a.status === 'completed') throw conflict('Attempt already completed');
         const { reviewDate: _date, reviewAction: _action, requestReview: _review, ...answer } = b;
         const r = recommendation({ ...a, ...answer });
-        const target = updateTarget(db, a.problemId, r.date, r.stage, {
-          action: b.reviewAction ?? 'recommended',
-          date: b.reviewDate,
-        });
+        const choice = { action: b.reviewAction ?? 'recommended', date: b.reviewDate };
+        const reviewOf = a.planItemId ? getItem(db, a.planItemId).reviewOf : null;
+        let target;
+        if (reviewOf) {
+          // A check of an earlier problem's idea: that idea's schedule moves on, and this
+          // problem gets none of its own. Two solo solves two weeks apart retire the idea.
+          const [idea] = reviewTargets(db, 'WHERE r.problemId = ?', reviewOf);
+          // A hand-set date that came due has been served by this check: back to the schedule.
+          if (idea && ['manual', 'snooze'].includes(idea.action) && choice.action === 'recommended')
+            update(db, 'review_targets', idea.id, { action: 'recommended' });
+          target =
+            idea?.stage === 'mixed' && r.stage === 'mixed' && choice.action === 'recommended'
+              ? updateTarget(db, reviewOf, null, 'retired', { action: 'none' })
+              : updateTarget(db, reviewOf, r.date, r.stage, choice);
+          updateTarget(db, a.problemId, null, 'covered', { action: 'none' });
+        } else target = updateTarget(db, a.problemId, r.date, r.stage, choice);
         update(db, 'attempts', a.id, {
           ...answer,
           version: a.version + 1,

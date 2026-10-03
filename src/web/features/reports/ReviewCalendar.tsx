@@ -54,6 +54,8 @@ function ScheduledReview({ review }: { review: ReviewTarget }) {
       to={`/library/${review.problemId}`}
       meta={
         <>
+          {/* The idea comes back as a different problem, never this one again. */}
+          {review.stage === 'repair' ? 'Easier practice' : 'Transfer check'} ·{' '}
           {review.action === 'manual'
             ? 'Chosen date'
             : review.action === 'snooze'
@@ -195,7 +197,7 @@ export function ReviewCalendar({
               aria-live="polite"
             >
               <span>
-                {dateLabel(selectedDate)} · {selected.length} reviews
+                {dateLabel(selectedDate)} · {selected.length} checks
               </span>
               <Link
                 to="/reviews"

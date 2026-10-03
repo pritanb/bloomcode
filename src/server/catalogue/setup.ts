@@ -9,6 +9,8 @@ import { readSettings, writeSettings } from '../db/settings.js';
 import { conflict } from '../db/errors.js';
 import { applyImport, importSchema } from './import.js';
 import { repoRoot } from '../paths.js';
+import { BANK_LIST } from '../../integrations/problem-bank.js';
+import type { ProblemBankService } from './problem-bank.js';
 
 const input = z
   .object({
@@ -21,7 +23,7 @@ const input = z
       }
     }, 'Invalid timezone'),
     questionsPerDay: z.number().int().min(1).max(20),
-    list: z.enum(['none', 'Blind 75', 'NeetCode 150']),
+    list: z.enum(['none', BANK_LIST, 'Blind 75', 'NeetCode 150']),
   })
   .strict();
 
@@ -36,29 +38,33 @@ const studyTables = [
   'insight_jobs',
   'topic_analysis',
 ];
-export function registerSetup(app: FastifyInstance, db: Db, clock: () => Date, demo = false) {
+export function registerSetup(
+  app: FastifyInstance,
+  db: Db,
+  clock: () => Date,
+  bank: ProblemBankService,
+  demo = false,
+) {
   const empty = () => studyTables.every((table) => !maybe(db, `SELECT 1 FROM ${table} LIMIT 1`));
   // Missing flags belong to older installations. Never send them through setup.
   const required = () => readSettings(db).onboardingComplete === false && empty();
   app.get('/api/setup', () => ({ required: required(), ...(demo ? { demo: true } : {}) }));
   app.post('/api/setup', (req) => {
     const body = input.parse(req.body);
-    return transaction(db, () => {
+    const done = transaction(db, () => {
       if (!required())
         throw conflict(
           'Setup is only available for a new, empty workspace. Use Settings to make changes.',
         );
-      let listId: string | null = null;
-      if (body.list !== 'none') {
+      if (body.list === 'Blind 75' || body.list === 'NeetCode 150') {
         const raw = readFileSync(
           new URL('src/integrations/manifests/neetcode-problems.json', repoRoot),
           'utf8',
         );
         const mapped = mapVerifiedLists(raw, PINNED_REVISION, '2026-09-16T00:00:00Z');
         const selected = mapped.lists.find((list) => list.name === body.list)!;
-        listId = randomUUID();
         insert(db, 'lists', {
-          id: listId,
+          id: randomUUID(),
           name: selected.name,
           sourceUrl: selected.sourceUrl,
           sourceVersion: selected.sourceVersion,
@@ -80,9 +86,12 @@ export function registerSetup(app: FastifyInstance, db: Db, clock: () => Date, d
         timezone: body.timezone,
         questionsPerDay: body.questionsPerDay,
         onboardingComplete: true,
-        recommendations: { ...defaultRecommendations, listId, completed: 'exclude' },
+        recommendations: defaultRecommendations,
       });
       return { required: false };
     });
+    // The bank downloads in the background; Today fills once it lands.
+    if (body.list === BANK_LIST) void bank.refresh();
+    return done;
   });
 }

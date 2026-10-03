@@ -1,3 +1,4 @@
+import { RatingChip } from '../../components/rating-chip';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, ExternalLink, FileText, History, Pencil, Play } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -115,7 +116,12 @@ export function ProblemDetail() {
             title="Question"
             icon={FileText}
             tone="sky"
-            actions={<DifficultyBadge difficulty={p.difficulty} unknown="Unknown difficulty" />}
+            actions={
+              <>
+                <RatingChip rating={p.rating} />
+                <DifficultyBadge difficulty={p.difficulty} unknown="Unknown difficulty" />
+              </>
+            }
           >
             <a
               className="-mt-1 inline-flex items-center gap-2 self-start font-medium text-foreground"

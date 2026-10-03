@@ -10,28 +10,32 @@ export function tutorProblem(
       title: 'AI tutor is off',
       detail: 'Choose a tutor in Settings to analyze new attempts. Saved reports are kept.',
     };
-  if (runner?.provider !== 'codex' || !runner.pausedUntil || !runner.lastError) return null;
+  if (!runner?.pausedUntil || !runner.lastError) return null;
+  const name = runner.provider === 'claude' ? 'Claude Code' : 'Codex';
   const until = new Date(runner.pausedUntil).toLocaleTimeString([], {
     hour: 'numeric',
     minute: '2-digit',
   });
   switch (runner.lastError.kind) {
     case 'not_installed':
-      return { title: 'Codex not found', detail: runner.lastError.message };
+      return { title: `${name} not found`, detail: runner.lastError.message };
     case 'not_signed_in':
       return {
-        title: 'Codex is not signed in',
-        detail: 'Run `codex login` in a terminal, then press Test in Settings.',
+        title: `${name} is not signed in`,
+        detail:
+          runner.provider === 'claude'
+            ? 'Run `claude auth login` in a terminal, then press Test in Settings.'
+            : 'Run `codex login` in a terminal, then press Test in Settings.',
       };
     case 'usage_limit':
       return {
-        title: 'Codex usage limit reached',
+        title: `${name} usage limit reached`,
         detail: `Analysis resumes after ${until}. Saved work is kept.`,
       };
     case 'model_unavailable':
-      return { title: 'Model unavailable in Codex', detail: 'Choose another model in Settings.' };
+      return { title: `Model unavailable in ${name}`, detail: 'Choose another model in Settings.' };
     default:
-      return { title: 'Codex needs attention', detail: runner.lastError.message };
+      return { title: `${name} needs attention`, detail: runner.lastError.message };
   }
 }
 
