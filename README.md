@@ -24,7 +24,7 @@ Solve on LeetCode, then record your result in BloomCode. The app stores your cod
 
 |                        | What you can do                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Daily practice**     | Build a daily plan, set a target, and schedule reviews with spaced repetition.                                         |
+| **Daily practice**     | Bloom plans each day at your level in each topic, and brings ideas back as new problems instead of repeats.            |
 | **Practice workspace** | Save code, notes, outcomes, help usage, and reflections with automatic draft saving.                                   |
 | **Progress tracking**  | Follow topic scores, compare previous attempts, and revisit mistake and pattern notebooks.                             |
 | **Bloom AI tutor**     | Discuss your work from anywhere in the app, get guided coaching, and resume conversations.                             |
@@ -59,6 +59,8 @@ The system distinguishes repeated attempts at one problem from difficulties acro
 ### Feedback and practice priorities
 
 After an attempt, get feedback on your submitted solution, complexity, and areas to improve. Topic recommendations use recorded scores, recent outcomes, help usage, and score movements to suggest where to focus.
+
+Bloom also plans each day. Every LeetCode problem has a rating, and each topic has a level that rises or falls with your results (time, help, first-try acceptance and confidence). Bloom picks popular problems near your level, weakest topics first. Instead of repeating a problem you solved, it later checks the idea with a different problem and hides the topic, so you practise spotting the approach rather than recalling a solution.
 
 **AI is optional.** Practice tracking, saving, scoring, and scheduling work without it. AI feedback can be incomplete or mistaken, and source verification does not prove that a diagnosis is correct.
 
@@ -98,9 +100,9 @@ See the [Python AI guide](python/README.md) for terminal chat, configuration, an
 
 ### Download the desktop preview
 
-An [Apple silicon macOS preview (v0.3.0)](https://github.com/pritanb/bloomcode/releases/tag/v0.3.0) is available. Unzip it, move **BloomCode.app** to Applications, and follow [installation instructions](docs/desktop.md).
+An [Apple silicon macOS preview (v0.4.0)](https://github.com/pritanb/bloomcode/releases/tag/v0.4.0) is available. Unzip it, move **BloomCode.app** to Applications, and follow [installation instructions](docs/desktop.md).
 
-The preview includes the AI workflows; follow the [one-time Python setup](docs/desktop.md#optional-ai-setup-for-the-v030-preview) to enable them. The Python interpreter is installed separately. The app is not signed or notarized, and packaged builds currently target Apple silicon Macs.
+The preview includes the AI workflows; follow the [one-time Python setup](docs/desktop.md#optional-ai-setup) to enable them. The Python interpreter is installed separately. The app is not signed or notarized, and packaged builds currently target Apple silicon Macs.
 
 ### Explore sample data
 

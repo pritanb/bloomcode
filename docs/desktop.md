@@ -4,9 +4,9 @@ BloomCode uses Electron to package its interface, local server and runtime in on
 
 ## Install and open
 
-1. Download the Apple silicon ZIP from the [v0.3.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.3.0), unzip it and move the app to Applications. The application is named **BloomCode.app**.
+1. Download the Apple silicon ZIP from the [v0.4.0 preview release](https://github.com/pritanb/bloomcode/releases/tag/v0.4.0), unzip it and move the app to Applications. The application is named **BloomCode.app**.
 2. Open it, then drag its icon to the Dock for one-click access.
-3. For a new workspace, choose your timezone, daily target and starter question list.
+3. For a new workspace, choose your timezone and daily target, and start with the LeetCode problem bank (recommended) or a question list.
 
 Builds are not yet Developer ID signed or notarized. macOS may block a downloaded copy; for a build you trust, follow [Apple's instructions for opening an unnotarized app](https://support.apple.com/en-au/102445).
 
@@ -51,7 +51,7 @@ The app owns its local server. Quitting stops it; opening the app twice brings t
 
 For tutor reports, choose **Settings → AI tutor → Codex** or **Claude Code**. MCP clients connect to the same workspace and port through the adapter built from this repository, which needs Node.js; see [tutor setup](tutor-integration.md).
 
-## Optional AI setup for the v0.3.0 preview
+## Optional AI setup
 
 Python workflow sources and the MCP adapter are included in the app. The Python
 interpreter and its packages remain a separate, one-time setup (Python 3.11+):

@@ -31,7 +31,7 @@ python/.venv/bin/python -m pip install -r python/requirements.txt
 **Ask Bloom**; the tutor connects and resumes automatically. For desktop development, use `npm run electron:dev`; it sets
 `BLOOMCODE_TUTOR_ROOT` so the staged app can find this worktree's Python files.
 Set `BLOOMCODE_PYTHON` to an absolute interpreter path if using another environment.
-The desktop preview includes these Python sources. Install its interpreter and dependencies with the [desktop AI setup](../docs/desktop.md#optional-ai-setup-for-the-v030-preview).
+The desktop preview includes these Python sources. Install its interpreter and dependencies with the [desktop AI setup](../docs/desktop.md#optional-ai-setup).
 
 **In the terminal:**
 
