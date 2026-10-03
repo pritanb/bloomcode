@@ -1,9 +1,10 @@
 """Claude Code runs through the Claude Agent SDK, isolated like the Codex runtime.
 
-Each run gets no built-in tools, no user/project settings, CLAUDE.md, skills,
-plugins or hooks (safe mode), and no MCP servers unless the caller passes its
-own. The CLI uses the learner's Claude plan login: API-key variables are
-removed so a stray key never switches the account to pay-per-request billing.
+Each run gets no built-in tools, no user/project/local settings (so no
+CLAUDE.md, hooks or plugins), no skills, and no MCP servers unless the caller
+passes its own. Tool-free runs also use safe mode, which disables MCP entirely.
+The CLI uses the learner's Claude plan login: API-key variables are removed so
+a stray key never switches the account to pay-per-request billing.
 """
 import asyncio
 import json
@@ -38,9 +39,11 @@ def find_cli(configured=None):
     return None
 
 
-def base_options(*, cli_path, cwd, model, instructions, effort=None, persist=False, **extra):
+def base_options(*, cli_path, cwd, model, instructions, effort=None, persist=False, safe_mode=True, **extra):
     from claude_agent_sdk import ClaudeAgentOptions
-    flags = {'safe-mode': None, 'no-chrome': None, 'disable-slash-commands': None}
+    flags = {'no-chrome': None, 'disable-slash-commands': None}
+    if safe_mode:
+        flags['safe-mode'] = None
     if not persist:
         flags['no-session-persistence'] = None
     return ClaudeAgentOptions(

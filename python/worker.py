@@ -13,31 +13,14 @@ from tutor.session import open_tutor
 from ai_core.protocol import emit
 
 
+# The provider being opened, for the startup error message.
+provider = "codex"
+
+
 def history(tutor):
     if not tutor.session_file.exists() or json.loads(tutor.session_file.read_text())["thread_id"] != tutor.thread.id:
         return []
-    messages = []
-    for turn in tutor.thread.read(include_turns=True).thread.turns:
-        if turn.status.value != "completed":
-            continue
-        for wrapped in turn.items:
-            item = wrapped.root
-            if item.type == "userMessage":
-                for content in item.content:
-                    value = content.root
-                    if value.type != "text":
-                        continue
-                    text = value.text
-                    try:
-                        data = json.loads(text)
-                        if isinstance(data, dict) and "learner_message" in data:
-                            text = data["learner_message"]
-                    except ValueError:
-                        pass
-                    messages.append({"role": "user", "text": text})
-            elif item.type == "agentMessage" and (item.phase is None or item.phase.value == "final_answer"):
-                messages.append({"role": "assistant", "text": item.text})
-    return messages[-100:]
+    return tutor.thread.history()[-100:]
 
 
 def state(tutor):
@@ -58,10 +41,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--api-url", required=True)
     parser.add_argument("--token-file", type=Path, required=True)
+    parser.add_argument("--provider", choices=("codex", "claude"), default="codex")
+    parser.add_argument("--model")
+    parser.add_argument("--cli-path")
     args = parser.parse_args()
+    global provider
+    provider = args.provider
+    runtime = dict(provider=args.provider, model=args.model, cli_path=args.cli_path,
+                   api_url=args.api_url, token_file=args.token_file)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     with ExitStack() as stack:
-        tutor = stack.enter_context(open_tutor(api_url=args.api_url, token_file=args.token_file))
+        tutor = stack.enter_context(open_tutor(**runtime))
         emit("ready", **state(tutor))
         for line in sys.stdin:
             request = json.loads(line)
@@ -91,7 +81,7 @@ def main():
                     )
                 elif method == "new":
                     stack.close()
-                    tutor = stack.enter_context(open_tutor(api_url=args.api_url, token_file=args.token_file, new=True))
+                    tutor = stack.enter_context(open_tutor(**runtime, new=True))
                 else:
                     raise ValueError("Unknown request")
                 emit("result", id, activity=activity, **state(tutor))
@@ -108,6 +98,8 @@ if __name__ == "__main__":
             message = "Close the terminal tutor before opening the in-app tutor."
         elif "auth.json" in message:
             message = "Sign in to Codex with file-based authentication before opening the tutor."
+        elif provider == "claude":
+            message = "Tutor startup failed. Check Python dependencies, the running backend, and Claude Code sign-in (`claude auth login`)."
         else:
             message = "Tutor startup failed. Check Python dependencies, the running backend, and Codex sign-in."
         emit("fatal", message=message)

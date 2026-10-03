@@ -1,9 +1,14 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { TutorConversation, tutorRuntimePaths } from '../../src/server/tutor/conversation.js';
+import {
+  TutorConversation,
+  chatProviderArgs,
+  tutorRuntimePaths,
+} from '../../src/server/tutor/conversation.js';
+import { defaultTutorSettings } from '../../src/shared/tutor.js';
 import { createApp } from '../../src/server/core/app.js';
 
 const workers: TutorConversation[] = [];
@@ -32,6 +37,32 @@ test('desktop staging uses the development worktree for both interpreter and wor
     python: '/custom/python',
     worker: join(root, 'python/worker.py'),
   });
+});
+
+test('chat starts on the saved provider and relaunches when it changes', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lc-chat-provider-'));
+  try {
+    expect(await chatProviderArgs(dir)).toEqual([]); // Codex stays the default
+    const claude = join(dir, 'claude');
+    writeFileSync(claude, '#!/bin/sh\n');
+    chmodSync(claude, 0o755);
+    writeFileSync(
+      join(dir, 'tutor-settings.json'),
+      JSON.stringify({ ...defaultTutorSettings, provider: 'claude', claudePath: claude }),
+    );
+    const args = await chatProviderArgs(dir);
+    expect(args).toEqual(['--provider', 'claude', '--model', 'opus', '--cli-path', claude]);
+    const chat = worker();
+    chat.start();
+    await vi.waitFor(() => expect(chat.state.status).toBe('ready'));
+    chat.configure([...chat.baseArgs()]); // unchanged: keeps running
+    expect(chat.state.status).toBe('ready');
+    chat.configure([...chat.baseArgs(), ...args]);
+    expect(chat.baseArgs()).toEqual([resolve('tests/fixtures/tutor-worker.mjs')]);
+    expect(chat.state.status).not.toBe('ready');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('worker streams, deduplicates requests and recovers from cancellation and crashes', async () => {

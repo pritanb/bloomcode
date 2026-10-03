@@ -49,6 +49,7 @@ The MCP tools work with either setting. An older workspace saved with the remove
 - **Isolation**: each background job runs with no built-in tools, no MCP servers, no user or project settings, safe mode (no CLAUDE.md, skills, plugins or hooks), no saved session and an empty temporary workspace. The prompt replaces Claude Code's system prompt, and the output is constrained to the task's JSON schema.
 - **Defaults**: model `opus` (the CLI's alias for the latest Opus). Reasoning effort uses the same per-job settings as Codex. The CLI also makes a small Haiku call per run.
 - **Usage**: usage counts toward your Claude plan limits, with the same pause-and-resume behaviour as Codex.
+- **Bloom chat**: with Claude Code selected, Ask Bloom and coaching also run on Claude Code (otherwise they use Codex). The chat keeps its session under `~/.claude/projects/` so conversations resume, and connects only the BloomCode MCP server with the same nine read and propose tools as Codex; every other BloomCode tool is hidden and denied. Safe mode is off for chat because it would disable that server; user settings, CLAUDE.md, hooks, plugins, skills and built-in tools stay off. Switching provider starts a new conversation.
 - **Privacy**: saved code, notes and problem metadata for each job go to Anthropic.
 
 Settings are stored in `tutor-settings.json` beside the database. They are machine-specific and not included in backups.

@@ -36,7 +36,8 @@ def _review_proposals(label, pending, confirm) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Talk to BloomCode's DSA tutor.")
-    parser.add_argument("--model", default="gpt-6-sol")
+    parser.add_argument("--provider", choices=("codex", "claude"), default="codex")
+    parser.add_argument("--model", help="Defaults to gpt-6-sol for Codex and opus for Claude Code")
     parser.add_argument("--attempt", help="Completed BloomCode attempt ID to discuss")
     parser.add_argument("--api-url", default="http://127.0.0.1:4317")
     parser.add_argument("--token-file", type=Path, help="Path to BloomCode's api-token file")
@@ -47,7 +48,7 @@ def main() -> int:
         parser.error("--attempt requires --token-file")
 
     try:
-        with open_tutor(args.model, api_url=args.api_url, token_file=args.token_file,
+        with open_tutor(args.model, provider=args.provider, api_url=args.api_url, token_file=args.token_file,
                         state_dir=args.state_dir, new=args.new) as tutor:
             print(f"BloomCode tutor — {'resumed conversation' if tutor.resumed else 'new conversation'}. /quit to exit.")
             if args.token_file:

@@ -1,7 +1,7 @@
 # Python AI workflows
 
 Bloom is BloomCode's AI tutor. **Python manages sessions and teaching behavior,
-LangGraph coordinates the workflows, and Codex generates answers.** Platform data
+LangGraph coordinates the workflows, and Codex or Claude Code generates answers.** Platform data
 comes through the existing [TypeScript MCP server](../src/integrations/mcp.ts);
 Fastify and SQLite remain responsible for authoritative study data.
 
@@ -10,9 +10,14 @@ Fastify and SQLite remain responsible for authoritative study data.
 ## Setup and run
 
 Requires Python 3.11+, the project's Node.js version, a running BloomCode backend,
-and file-based Codex sign-in (`CODEX_HOME/auth.json`, normally `~/.codex/auth.json`).
-Keyring-only sign-in is not supported. Selected study context is sent to Codex
-and uses the signed-in account's allowance.
+and a signed-in provider. Codex needs file-based sign-in (`CODEX_HOME/auth.json`,
+normally `~/.codex/auth.json`; keyring-only sign-in is not supported). Claude Code
+needs `claude auth login` once; API-key variables are removed so it always uses the
+Claude plan. Selected study context is sent to the chosen provider and uses the
+signed-in account's allowance.
+
+The app uses the provider chosen in **Settings → AI tutor** (Claude Code, or Codex
+for any other choice). In the terminal, pass `--provider claude` to `chat.py`.
 
 Run from the repository root:
 
@@ -73,7 +78,7 @@ Start at `chat.py` or `worker.py`, then follow `tutor/session.py` into either fl
 - **Ordinary chat:** `snapshot → retrieve → answer`. Load recent attempts, scores,
   goals and preferences; retrieve observations using existing semantic/keyword
   search; check source excerpts and include counterexamples. Pass bounded evidence
-  to Codex, which maintains conversation history and can call allowed MCP tools.
+  to the provider, which maintains conversation history and can call allowed MCP tools.
   Unavailable evidence is reported as a limitation. No classifier model call.
 - **Coaching:** start with a coaching button or `/coach latest` (also accepts a
   problem name). LangGraph gathers evidence, asks a diagnostic question, waits,
@@ -93,7 +98,9 @@ request; in-app requests time out after three minutes.
 - Completed conversations resume automatically. One process can use a session
   directory at a time; quit BloomCode before using that session in the terminal.
 - Tutor files live in `tutor/` beside the API token, or `private/tutor/` without one
-  (`--state-dir` overrides this). Codex history lives in `codex-home/`; coaching
+  (`--state-dir` overrides this). Codex history lives in `codex-home/`, Claude Code
+  sessions in `~/.claude/projects/` keyed by `claude-workspace/`; switching provider
+  starts a new conversation. Coaching
   checkpoints live in `coaching.sqlite`. The ordinary answer graph has no checkpoints.
 - Study-database backups include saved goals/preferences, **not tutor conversation
   files or coaching checkpoints**. Unconfirmed proposals and interrupted answers
@@ -123,7 +130,7 @@ these small scenarios do not establish a measured quality improvement.
 
 ## Shared AI layer and Learning Insights
 
-`ai_core/` contains the isolated Codex runtime, structured model calls, streaming,
+`ai_core/` contains the isolated Codex and Claude Code runtimes, structured model calls, streaming,
 source verification and worker protocol. `tutor/` owns conversation and coaching
 policy; `insights/` owns targeted report policy. Both use the same SDK infrastructure.
 

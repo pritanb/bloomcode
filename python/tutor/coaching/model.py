@@ -1,11 +1,9 @@
-"""Schema-validated, stateless Codex calls for adaptive coaching."""
+"""Schema-validated, stateless model calls for adaptive coaching."""
 import json
 import os
 import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
-from ai_core.model import StructuredModel
-from openai_codex.generated.v2_all import ReasoningEffort
 
 
 class StrictModel(BaseModel):
@@ -19,16 +17,13 @@ class Teaching(StrictModel):
     evidence_ids: list[str] = Field(max_length=10)
 
 
-class StructuredCodex:
-    def __init__(self, codex, options):
-        self.codex, self.options = codex, options
-        self.model = os.environ.get("BLOOMCODE_COACHING_MODEL", options.get("model", "gpt-6-sol"))
-        self.effort = ReasoningEffort.low
-        self.trace = []
+class StructuredCoach:
+    """Validates and repairs one coaching decision; subclasses supply the model call."""
+    def new_model(self):
+        raise NotImplementedError
 
     def __call__(self, schema, instructions, data):
-        model = StructuredModel(self.codex, {**self.options,
-            'config': {'mcp_servers.bloomcode.enabled': False}}, self.model, self.effort)
+        model = self.new_model()
         for attempt in range(2):
             text = model.generate(schema.model_json_schema(), instructions, data)
             try:
@@ -47,6 +42,32 @@ class StructuredCodex:
                 if attempt:
                     raise RuntimeError('Invalid coaching response. Retry this step.') from None
                 data = {**data, 'validation_feedback': 'Return valid schema fields and only supplied evidence IDs. Control decisions require empty evidence_ids; broaden requires broader_evidence_available.'}
+
+
+class StructuredCodex(StructuredCoach):
+    def __init__(self, codex, options):
+        from openai_codex.generated.v2_all import ReasoningEffort
+        self.codex, self.options = codex, options
+        self.model = os.environ.get("BLOOMCODE_COACHING_MODEL", options.get("model", "gpt-6-sol"))
+        self.effort = ReasoningEffort.low
+        self.trace = []
+
+    def new_model(self):
+        from ai_core.model import StructuredModel
+        return StructuredModel(self.codex, {**self.options,
+            'config': {'mcp_servers.bloomcode.enabled': False}}, self.model, self.effort)
+
+
+class StructuredClaude(StructuredCoach):
+    """Coaching on Claude Code: the chat model at low effort, with no tools or MCP servers."""
+    def __init__(self, cli_path, workspace, model):
+        self.cli_path, self.workspace, self.model = cli_path, workspace, model
+        self.effort = 'low'
+        self.trace = []
+
+    def new_model(self):
+        from ai_core.claude import ClaudeStructuredModel
+        return ClaudeStructuredModel(self.cli_path, self.workspace, self.model, self.effort)
 
 
 TEACHING = '''First decide whether this message continues the current coaching.
