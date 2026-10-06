@@ -66,7 +66,7 @@ export function TutorDock({ children }: { children: ReactNode }) {
               minimise();
             }
           }}
-          className={`fixed z-40 ${open ? 'flex' : 'hidden'} h-[min(760px,calc(100dvh-24px))] w-[min(460px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl outline-none`}
+          className={`fixed z-40 ${open ? 'flex' : 'hidden'} h-[min(760px,calc(100dvh-24px))] w-[min(460px,calc(100vw-24px))] flex-col overflow-clip rounded-2xl border bg-background shadow-2xl outline-none`}
         >
           <header className="flex shrink-0 items-center gap-1 border-b px-3 py-2">
             <button

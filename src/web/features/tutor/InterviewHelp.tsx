@@ -167,7 +167,7 @@ export function InterviewHelp({
             event.preventDefault();
             if (!event.repeat) event.currentTarget.form?.requestSubmit();
           }}
-          className="rounded-2xl"
+          className="max-h-48 rounded-2xl"
         />
         <div className="flex items-center justify-end gap-3">
           {!validTime && message.trim() && (
