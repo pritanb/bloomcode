@@ -373,7 +373,7 @@ export function TutorChat({
                       event.preventDefault();
                       if (!event.repeat) event.currentTarget.form?.requestSubmit();
                     }}
-                    className="rounded-2xl border-transparent bg-[color-mix(in_srgb,var(--foreground)_6%,var(--background))] px-4 py-3 shadow-none focus-visible:ring-1 dark:bg-muted"
+                    className="max-h-48 rounded-2xl border-transparent bg-[color-mix(in_srgb,var(--foreground)_6%,var(--background))] px-4 py-3 shadow-none focus-visible:ring-1 dark:bg-muted"
                     placeholder="Ask a question, or use /coach followed by a problem name"
                     rows={3}
                     disabled={state.status === 'starting'}
