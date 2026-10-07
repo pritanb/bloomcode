@@ -150,7 +150,6 @@ function Workspace({
       <main id="main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/reviews" element={<StudyReport calendar />} />
           <Route path="/weekly-report" element={<StudyReport />} />
           <Route path="/library" element={<Library />} />
           <Route path="/library/manage" element={<ManageLibrary />} />

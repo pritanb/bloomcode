@@ -10,7 +10,6 @@ import {
   previousAttempt,
 } from '../../src/web/features/practice/AttemptComparison';
 import { AttemptReflection } from '../../src/web/features/practice/AttemptReflection';
-import { reviewWeek } from '../../src/web/features/reports/ReviewCalendar';
 import { api, ApiError } from '../../src/web/app/api';
 const attempt: Attempt = {
   id: 'current',
@@ -131,16 +130,4 @@ it('preserves a reflection through version conflict and explicitly resaves with 
     takeaway: 'Check empty input',
     mistakeLabels: [],
   });
-});
-
-it('anchors the seven calendar dates in the configured timezone across a daylight-saving change', () => {
-  expect(reviewWeek('Australia/Sydney', new Date('2026-10-03T14:30:00Z'))).toEqual([
-    '2026-10-04',
-    '2026-10-05',
-    '2026-10-06',
-    '2026-10-07',
-    '2026-10-08',
-    '2026-10-09',
-    '2026-10-10',
-  ]);
 });
