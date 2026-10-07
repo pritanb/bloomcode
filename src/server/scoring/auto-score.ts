@@ -10,11 +10,14 @@ import { recordDecision } from './review-model.js';
 // Conservative automatic movements applied when an attempt finishes.
 // Increases above 3 stay reserved for independent unseen solves, matching
 // the manual review guard in scoring.ts. Manual reviews can still override.
-export function autoScoreDelta(a: AttemptRecord): number {
+// Solves scale with difficulty (Easy half, Hard one and a half); a question
+// with no recorded difficulty counts as Medium.
+export function autoScoreDelta(a: AttemptRecord, difficulty: string | null = null): number {
   if (a.outcome === 'solved') {
-    if (a.help === 'none') return 0.2;
-    if (a.help === 'small') return 0.1;
-    if (a.help === 'unknown') return 0.05;
+    const weight = difficulty === 'Easy' ? 0.5 : difficulty === 'Hard' ? 1.5 : 1;
+    if (a.help === 'none') return 0.2 * weight;
+    if (a.help === 'small') return 0.1 * weight;
+    if (a.help === 'unknown') return 0.05 * weight;
     return 0; // major/solution help is acquisition, not independent evidence
   }
   if (a.outcome === 'not_solved')
@@ -36,13 +39,14 @@ function rationale(a: AttemptRecord): string {
 }
 export function applyAutoScore(db: Db, a: AttemptRecord, clock: () => Date): ScoreDecision[] {
   if (readSettings(db).autoScore === false) return [];
-  const delta = autoScoreDelta(a);
+  const problem = getProblem(db, a.problemId);
+  const delta = autoScoreDelta(a, problem.difficulty);
   if (!delta) return [];
   // Topics are the curriculum grouping (NeetCode's categories); tags are the
   // user's own labels for what a question involves. Scoring follows the
   // category so relabelling a question never moves a score. Questions outside
   // the verified lists fall back to a tag whose name IS a tracked topic.
-  const category = neetcodeCategory(getProblem(db, a.problemId));
+  const category = neetcodeCategory(problem);
   const names = new Set<string>();
   if (category) names.add(category.toLowerCase());
   else
