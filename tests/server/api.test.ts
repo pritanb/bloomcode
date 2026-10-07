@@ -336,6 +336,7 @@ it('imports canonical history without inventing timing or overwriting current le
   expect(problems).toHaveLength(1);
   expect(problems[0].legacyCompleted).toBe(true);
   expect(problems[0].lastSolveSeconds).toBeNull();
+  expect((await request('GET', '/api/reviews')).json()).toEqual([]);
   expect(problems[0].tags[0].name).toBe('Arrays');
   const detail = (await request('GET', `/api/problems/${problems[0].id}`)).json();
   expect(detail.attempts[0].code).toBe('legacy answer');

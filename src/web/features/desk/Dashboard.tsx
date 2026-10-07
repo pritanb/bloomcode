@@ -35,7 +35,6 @@ import type {
   WeeklyRecap as Recap,
 } from '../../../shared/contracts';
 import { api } from '../../app/api';
-import { ReviewCalendar, reviewWeek } from '../reports/ReviewCalendar';
 import { ActivityFigures, ActivityStrip } from '../reports/ActivityStrip';
 import { dateLabel, duration, ErrorNotice, Field, Loading, useAction } from '../../components/ui';
 import {
@@ -421,12 +420,13 @@ export function Dashboard() {
       ));
   const completed = d.plan?.items.filter((item) => item.status === 'completed').length ?? 0;
   const total = d.plan?.items.filter((item) => item.status !== 'skipped').length ?? 0;
-  const today = reviewWeek(d.settings.timezone)[0];
-  const scheduled = (reviews.data ?? []).filter(
-    (review) => review.action !== 'none' && review.effectiveDate,
+  // Today in the study timezone (en-CA formats as YYYY-MM-DD).
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: d.settings.timezone }).format(
+    new Date(),
   );
-  const overdue = scheduled.filter((review) => review.effectiveDate! < today).length;
-  const dueToday = scheduled.filter((review) => review.effectiveDate === today).length;
+  const due = (reviews.data ?? []).filter(
+    (review) => review.action !== 'none' && review.effectiveDate && review.effectiveDate <= today,
+  ).length;
   const perDay = d.settings.questionsPerDay ?? d.settings.primaryCount + d.settings.optionalCount;
   const pending = <span className="text-muted-foreground">–</span>;
   // Each column scrolls on its own when the window is short; the last card takes the spare height.
@@ -506,20 +506,8 @@ export function Dashboard() {
             label="Checks due"
             icon={CalendarClock}
             tone="amber"
-            value={reviews.data ? overdue + dueToday : pending}
-            sub={
-              reviews.data ? (
-                overdue ? (
-                  <Link to="/reviews" className="font-medium text-warn">
-                    {overdue} overdue
-                  </Link>
-                ) : (
-                  `${dueToday} due today`
-                )
-              ) : (
-                ' '
-              )
-            }
+            value={reviews.data ? due : pending}
+            sub={reviews.data ? (due ? 'Bloom adds them to your plan' : 'None due') : ' '}
           />
         </div>
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
@@ -585,7 +573,7 @@ export function Dashboard() {
                 <EmptyState
                   icon={ListChecks}
                   title="No questions at your level yet"
-                  description="Questions come from the LeetCode problem bank, chosen for your level in each topic. Download it in Settings, or wait for scheduled reviews."
+                  description="Questions come from the LeetCode problem bank, chosen for your level in each topic. Download it in Settings, or wait for checks to come due."
                   action={
                     <>
                       <Button asChild>
@@ -599,7 +587,6 @@ export function Dashboard() {
                 />
               )}
             </Panel>
-            <ReviewCalendar timezone={d.settings.timezone} compact />
           </ScrollRegion>
           <ScrollRegion className={column}>
             <ActivityCard activity={d.activity} />

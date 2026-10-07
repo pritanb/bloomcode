@@ -6,7 +6,6 @@ import { type Db, insert, many, maybe, run, transaction, update } from '../db/db
 import { newTagHue } from '../db/tag-colour.js';
 import { date, name, addProblem, assignLinks, problemUrl } from './problem-model.js';
 import { outcome, help, seconds } from '../attempts/attempt-model.js';
-import { updateTarget } from '../attempts/review-schedule.js';
 import { canonical } from '../db/idempotency.js';
 import { conflict } from '../db/errors.js';
 export const score = z
@@ -244,11 +243,6 @@ export function applyImport(db: Db, b: ImportPayload, clock: () => Date): Import
       continue;
     }
     attemptKeys.add(input.sourceKey);
-    const { last } = maybe<{ last: string | null }>(
-      db,
-      "SELECT max(substr(finishedAt, 1, 10)) AS last FROM attempts WHERE problemId = ? AND status = 'completed'",
-      problemId,
-    )!;
     const id = randomUUID();
     insert(db, 'attempts', {
       id,
@@ -272,8 +266,7 @@ export function applyImport(db: Db, b: ImportPayload, clock: () => Date): Import
       importId: b.importId,
     });
     update(db, 'problems', problemId, { exposed: true });
-    if (input.nextReviewDate && (!last || input.date >= last))
-      updateTarget(db, problemId, input.nextReviewDate, 'legacy-candidate');
+    // An old tool's review date stays on the attempt as history; only Bloom schedules checks.
     for (const n of input.topicNames ?? []) {
       const topicId = topics.get(n.toLowerCase());
       if (topicId)

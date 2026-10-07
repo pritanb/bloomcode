@@ -237,3 +237,47 @@ it('falls back to a topic-named tag for a question outside the verified lists', 
   });
   expect((await request('GET', '/api/topics')).json()[0].score).toBe(2.7);
 });
+it('scales solve increases by difficulty: Easy half, Hard one and a half', async () => {
+  const app = await createApp({ dbPath: ':memory:', token: 'test' });
+  apps.push(app);
+  const request = (method: 'GET' | 'POST', url: string, payload?: object) =>
+    app.inject({
+      method,
+      url,
+      headers: { authorization: 'Bearer test', 'idempotency-key': crypto.randomUUID() },
+      ...(payload ? { payload } : {}),
+    });
+  await request('POST', '/api/import', {
+    importId: 'f',
+    dryRun: false,
+    source: { retrievedAt: '2026-09-16T00:00:00Z' },
+    problems: (['Easy', 'Hard'] as const).map((difficulty) => ({
+      key: difficulty,
+      title: difficulty,
+      url: `https://leetcode.com/problems/unlisted-${difficulty.toLowerCase()}/`,
+      difficulty,
+      tags: ['Trees'],
+    })),
+    attempts: [],
+    topics: [{ name: 'Trees', score: 2, notes: '', provisional: true }],
+    movements: [],
+    records: [],
+  });
+  const problems = readTables(app.tutorJobs.db).problems as { id: string; title: string }[];
+  const solve = async (title: string, help: 'none' | 'small') => {
+    const p = problems.find((x) => x.title === title)!;
+    const a = (
+      await request('POST', '/api/attempts', { problemId: p.id, context: 'mixed' })
+    ).json();
+    await request('POST', `/api/attempts/${a.id}/finish`, {
+      version: a.version,
+      outcome: 'solved',
+      help,
+      activeSeconds: 60,
+    });
+    return (await request('GET', '/api/topics')).json()[0].score;
+  };
+  expect(await solve('Easy', 'none')).toBe(2.1);
+  expect(await solve('Hard', 'none')).toBe(2.4);
+  expect(await solve('Easy', 'small')).toBe(2.45);
+});
