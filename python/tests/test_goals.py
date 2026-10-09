@@ -1,6 +1,8 @@
 """The host confirmation boundary, without a model or study database."""
 
+import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -49,6 +51,24 @@ class GoalConfirmationTests(unittest.TestCase):
             self.tutor.confirm_plan(plan, True)
             self.assertEqual(save.call_args.kwargs, {"tool": "confirm_plan_change"})
         self.assertEqual(self.tutor.pending_plan, [])
+        self.assertEqual(self.tutor.pending_goals, [self.proposal])
+
+    def test_lesson_proposal_is_queued_then_saved_with_its_own_tool(self):
+        change = {"action": "create", "text": "Say when a trie is optional.", "topic": "Tries"}
+        def turn(message, on_text, on_tool):
+            on_tool("propose_tutor_note", "completed", False, [json.dumps({"proposal": change, "saved": False})])
+            return "Proposed a lesson.", None
+        with TemporaryDirectory() as root, patch("tutor.session.load_snapshot", return_value={"status": "available"}):
+            self.tutor.thread = SimpleNamespace(id="conversation", turn=turn)
+            self.tutor.session_file = Path(root) / "last-session.json"
+            self.tutor.chat_reply("That Tries label threw me off.")
+        [lesson] = self.tutor.pending_notes
+        self.assertEqual(lesson["change"], change)
+        with patch("tutor.session.save_confirmed_change", new_callable=AsyncMock) as save:
+            save.return_value = {"version": 0}
+            self.tutor.confirm_note(lesson, True)
+            self.assertEqual(save.call_args.kwargs, {"tool": "confirm_tutor_note"})
+        self.assertEqual(self.tutor.pending_notes, [])
         self.assertEqual(self.tutor.pending_goals, [self.proposal])
 
     def test_cannot_save_a_proposal_that_is_not_pending(self):

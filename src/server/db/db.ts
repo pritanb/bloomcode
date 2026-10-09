@@ -2,7 +2,13 @@ import Database from 'better-sqlite3';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { missing } from './errors.js';
-import { SCHEMA, GOAL_SCHEMA, PREFERENCE_SCHEMA, PLAN_DRAFT_SCHEMA } from './schema.js';
+import {
+  SCHEMA,
+  GOAL_SCHEMA,
+  PREFERENCE_SCHEMA,
+  PLAN_DRAFT_SCHEMA,
+  TUTOR_NOTE_SCHEMA,
+} from './schema.js';
 
 export type Db = Database.Database;
 type Param = string | number | bigint | null | Buffer;
@@ -43,8 +49,8 @@ export function openDb(path: string): Db {
   const version = db.pragma('user_version', { simple: true });
   if (!version)
     db.transaction(() => {
-      db.exec(SCHEMA + PLAN_DRAFT_SCHEMA);
-      db.pragma('user_version = 11');
+      db.exec(SCHEMA + PLAN_DRAFT_SCHEMA + TUTOR_NOTE_SCHEMA);
+      db.pragma('user_version = 12');
     })();
   // One-off: version 7 kept unused minute budgets. Delete once the live database is at 8.
   else if (version === 7)
@@ -68,6 +74,11 @@ export function openDb(path: string): Db {
       db.exec(PLAN_DRAFT_SCHEMA);
       db.exec('ALTER TABLE plan_items ADD COLUMN reviewOf TEXT REFERENCES problems (id)');
       db.pragma('user_version = 11');
+    })();
+  if (db.pragma('user_version', { simple: true }) === 11)
+    db.transaction(() => {
+      db.exec(TUTOR_NOTE_SCHEMA);
+      db.pragma('user_version = 12');
     })();
   db.prepare(
     `INSERT OR IGNORE INTO settings (id, timezone, primaryCount, optionalCount, onboardingComplete)

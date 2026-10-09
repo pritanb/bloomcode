@@ -108,6 +108,14 @@ async def _read_snapshot(config_file: Path) -> dict:
             snapshot["todayPlan"] = {"status": "unavailable"}
         else:
             snapshot["todayPlan"] = summarize_plan(data)
+        result = await session.call_tool("get_tutor_notes", {})
+        data = json.loads(result.content[0].text)
+        if result.isError:
+            if data["error"].get("status") == 403:
+                return {"status": "blocked"}
+            snapshot["tutorNotes"] = {"status": "unavailable"}
+        else:
+            snapshot["tutorNotes"] = {"status": "available", **data}
         result = await session.call_tool("get_learning_goals", {})
         data = json.loads(result.content[0].text)
         if result.isError:

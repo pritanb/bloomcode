@@ -49,7 +49,7 @@ The MCP tools work with either setting. An older workspace saved with the remove
 - **Isolation**: each background job runs with no built-in tools, no MCP servers, no user or project settings, safe mode (no CLAUDE.md, skills, plugins or hooks), no saved session and an empty temporary workspace. The prompt replaces Claude Code's system prompt, and the output is constrained to the task's JSON schema.
 - **Defaults**: model `opus` (the CLI's alias for the latest Opus). Reasoning effort uses the same per-job settings as Codex. The CLI also makes a small Haiku call per run.
 - **Usage**: usage counts toward your Claude plan limits, with the same pause-and-resume behaviour as Codex.
-- **Bloom chat**: with Claude Code selected, Ask Bloom and coaching also run on Claude Code (otherwise they use Codex). The chat keeps its session under `~/.claude/projects/` so conversations resume, and connects only the BloomCode MCP server with the same nine read and propose tools as Codex; every other BloomCode tool is hidden and denied. Safe mode is off for chat because it would disable that server; user settings, CLAUDE.md, hooks, plugins, skills and built-in tools stay off. Switching provider starts a new conversation.
+- **Bloom chat**: with Claude Code selected, Ask Bloom and coaching also run on Claude Code (otherwise they use Codex). The chat keeps its session under `~/.claude/projects/` so conversations resume, and connects only the BloomCode MCP server with the same read and propose tools as Codex; every other BloomCode tool is hidden and denied. Safe mode is off for chat because it would disable that server; user settings, CLAUDE.md, hooks, plugins, skills and built-in tools stay off. Switching provider starts a new conversation.
 - **Privacy**: saved code, notes and problem metadata for each job go to Anthropic.
 
 Settings are stored in `tutor-settings.json` beside the database. They are machine-specific and not included in backups.
@@ -94,6 +94,12 @@ Bloom decides each day's questions; with the tutor off, paused or failing, simpl
 Finishing a check moves the original idea's schedule on; the check problem gets none of its own. Two solo solves of an idea two weeks apart retire it. After a check, Bloom's attempt report names the shared idea.
 
 **Each day.** When Today first opens, Bloom plans in the background (the plan waits for it): goals first, then weak topics and recent struggles, due checks up to about half the day, easier first. Its picks become the plan, with a one-line summary; **Re-plan** asks again for unstarted questions. If Bloom fails, the built-in rules fill the day: due checks, then the weakest topics, one problem each. In chat, Bloom proposes changes from the same candidates — the app refuses anything else — and nothing changes until you confirm.
+
+## What Bloom has learned
+
+When you correct or praise Bloom's tutoring in chat ("that label threw me off", "that analogy helped"), Bloom answers and then proposes a one-sentence **lesson**: a rule for itself, general or for one topic. A **Remember this?** card shows it, and nothing is saved until you confirm. If a lesson already covers the point, Bloom proposes an updated version instead of a near-duplicate. Lessons come only from what you say about the teaching, never from your results.
+
+Lessons are stored in the study database (so they are in backups) and have no cap. Every chat turn, coaching session and daily plan reads them. Once they total more than about 8,000 characters (around 50 lessons), Bloom gets the general lessons plus those for the topics in play (today's plan in chat, the candidates when planning) and looks up other topics when needed. **Settings → What Bloom has learned** lists them by topic; **Forget** removes one, and so does asking Bloom to forget it.
 
 ## Learning Insights
 

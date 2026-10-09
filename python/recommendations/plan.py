@@ -33,6 +33,8 @@ INSTRUCTIONS = (
     "scale, roughly a Medium of similar difficulty, never a much harder one). The app uses the first one "
     "the learner has not seen. The learner will not be told the topic, so they must spot the approach. "
     "Reason may be empty for transfer checks. "
+    "tutorNotes are lessons the learner confirmed about your past picks and explanations, general or for one "
+    "topic: apply them when choosing and wording picks. "
     "Decide what today targets: active goals first, then weak topics and recent struggles (topicLevels, "
     "recentAttempts with results strong/ok/struggled, recentDifficulties). Include due checks, up to "
     "about half the day, oldest checks first. Keep picks near each topic's level and keep some breadth unless "

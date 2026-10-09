@@ -7,6 +7,8 @@ import { LocalApi, ApiError } from './local-api.js';
 import { goalChange, confirmedGoalChange } from '../shared/learning-goals.js';
 import { preferenceChange, confirmedPreferenceChange } from '../shared/tutor-preferences.js';
 import { confirmedPlanChange } from '../shared/plan-changes.js';
+import { noteChange, confirmedNoteChange } from '../shared/tutor-notes.js';
+import { neetcodeCategories } from '../server/topics/neetcode-category.js';
 const id = z
   .string()
   .min(1)
@@ -30,6 +32,9 @@ const schemas = {
   }),
   propose_learning_goal: z.strictObject({ change: goalChange }),
   confirm_learning_goal: confirmedGoalChange.extend({ idempotencyKey: key }),
+  get_tutor_notes: z.strictObject({ topic: z.string().trim().min(1).max(60).optional() }),
+  propose_tutor_note: z.strictObject({ change: noteChange }),
+  confirm_tutor_note: confirmedNoteChange.extend({ idempotencyKey: key }),
   get_today_plan: z.strictObject({}),
   get_training_levels: z.strictObject({}),
   get_shortlist: z.strictObject({ topic: z.string().trim().min(1).max(100).optional() }),
@@ -137,6 +142,12 @@ const descriptions: Record<keyof typeof schemas, string> = {
     'Propose a goal or state change for the learner to review. This does NOT save anything. The host will ask for explicit confirmation. Never claim a proposal is saved. For state changes use the current goal ID and version.',
   confirm_learning_goal:
     'Host-only: commit a change AFTER explicit learner confirmation. Requires full host credential; unavailable to the conversational tutor. Retry uncertain writes with the SAME idempotency key and payload.',
+  get_tutor_notes:
+    "Read lessons the learner confirmed about your tutoring, with IDs and versions. Each is general (topic null) or for one training topic. Without topic, returns every lesson while they fit the prompt budget, otherwise general lessons plus today's plan topics, with hasMore. With topic, returns only that topic's lessons. Hidden during mixed assessments.",
+  propose_tutor_note:
+    "Propose a lesson about your tutoring for the learner to confirm; does not save. Only from the learner's own feedback on your teaching or recommendations (a correction or praise), never inferred from their performance. One sentence written as a rule for your future self, with the example that prompted it. topic is a training topic name (e.g. Tries) or null for a general lesson. If a saved lesson covers the same point, use action 'update' with its ID, current version and exact current text as oldText. Use 'retire' when the learner asks you to forget one.",
+  confirm_tutor_note:
+    'Host-only: save a lesson change AFTER explicit learner confirmation, using the full credential. Retry uncertain writes with the SAME key and payload.',
   get_training_levels:
     "Read the learner's per-topic training level on the problem-rating scale (Elo-like; contest ratings, estimates marked), their target rating, which topics are at target, and the last change with its result (strong, ok or struggled). Hidden during mixed assessments.",
   get_shortlist:
@@ -178,6 +189,8 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
       'propose_tutor_preferences',
       'get_learning_goals',
       'propose_learning_goal',
+      'get_tutor_notes',
+      'propose_tutor_note',
       'get_today_plan',
       'get_training_levels',
       'get_shortlist',
@@ -216,6 +229,23 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
     } else if (name === 'confirm_learning_goal') {
       const { idempotencyKey, ...body } = schemas.confirm_learning_goal.parse(args);
       result = await api.request('POST', '/api/learning-goals', body, idempotencyKey);
+    } else if (name === 'get_tutor_notes') {
+      const { topic } = schemas.get_tutor_notes.parse(args);
+      result = await api.request(
+        'GET',
+        `/api/tutor-notes${topic ? `?${new URLSearchParams({ topic })}` : ''}`,
+      );
+    } else if (name === 'propose_tutor_note') {
+      const { change } = schemas.propose_tutor_note.parse(args);
+      if ('topic' in change && change.topic !== null && !neetcodeCategories.includes(change.topic))
+        throw new ApiError(
+          'UNKNOWN_TOPIC',
+          `Use a training topic or null. Topics: ${neetcodeCategories.join(', ')}`,
+        );
+      result = { proposal: change, saved: false };
+    } else if (name === 'confirm_tutor_note') {
+      const { idempotencyKey, ...body } = schemas.confirm_tutor_note.parse(args);
+      result = await api.request('POST', '/api/tutor-notes', body, idempotencyKey);
     } else if (name === 'get_training_levels') {
       schemas.get_training_levels.parse(args);
       result = await api.request('GET', '/api/training-levels');
