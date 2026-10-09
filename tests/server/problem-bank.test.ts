@@ -11,7 +11,7 @@ import {
   type LeetCodeQuestion,
 } from '../../src/integrations/problem-bank.js';
 import { applyProblemBank } from '../../src/server/catalogue/problem-bank.js';
-import { many } from '../../src/server/db/db.js';
+import { many, run } from '../../src/server/db/db.js';
 
 const q = (
   titleSlug: string,
@@ -33,6 +33,19 @@ test('maps LeetCode tags to the NeetCode category the ladder scores', () => {
   expect(categoryFor(q('x', ['Tree', 'Depth-First Search']))).toBe('Trees');
   expect(categoryFor(q('x', ['Dynamic Programming', 'Matrix']))).toBe('2-D Dynamic Programming');
   expect(categoryFor(q('x', ['Backtracking', 'Dynamic Programming']))).toBe('Backtracking');
+  // A real trie problem stays Tries; a trie that only speeds up a DP's word lookups is DP.
+  expect(categoryFor(q('replace-words', ['Array', 'Hash Table', 'String', 'Trie']))).toBe('Tries');
+  expect(
+    categoryFor(
+      q('extra-characters-in-a-string', [
+        'Array',
+        'Hash Table',
+        'String',
+        'Dynamic Programming',
+        'Trie',
+      ]),
+    ),
+  ).toBe('1-D Dynamic Programming');
   expect(categoryFor(q('x', ['Array', 'Binary Search']))).toBe('Binary Search');
   expect(categoryFor(q('x', ['Array', 'Hash Table']))).toBe('Arrays & Hashing');
   // NeetCode's own category wins for its problems.
@@ -143,4 +156,30 @@ test('builds the bank up to the cap with estimates, keeping existing work and re
     ),
   ).toThrow();
   expect(many(db, 'SELECT * FROM rating_estimates ORDER BY slug')).toEqual(before);
+});
+
+test('a database from before the Trie + DP rule moves those bank problems to DP once', async () => {
+  const wordDp = q('extra-characters-in-a-string', ['String', 'Dynamic Programming', 'Trie']),
+    realTrie = q('replace-words', ['String', 'Trie']);
+  const bank = buildProblemBank([...rated, wordDp, realTrie], exact, '2026-10-01T00:00:00Z');
+  applyProblemBank(app.tutorJobs.db, bank, () => new Date('2026-10-01T00:00:00Z'));
+  const topicsOf = (slug: string) =>
+    many<{ name: string }>(
+      app.tutorJobs.db,
+      `SELECT t.name FROM problem_tags pt JOIN tags t ON t.id = pt.tagId
+       JOIN problems p ON p.id = pt.problemId WHERE p.slug = ?`,
+      slug,
+    ).map((t) => t.name);
+  expect(topicsOf('extra-characters-in-a-string')).toEqual(['1-D Dynamic Programming']);
+  // What the old rule saved: the word-lookup DP filed under Tries.
+  run(
+    app.tutorJobs.db,
+    `UPDATE problem_tags SET tagId = (SELECT id FROM tags WHERE name = 'Tries')
+     WHERE problemId = (SELECT id FROM problems WHERE slug = 'extra-characters-in-a-string')`,
+  );
+  app.tutorJobs.db.pragma('user_version = 12');
+  await app.close();
+  app = await createApp({ dbPath: join(dir, 'study.sqlite'), token: 'host' });
+  expect(topicsOf('extra-characters-in-a-string')).toEqual(['1-D Dynamic Programming']);
+  expect(topicsOf('replace-words')).toEqual(['Tries']);
 });

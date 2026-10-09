@@ -189,7 +189,7 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   const db = openDb(dbPath);
   const columns = (table: string) =>
     (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name);
-  expect(db.pragma('user_version', { simple: true })).toBe(12);
+  expect(db.pragma('user_version', { simple: true })).toBe(13);
   expect(columns('plan_drafts')).toContain('items');
   expect(columns('tutor_notes')).toContain('topic');
   expect(columns('settings')).not.toContain('budgetMinutes');

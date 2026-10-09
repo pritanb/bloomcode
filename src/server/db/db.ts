@@ -1,7 +1,9 @@
 import Database from 'better-sqlite3';
+import { randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { missing } from './errors.js';
+import { newTagHue } from './tag-colour.js';
 import {
   SCHEMA,
   GOAL_SCHEMA,
@@ -50,7 +52,7 @@ export function openDb(path: string): Db {
   if (!version)
     db.transaction(() => {
       db.exec(SCHEMA + PLAN_DRAFT_SCHEMA + TUTOR_NOTE_SCHEMA);
-      db.pragma('user_version = 12');
+      db.pragma('user_version = 13');
     })();
   // One-off: version 7 kept unused minute budgets. Delete once the live database is at 8.
   else if (version === 7)
@@ -80,11 +82,60 @@ export function openDb(path: string): Db {
       db.exec(TUTOR_NOTE_SCHEMA);
       db.pragma('user_version = 12');
     })();
+  // One-off: the bank once filed Trie + DP problems under Tries. Delete once the live database is at 13.
+  if (db.pragma('user_version', { simple: true }) === 12)
+    db.transaction(() => {
+      retagTrieDp(db);
+      db.pragma('user_version = 13');
+    })();
   db.prepare(
     `INSERT OR IGNORE INTO settings (id, timezone, primaryCount, optionalCount, onboardingComplete)
      VALUES (1, ?, 1, 1, 0)`,
   ).run(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   return db;
+}
+
+/** Move downloaded bank problems LeetCode tags Trie and DP from Tries to their DP topic. */
+function retagTrieDp(db: Db) {
+  const moves = db
+    .prepare(
+      `SELECT p.id, pt.tagId AS tries,
+        CASE WHEN EXISTS (SELECT 1 FROM json_each(p.leetcodeTopics) WHERE value = 'Matrix')
+          THEN '2-D Dynamic Programming' ELSE '1-D Dynamic Programming' END AS category
+      FROM problems p
+      JOIN problem_tags pt ON pt.problemId = p.id
+      JOIN tags t ON t.id = pt.tagId AND t.name = 'Tries'
+      WHERE EXISTS (SELECT 1 FROM json_each(p.leetcodeTopics) WHERE value = 'Trie')
+        AND EXISTS (SELECT 1 FROM json_each(p.leetcodeTopics) WHERE value = 'Dynamic Programming')
+        AND EXISTS (SELECT 1 FROM list_memberships m JOIN lists l ON l.id = m.listId
+          WHERE m.problemId = p.id AND l.name = 'LeetCode problem bank')`,
+    )
+    .all() as { id: string; tries: string; category: string }[];
+  for (const move of moves) {
+    let tag = (
+      db.prepare('SELECT id FROM tags WHERE lower(name) = lower(?)').get(move.category) as
+        { id: string } | undefined
+    )?.id;
+    if (!tag) {
+      const hues = db.prepare('SELECT hue FROM tags WHERE hue IS NOT NULL').all() as {
+        hue: number;
+      }[];
+      tag = randomUUID();
+      db.prepare('INSERT INTO tags (id, name, hue) VALUES (?, ?, ?)').run(
+        tag,
+        move.category,
+        newTagHue(hues.map((h) => h.hue)),
+      );
+    }
+    db.prepare('DELETE FROM problem_tags WHERE problemId = ? AND tagId = ?').run(
+      move.id,
+      move.tries,
+    );
+    db.prepare('INSERT OR IGNORE INTO problem_tags (problemId, tagId) VALUES (?, ?)').run(
+      move.id,
+      tag,
+    );
+  }
 }
 
 /** The single row a query must find; a missing row is a 404. */
