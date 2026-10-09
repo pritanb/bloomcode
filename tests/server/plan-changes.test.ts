@@ -174,6 +174,7 @@ async function bloomOn() {
     picksRequired: number;
     candidates: { candidateNumber: number; title: string; topic: string }[];
     checks: { checkNumber: number; kind: string; problem: string }[];
+    tutorNotes: { lesson: string; topic: string | null }[];
   };
   const run = (answer: (context: typeof seen) => object) =>
     draftPlanNext(app.tutorJobs.drafts, async (req: GenerateRequest) => {
@@ -235,6 +236,19 @@ async function dueIdea() {
 test('Bloom plans the day: the plan waits for it, then its picks and transfer checks become the plan', async () => {
   const attempted = await dueIdea();
   const { run } = await bloomOn();
+  // Confirmed lessons reach the planner; forgotten ones do not.
+  const lesson = (text: string, key: string) =>
+    request(
+      'POST',
+      '/api/tutor-notes',
+      { change: { action: 'create', text, topic: null }, sourceConversation: 'chat' },
+      'host',
+      key,
+    ).then((r) => r.json() as { id: string });
+  await lesson('Order picks easier first.', 'kept');
+  const forgotten = await lesson('Only ever pick Hard problems.', 'forgotten');
+  await request('POST', `/api/tutor-notes/${forgotten.id}/forget`, {});
+  let lessons: unknown;
   const dueInChat = async () =>
     (await request('GET', '/api/recommendations/shortlist', undefined, scoped))
       .json()
@@ -250,6 +264,7 @@ test('Bloom plans the day: the plan waits for it, then its picks and transfer ch
   expect(
     await run((context) => {
       const check = context.checks.find((c) => c.problem === 'Search One')!;
+      lessons = context.tutorNotes;
       return {
         summary: 'Binary search, steady and popular.',
         items: [
@@ -260,6 +275,7 @@ test('Bloom plans the day: the plan waits for it, then its picks and transfer ch
       };
     }),
   ).toBe(true);
+  expect(lessons).toEqual([{ lesson: 'Order picks easier first.', topic: null }]);
   const planned = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(planned.id).toBe(waiting.id);
   expect(planned.items).toHaveLength(2);

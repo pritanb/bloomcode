@@ -90,6 +90,7 @@ export async function registerLocalAuth(
               '/api/topics/scores',
               '/api/learning-goals',
               '/api/tutor-preferences',
+              '/api/tutor-notes',
               '/api/tutor-access',
               '/api/daily-plan/today',
               '/api/daily-plan/lookup',
@@ -103,7 +104,12 @@ export async function registerLocalAuth(
     }
     if (bearerMatches(req.headers.authorization, token)) return;
     if (
-      ['/api/learning-goals', '/api/tutor-preferences', '/api/daily-plan/changes'].includes(path) &&
+      [
+        '/api/learning-goals',
+        '/api/tutor-preferences',
+        '/api/tutor-notes',
+        '/api/daily-plan/changes',
+      ].includes(path) &&
       req.method === 'POST'
     )
       throw new ApiError(403, 'BEARER_REQUIRED', 'Confirmation requires the local host credential');

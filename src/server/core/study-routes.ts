@@ -9,6 +9,7 @@ import { registerAttemptSignals } from '../attempts/signals.js';
 import { registerTopics } from '../topics/topics.js';
 import { registerLearningGoals } from '../topics/learning-goals.js';
 import { registerTutorPreferences } from '../topics/tutor-preferences.js';
+import { registerTutorNotes } from '../topics/tutor-notes.js';
 import { registerConversation, type TutorConversation } from '../tutor/conversation.js';
 import { registerStudyTools } from '../topics/study-tools.js';
 import { registerScoring } from '../scoring/scoring.js';
@@ -46,6 +47,7 @@ export function registerStudyRoutes(
   registerTopics(app, db);
   registerLearningGoals(app, db, clock);
   registerTutorPreferences(app, db, clock);
+  registerTutorNotes(app, db, clock);
   registerConversation(app, db, dbPath, conversationWorker);
   registerScoring(app, db, clock);
   registerPlans(app, db, clock);

@@ -33,7 +33,7 @@ def state(tutor):
             "coaching": coaching, "coachingError": tutor.coaching_error, "proposals": [
         {"kind": kind, **proposal} for kind, pending in [
             ("goal", tutor.pending_goals), ("preferences", tutor.pending_preferences),
-            ("plan", tutor.pending_plan),
+            ("plan", tutor.pending_plan), ("note", tutor.pending_notes),
         ] for proposal in pending
     ]}
 
@@ -77,6 +77,7 @@ def main():
                         "goal": (tutor.pending_goals, tutor.confirm_goal, "Goal"),
                         "preferences": (tutor.pending_preferences, tutor.confirm_preferences, "Teaching preferences"),
                         "plan": (tutor.pending_plan, tutor.confirm_plan, "Plan"),
+                        "note": (tutor.pending_notes, tutor.confirm_note, "Lesson"),
                     }[kind]
                     proposal = next(p for p in pending if p["key"] == request["key"])
                     saved = confirm(proposal, request["approved"] is True)

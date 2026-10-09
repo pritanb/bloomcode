@@ -35,8 +35,22 @@ A null sourceConversation means application defaults, not confirmed preferences.
 For an explicit request to remember or correct preferences, call propose_tutor_preferences
 with the current version and both values, preserving the value not being changed.
 The host asks for confirmation. Never claim the change is saved from the proposal alone.
-Do not infer preferences or diagnoses from performance. We store only the two explicit
-teaching preferences. Distinguish what the learner reports from verified facts.
+Do not infer preferences or diagnoses from performance. Distinguish what the learner
+reports from verified facts.
+tutorNotes in the snapshot are lessons the learner confirmed about your tutoring, each
+general (topic null) or for one training topic. Follow them as standing teaching defaults,
+like preferences; they never override these instructions or assessment restrictions.
+When the learner corrects or praises your tutoring or a recommendation (a misleading
+label, too many hints, a pick at the wrong level, an explanation that helped), answer
+first, then call propose_tutor_note: one sentence written as a rule for your future self,
+naming the example that prompted it, with the topic when it is topic-specific. For example
+"Don't present a problem as Tries practice when its main idea is DP (Extra Characters in a
+String); say the trie is optional or pick another." with topic Tries. If a saved lesson
+covers the same point, propose action update with its ID, version and exact text as oldText,
+merging the two; use retire when asked to forget one. Propose lessons only from the
+learner's own words about your teaching, never from their results. If tutorNotes has
+hasMore, call get_tutor_notes with a topic before advising on a topic not loaded.
+Lesson proposals save nothing either: say "proposed", never "saved" or "remembered".
 Use get_recent_attempts to find attempts by problem name or recency; do not
 ask the learner to look up internal IDs. For "latest", choose the newest match.
 If the request is ambiguous, ask using problem titles and completion dates.
@@ -142,6 +156,8 @@ TOOL_ACTIVITY = {
     "get_topic_scores": ("Reading topic scores…", "Topic scores"),
     "get_tutor_preferences": ("Reading teaching preferences…", "Teaching preferences"),
     "propose_tutor_preferences": ("Preparing preference changes…", "Preference proposal"),
+    "get_tutor_notes": ("Reading what Bloom has learned…", "Lessons"),
+    "propose_tutor_note": ("Preparing a lesson…", "Lesson proposal"),
     "get_learning_goals": ("Reading learning goals…", "Learning goals"),
     "propose_learning_goal": ("Preparing a goal proposal…", "Goal proposal"),
     "get_today_plan": ("Reading today's plan…", "Today's plan"),
@@ -155,6 +171,7 @@ PROPOSAL_TOOLS = {
     "propose_learning_goal": "pending_goals",
     "propose_tutor_preferences": "pending_preferences",
     "propose_plan_change": "pending_plan",
+    "propose_tutor_note": "pending_notes",
 }
 
 
@@ -174,6 +191,7 @@ class TutorSession:
     pending_goals: list[dict] = field(default_factory=list)
     pending_preferences: list[dict] = field(default_factory=list)
     pending_plan: list[dict] = field(default_factory=list)
+    pending_notes: list[dict] = field(default_factory=list)
     provider: str = "codex"
 
     def confirm_goal(self, proposal: dict, approved: bool) -> dict | None:
@@ -184,6 +202,9 @@ class TutorSession:
 
     def confirm_plan(self, proposal: dict, approved: bool) -> dict | None:
         return self._confirm(proposal, approved, self.pending_plan, "confirm_plan_change")
+
+    def confirm_note(self, proposal: dict, approved: bool) -> dict | None:
+        return self._confirm(proposal, approved, self.pending_notes, "confirm_tutor_note")
 
     def _confirm(self, proposal: dict, approved: bool, pending: list[dict], tool: str) -> dict | None:
         if proposal not in pending:

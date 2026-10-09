@@ -22,6 +22,20 @@ CREATE TABLE tutor_preferences (
 );
 INSERT INTO tutor_preferences VALUES (1, 'concise', 'progressive', 0, NULL, NULL);
 `;
+/** Lessons the learner confirmed about Bloom's tutoring: general (null topic) or for one topic. */
+export const TUTOR_NOTE_SCHEMA = `
+CREATE TABLE tutor_notes (
+  id TEXT PRIMARY KEY,
+  text TEXT NOT NULL CHECK (length(text) BETWEEN 1 AND 300),
+  topic TEXT,
+  state TEXT NOT NULL CHECK (state IN ('active', 'retired')),
+  version INTEGER NOT NULL,
+  createdAt TEXT NOT NULL,
+  updatedAt TEXT NOT NULL,
+  sourceConversation TEXT NOT NULL
+);
+CREATE UNIQUE INDEX active_note_text ON tutor_notes(lower(trim(text))) WHERE state = 'active';
+`;
 /**
  * Bloom planning each day, fitted rating estimates, popularity and the learner's extra
  * attempt signals. Plan items may check the idea of an earlier problem (reviewOf).
