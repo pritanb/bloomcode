@@ -60,6 +60,10 @@ export function TutorChat({
   useEffect(() => {
     if (planUpdate) void cache.invalidateQueries({ queryKey: ['dashboard'] });
   }, [planUpdate, cache]);
+  const lessonSaved = state?.activity === 'Lesson saved.' ? state.activity : '';
+  useEffect(() => {
+    if (lessonSaved) void cache.invalidateQueries({ queryKey: ['tutor-notes'] });
+  }, [lessonSaved, cache]);
   useEffect(() => {
     if (following.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [state?.messages.length, state?.draft, state?.proposals.length]);
@@ -236,10 +240,41 @@ export function TutorChat({
                           ? proposal.change.mode === 'replace'
                             ? "Replace today's plan"
                             : "Add to today's plan"
-                          : 'Review teaching preferences'
+                          : proposal.kind === 'note'
+                            ? {
+                                create: 'Remember this?',
+                                update: 'Update this lesson?',
+                                retire: 'Forget this lesson?',
+                              }[proposal.change.action as string]
+                            : 'Review teaching preferences'
                     }
                   >
-                    {proposal.kind === 'plan' ? (
+                    {proposal.kind === 'note' ? (
+                      <dl className="mb-4 space-y-2">
+                        {proposal.change.action === 'update' && (
+                          <div>
+                            <dt className="text-xs text-muted-foreground">Current lesson</dt>
+                            <dd className="whitespace-pre-wrap break-words text-muted-foreground line-through">
+                              {String(proposal.change.oldText)}
+                            </dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            {proposal.change.action === 'update' ? 'New lesson' : 'Lesson'}
+                          </dt>
+                          <dd className="whitespace-pre-wrap break-words">
+                            {String(proposal.change.text)}
+                          </dd>
+                        </div>
+                        {proposal.change.action !== 'retire' && (
+                          <div>
+                            <dt className="text-xs text-muted-foreground">Applies to</dt>
+                            <dd>{(proposal.change.topic as string | null) ?? 'All tutoring'}</dd>
+                          </div>
+                        )}
+                      </dl>
+                    ) : proposal.kind === 'plan' ? (
                       <ul className="mb-4 space-y-2">
                         {(proposal.change.items as { title: string; reason: string }[]).map(
                           (item) => (
@@ -304,7 +339,9 @@ export function TutorChat({
                               ? proposal.change.mode === 'replace'
                                 ? 'Use this plan'
                                 : 'Add to plan'
-                              : 'Confirm and save'
+                              : proposal.kind === 'note' && proposal.change.action === 'retire'
+                                ? 'Forget lesson'
+                                : 'Confirm and save'
                             : 'Discard'}
                         </Button>
                       ))}

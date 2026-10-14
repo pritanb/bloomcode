@@ -270,7 +270,7 @@ class FocusedEvidenceTests(unittest.TestCase):
             self.assertEqual(calls[-1], ('get_recent_attempts', {'limit':5, 'problem':'Two Sum'}))
             with self.assertRaises(ValueError): provider.resolve('this', None)
 
-    def test_followup_reads_fresh_access_attempt_and_preferences_only(self):
+    def test_followup_reads_fresh_access_attempt_preferences_and_lessons_only(self):
         from contextlib import asynccontextmanager
         from unittest.mock import patch
         from tutor.coaching.evidence import Evidence
@@ -284,12 +284,14 @@ class FocusedEvidenceTests(unittest.TestCase):
                 'get_tutor_access': {'allowed': True},
                 'get_attempt_context': {'attempt': {'id':'a', 'status':'completed', 'version':2, 'code':'new code'}, 'history':[{'id':'old'}]},
                 'get_tutor_preferences': {'hintStyle':'direct', 'version':3},
+                'get_tutor_notes': {'notes': [{'id': 'n1', 'text': 'Ask before hinting.', 'topic': None}], 'hasMore': False},
             }[tool]
         with patch('tutor.coaching.evidence.platform_session', session), patch('tutor.coaching.evidence.call', call):
             result = Evidence(None).followup('a')
-        self.assertEqual(calls, ['get_tutor_access', 'get_attempt_context', 'get_tutor_preferences'])
+        self.assertEqual(calls, ['get_tutor_access', 'get_attempt_context', 'get_tutor_preferences', 'get_tutor_notes'])
         self.assertEqual(result['records'][0]['attempt']['version'], 2)
         self.assertEqual(result['preferences']['version'], 3)
+        self.assertEqual(result['tutorNotes']['notes'][0]['text'], 'Ask before hinting.')
         self.assertEqual(result['ids'], ['a'])
         self.assertNotIn('snapshot', result)
         self.assertNotIn('insights', result)

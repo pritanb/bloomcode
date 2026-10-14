@@ -51,7 +51,7 @@ class Evidence:
         return asyncio.run(read())
 
     def followup(self, id):
-        """Fresh access, selected attempt and preferences; no broad history or insights."""
+        """Fresh access, selected attempt, preferences and lessons; no broad history or insights."""
         async def read():
             async with platform_session(self.config) as session:
                 access = await call(session, 'get_tutor_access', {})
@@ -62,13 +62,20 @@ class Evidence:
                     raise PermissionError('Coaching requires a completed attempt.')
                 chosen = compact(context)
                 preferences = {'status': 'unavailable'}
+                lessons = {'status': 'unavailable'}
                 try:
                     preferences = {'status': 'available', **await call(session, 'get_tutor_preferences', {})}
                 except PermissionError:
                     raise
                 except RuntimeError:
                     pass
-                return {'records': [chosen], 'preferences': preferences, 'ids': [id],
+                try:
+                    lessons = {'status': 'available', **await call(session, 'get_tutor_notes', {})}
+                except PermissionError:
+                    raise
+                except RuntimeError:
+                    pass
+                return {'records': [chosen], 'preferences': preferences, 'tutorNotes': lessons, 'ids': [id],
                         'scope': 'Selected completed attempt only; request broader evidence for comparisons',
                         'fingerprint': hashlib.sha256(json.dumps(chosen, sort_keys=True).encode()).hexdigest()}
         return asyncio.run(read())

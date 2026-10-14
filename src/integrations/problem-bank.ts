@@ -39,16 +39,21 @@ const PRIORITY: [string[], string][] = [
   [['Math', 'Geometry'], 'Math & Geometry'],
 ];
 
+const dpCategory = (tags: Set<string>) =>
+  tags.has('Matrix') ? '2-D Dynamic Programming' : '1-D Dynamic Programming';
+
 /** NeetCode's own category when it has one, else the priority table. */
 export function categoryFor(q: Pick<LeetCodeQuestion, 'titleSlug' | 'topicTags'>): string {
   const own = neetcodeSourceRows.get(q.titleSlug)?.topic;
   if (own) return own;
   const tags = new Set(q.topicTags.map((t) => t.name));
+  // A trie beside DP only speeds up word lookups inside the DP (Extra Characters in a
+  // String), so the problem is DP practice, not Tries practice.
+  if (tags.has('Trie') && tags.has('Dynamic Programming')) return dpCategory(tags);
   // DP comes after the structures and backtracking that define a problem's shape.
   for (const [names, category] of PRIORITY.slice(0, 6))
     if (names.some((n) => tags.has(n))) return category;
-  if (tags.has('Dynamic Programming'))
-    return tags.has('Matrix') ? '2-D Dynamic Programming' : '1-D Dynamic Programming';
+  if (tags.has('Dynamic Programming')) return dpCategory(tags);
   for (const [names, category] of PRIORITY.slice(6))
     if (names.some((n) => tags.has(n))) return category;
   return 'Arrays & Hashing';

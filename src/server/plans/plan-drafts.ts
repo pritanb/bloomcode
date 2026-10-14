@@ -9,6 +9,8 @@ import { readSettings } from '../db/settings.js';
 import { studyDate } from '../attempts/attempt-model.js';
 import { assertMetadataVisible, problemViews } from '../catalogue/problem-model.js';
 import { findPlan, planItems } from './plan-model.js';
+import { activeNotes } from '../topics/tutor-notes.js';
+import { notesInBudget } from '../../shared/tutor-notes.js';
 import {
   applyPlanChange,
   ensurePlan,
@@ -140,6 +142,11 @@ export class PlanDrafts implements BloomPlanner {
           db,
           "SELECT text, createdAt FROM learning_goals WHERE state = 'active' ORDER BY updatedAt DESC LIMIT 10",
         ).map((g) => ({ text: g.text, agreedOn: g.createdAt.slice(0, 10) })),
+        // Lessons the learner confirmed about Bloom's tutoring, for the topics on offer today.
+        tutorNotes: notesInBudget(activeNotes(db), () => [
+          ...candidates.map((c) => c.topic),
+          ...checks.map((c) => c.topic),
+        ]).notes.map((n) => ({ lesson: n.text, topic: n.topic })),
         topicLevels: levels.map((l) => ({
           topic: l.topic,
           level: l.level,

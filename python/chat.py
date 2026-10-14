@@ -19,6 +19,7 @@ def review_changes(tutor) -> None:
         ("goal", tutor.pending_goals, tutor.confirm_goal),
         ("preferences", tutor.pending_preferences, tutor.confirm_preferences),
         ("plan", tutor.pending_plan, tutor.confirm_plan),
+        ("lesson", tutor.pending_notes, tutor.confirm_note),
     ]:
         _review_proposals(label, pending, confirm)
 

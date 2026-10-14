@@ -9,6 +9,7 @@ import type { Settings as SettingsData, Dashboard, DailyPlan } from '../../../sh
 import { defaultRecommendations } from '../../../shared/recommendations';
 import { api } from '../../app/api';
 import { TutorSettings } from './TutorSettings';
+import { TutorLessons } from './TutorLessons';
 import { AccentPicker } from '../../app/theme';
 import { Icon, dateLabel, ErrorNotice, Field, Loading, useAction } from '../../components/ui';
 import { FillPage, IconTile, PageHeader, Panel, ScrollRegion } from '../../components/kit';
@@ -224,6 +225,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
           <AccentPicker />
         </Panel>
         <TutorSettings />
+        <TutorLessons />
         <Panel title="Your data" icon={Database}>
           <div className="flex items-center gap-3.5 rounded-2xl bg-muted px-4 py-3.5">
             <IconTile icon={HardDriveDownload} className="bg-card" />
