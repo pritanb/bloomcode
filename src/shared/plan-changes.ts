@@ -5,6 +5,8 @@ export const planPick = z
     problemId: z.string().min(1).max(200),
     title: z.string().trim().min(1).max(200),
     reason: z.string().trim().min(1).max(500),
+    /** The earlier problem whose due idea this pick checks. */
+    reviewOf: z.string().min(1).max(200).optional(),
   })
   .strict();
 export type PlanPick = z.infer<typeof planPick>;

@@ -29,7 +29,7 @@ import {
   getPlan,
   findPlan,
 } from './plan-model.js';
-import { defaultPicks, shortlist, type PlanSpec } from './shortlist.js';
+import { attemptedIds, checkPicks, defaultPicks, shortlist, type PlanSpec } from './shortlist.js';
 import { targetRating, trainingLevels } from '../topics/training-levels.js';
 import { problemRating } from '../topics/ratings.js';
 
@@ -212,6 +212,20 @@ export function ensurePlan(
   fillWithRules(db, clock, plan.id);
   return planView(db, getPlan(db, plan.id));
 }
+/**
+ * What chat may propose today: up to ten candidates per topic, and each due check not yet
+ * on today's plan with the different problem it is served as.
+ */
+function chatShortlist(db: Db, now: Date) {
+  const { timezone } = readSettings(db);
+  const plan = findPlan(db, studyDate(now, timezone), timezone);
+  const items = plan ? planItems(db, "WHERE i.planId = ? AND i.status != 'skipped'", plan.id) : [];
+  const served = new Set(items.flatMap((i) => (i.reviewOf ? [i.reviewOf] : [])));
+  const full = shortlist(db, now, { perTopic: 10 });
+  const list = { ...full, checks: full.checks.filter((c) => !served.has(c.problemId)) };
+  return { list, picks: checkPicks(db, list, new Set(items.map((i) => i.problemId))) };
+}
+
 export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
   app.decorate('bloomPlanner', null);
   app.get('/api/training-levels', () => {
@@ -224,18 +238,18 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
       .object({ topic: z.string().min(1).max(100).optional() })
       .strict()
       .parse(req.query);
-    const list = shortlist(db, clock(), { topic: q.topic, perTopic: q.topic ? 10 : 5 });
-    // An idea already on today's plan isn't due again today.
-    const { timezone } = readSettings(db);
-    const plan = findPlan(db, studyDate(clock(), timezone), timezone);
-    const served = new Set(
-      plan
-        ? planItems(db, "WHERE i.planId = ? AND i.status != 'skipped'", plan.id).flatMap((i) =>
-            i.reviewOf ? [i.reviewOf] : [],
-          )
-        : [],
-    );
-    return { ...list, checks: list.checks.filter((c) => !served.has(c.problemId)) };
+    const { list, picks } = chatShortlist(db, clock());
+    const perTopic = q.topic ? 10 : 5;
+    return {
+      ...list,
+      topics: list.topics
+        .filter((t) => !q.topic || t.topic === q.topic)
+        .map((t) => ({ ...t, problems: t.problems.slice(0, perTopic) })),
+      // A check is proposed as the different problem it is served as today.
+      checks: list.checks
+        .filter((c) => !q.topic || c.topic === q.topic)
+        .map((c) => ({ ...c, serveAs: picks.get(c.problemId)?.title ?? null })),
+    };
   });
   app.post<{ Params: { id: string } }>('/api/daily-plans/:id/reorder', (req) => {
     const b = z
@@ -309,8 +323,10 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
     const settings = readSettings(db);
     const plan = findPlan(db, studyDate(clock(), settings.timezone), settings.timezone);
     const items = plan ? planItems(db, 'WHERE i.planId = ?', plan.id) : [];
-    const list = shortlist(db, clock(), { perTopic: 10 });
+    const { list, picks } = chatShortlist(db, clock());
     const offered = new Set(list.topics.flatMap((t) => t.problems).map((p) => p.problemId));
+    const checkOf = new Map([...picks].map(([check, spec]) => [spec.problemId, check]));
+    const attempted = attemptedIds(db);
     type Row = { id: string; title: string; slug: string; difficulty: string | null };
     return {
       results: title.map((requested) => {
@@ -328,7 +344,9 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
             onPlan: !!item,
             started: !!item && isStarted(db, item),
             rating: problemRating(db, exact),
-            onShortlist: offered.has(exact.id),
+            onShortlist: offered.has(exact.id) || checkOf.has(exact.id),
+            attempted: attempted.has(exact.id),
+            reviewOf: checkOf.get(exact.id) ?? null,
           };
         }
         const like = `%${requested.toLowerCase().replace(/[\\%_]/g, (c) => '\\' + c)}%`;

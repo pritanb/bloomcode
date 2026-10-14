@@ -93,7 +93,7 @@ Bloom decides each day's questions; with the tutor off, paused or failing, simpl
 
 Finishing a check moves the original idea's schedule on; the check problem gets none of its own. Two solo solves of an idea two weeks apart retire it. After a check, Bloom's attempt report names the shared idea.
 
-**Each day.** When Today first opens, Bloom plans in the background (the plan waits for it): goals first, then weak topics and recent struggles, due checks up to about half the day, easier first. Its picks become the plan, with a one-line summary; **Re-plan** asks again for unstarted questions. If Bloom fails, the built-in rules fill the day: due checks, then the weakest topics, one problem each. In chat, Bloom proposes changes from the same candidates — the app refuses anything else — and nothing changes until you confirm.
+**Each day.** When Today first opens, Bloom plans in the background (the plan waits for it): goals first, then weak topics and recent struggles, due checks up to about half the day, easier first. Its picks become the plan, with a one-line summary; **Re-plan** asks again for unstarted questions. If Bloom fails, the built-in rules fill the day: due checks, then the weakest topics, one problem each. In chat, Bloom proposes changes from the same candidates and due checks (each served as its different problem) — the app refuses its other picks — and nothing changes until you confirm. Problems you name yourself are proposed as asked, even ones you have done before or above your level; a redo counts as an ordinary attempt.
 
 ## Learning Insights
 
