@@ -8,170 +8,170 @@
       "sections": [
         {
           "name": "Sliding Window",
-          "slugs": [
-            "maximum-points-you-can-obtain-from-cards",
-            "maximum-sum-of-distinct-subarrays-with-length-k",
-            "longest-substring-without-repeating-characters",
-            "longest-repeating-character-replacement"
+          "problems": [
+            { "slug": "maximum-points-you-can-obtain-from-cards", "title": "Maximum Points You Can Obtain from Cards", "difficulty": "Medium", "topic": "Sliding Window" },
+            { "slug": "maximum-sum-of-distinct-subarrays-with-length-k", "title": "Maximum Sum of Distinct Subarrays With Length K", "difficulty": "Medium", "topic": "Sliding Window" },
+            { "slug": "longest-substring-without-repeating-characters", "title": "Longest Substring Without Repeating Characters", "difficulty": "Medium", "topic": "Sliding Window" },
+            { "slug": "longest-repeating-character-replacement", "title": "Longest Repeating Character Replacement", "difficulty": "Medium", "topic": "Sliding Window" }
           ]
         },
         {
           "name": "Two Pointers",
-          "slugs": [
-            "container-with-most-water",
-            "two-sum-ii-input-array-is-sorted",
-            "3sum",
-            "valid-triangle-number",
-            "move-zeroes",
-            "sort-colors",
-            "trapping-rain-water"
+          "problems": [
+            { "slug": "container-with-most-water", "title": "Container With Most Water", "difficulty": "Medium", "topic": "Two Pointers" },
+            { "slug": "two-sum-ii-input-array-is-sorted", "title": "Two Sum II - Input Array Is Sorted", "difficulty": "Medium", "topic": "Two Pointers" },
+            { "slug": "3sum", "title": "3Sum", "difficulty": "Medium", "topic": "Two Pointers" },
+            { "slug": "valid-triangle-number", "title": "Valid Triangle Number", "difficulty": "Medium", "topic": "Binary Search" },
+            { "slug": "move-zeroes", "title": "Move Zeroes", "difficulty": "Easy", "topic": "Two Pointers" },
+            { "slug": "sort-colors", "title": "Sort Colors", "difficulty": "Medium", "topic": "Two Pointers" },
+            { "slug": "trapping-rain-water", "title": "Trapping Rain Water", "difficulty": "Hard", "topic": "Two Pointers" }
           ]
         },
         {
           "name": "Intervals",
-          "slugs": [
-            "meeting-rooms",
-            "insert-interval",
-            "non-overlapping-intervals",
-            "merge-intervals",
-            "employee-free-time"
+          "problems": [
+            { "slug": "meeting-rooms", "title": "Meeting Rooms", "difficulty": "Easy", "topic": "Intervals" },
+            { "slug": "insert-interval", "title": "Insert Interval", "difficulty": "Medium", "topic": "Intervals" },
+            { "slug": "non-overlapping-intervals", "title": "Non-overlapping Intervals", "difficulty": "Medium", "topic": "Intervals" },
+            { "slug": "merge-intervals", "title": "Merge Intervals", "difficulty": "Medium", "topic": "Intervals" },
+            { "slug": "employee-free-time", "title": "Employee Free Time", "difficulty": "Hard", "topic": "Heap / Priority Queue" }
           ]
         },
         {
           "name": "Stack",
-          "slugs": [
-            "valid-parentheses",
-            "decode-string",
-            "longest-valid-parentheses",
-            "daily-temperatures",
-            "largest-rectangle-in-histogram"
+          "problems": [
+            { "slug": "valid-parentheses", "title": "Valid Parentheses", "difficulty": "Easy", "topic": "Stack" },
+            { "slug": "decode-string", "title": "Decode String", "difficulty": "Medium", "topic": "Stack" },
+            { "slug": "longest-valid-parentheses", "title": "Longest Valid Parentheses", "difficulty": "Hard", "topic": "1-D Dynamic Programming" },
+            { "slug": "daily-temperatures", "title": "Daily Temperatures", "difficulty": "Medium", "topic": "Stack" },
+            { "slug": "largest-rectangle-in-histogram", "title": "Largest Rectangle in Histogram", "difficulty": "Hard", "topic": "Stack" }
           ]
         },
         {
           "name": "Linked List",
-          "slugs": [
-            "linked-list-cycle",
-            "palindrome-linked-list",
-            "remove-nth-node-from-end-of-list",
-            "reorder-list",
-            "swap-nodes-in-pairs"
+          "problems": [
+            { "slug": "linked-list-cycle", "title": "Linked List Cycle", "difficulty": "Easy", "topic": "Linked List" },
+            { "slug": "palindrome-linked-list", "title": "Palindrome Linked List", "difficulty": "Easy", "topic": "Two Pointers" },
+            { "slug": "remove-nth-node-from-end-of-list", "title": "Remove Nth Node From End of List", "difficulty": "Medium", "topic": "Linked List" },
+            { "slug": "reorder-list", "title": "Reorder List", "difficulty": "Medium", "topic": "Linked List" },
+            { "slug": "swap-nodes-in-pairs", "title": "Swap Nodes in Pairs", "difficulty": "Medium", "topic": "Linked List" }
           ]
         },
         {
           "name": "Binary Search",
-          "slugs": [
-            "koko-eating-bananas",
-            "search-in-rotated-sorted-array",
-            "split-array-largest-sum",
-            "kth-smallest-element-in-a-sorted-matrix",
-            "capacity-to-ship-packages-within-d-days"
+          "problems": [
+            { "slug": "koko-eating-bananas", "title": "Koko Eating Bananas", "difficulty": "Medium", "topic": "Binary Search" },
+            { "slug": "search-in-rotated-sorted-array", "title": "Search in Rotated Sorted Array", "difficulty": "Medium", "topic": "Binary Search" },
+            { "slug": "split-array-largest-sum", "title": "Split Array Largest Sum", "difficulty": "Hard", "topic": "1-D Dynamic Programming" },
+            { "slug": "kth-smallest-element-in-a-sorted-matrix", "title": "Kth Smallest Element in a Sorted Matrix", "difficulty": "Medium", "topic": "Heap / Priority Queue" },
+            { "slug": "capacity-to-ship-packages-within-d-days", "title": "Capacity To Ship Packages Within D Days", "difficulty": "Medium", "topic": "Binary Search" }
           ]
         },
         {
           "name": "Heap",
-          "slugs": [
-            "kth-largest-element-in-an-array",
-            "k-closest-points-to-origin",
-            "find-k-closest-elements",
-            "merge-k-sorted-lists",
-            "find-median-from-data-stream"
+          "problems": [
+            { "slug": "kth-largest-element-in-an-array", "title": "Kth Largest Element in an Array", "difficulty": "Medium", "topic": "Heap / Priority Queue" },
+            { "slug": "k-closest-points-to-origin", "title": "K Closest Points to Origin", "difficulty": "Medium", "topic": "Heap / Priority Queue" },
+            { "slug": "find-k-closest-elements", "title": "Find K Closest Elements", "difficulty": "Medium", "topic": "Heap / Priority Queue" },
+            { "slug": "merge-k-sorted-lists", "title": "Merge k Sorted Lists", "difficulty": "Hard", "topic": "Linked List" },
+            { "slug": "find-median-from-data-stream", "title": "Find Median from Data Stream", "difficulty": "Hard", "topic": "Heap / Priority Queue" }
           ]
         },
         {
           "name": "Depth-First Search",
-          "slugs": [
-            "maximum-depth-of-binary-tree",
-            "path-sum",
-            "validate-binary-search-tree",
-            "binary-tree-tilt",
-            "diameter-of-binary-tree",
-            "path-sum-ii",
-            "longest-univalue-path",
-            "clone-graph",
-            "graph-valid-tree",
-            "flood-fill",
-            "number-of-islands",
-            "surrounded-regions",
-            "pacific-atlantic-water-flow"
+          "problems": [
+            { "slug": "maximum-depth-of-binary-tree", "title": "Maximum Depth of Binary Tree", "difficulty": "Easy", "topic": "Trees" },
+            { "slug": "path-sum", "title": "Path Sum", "difficulty": "Easy", "topic": "Trees" },
+            { "slug": "validate-binary-search-tree", "title": "Validate Binary Search Tree", "difficulty": "Medium", "topic": "Trees" },
+            { "slug": "binary-tree-tilt", "title": "Binary Tree Tilt", "difficulty": "Easy", "topic": "Trees" },
+            { "slug": "diameter-of-binary-tree", "title": "Diameter of Binary Tree", "difficulty": "Easy", "topic": "Trees" },
+            { "slug": "path-sum-ii", "title": "Path Sum II", "difficulty": "Medium", "topic": "Trees" },
+            { "slug": "longest-univalue-path", "title": "Longest Univalue Path", "difficulty": "Medium", "topic": "Trees" },
+            { "slug": "clone-graph", "title": "Clone Graph", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "graph-valid-tree", "title": "Graph Valid Tree", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "flood-fill", "title": "Flood Fill", "difficulty": "Easy", "topic": "Graphs" },
+            { "slug": "number-of-islands", "title": "Number of Islands", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "surrounded-regions", "title": "Surrounded Regions", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "pacific-atlantic-water-flow", "title": "Pacific Atlantic Water Flow", "difficulty": "Medium", "topic": "Graphs" }
           ]
         },
         {
           "name": "Breadth-First Search",
-          "slugs": [
-            "binary-tree-right-side-view",
-            "binary-tree-zigzag-level-order-traversal",
-            "maximum-width-of-binary-tree",
-            "minimum-knight-moves",
-            "rotting-oranges",
-            "01-matrix",
-            "bus-routes"
+          "problems": [
+            { "slug": "binary-tree-right-side-view", "title": "Binary Tree Right Side View", "difficulty": "Medium", "topic": "Trees" },
+            { "slug": "binary-tree-zigzag-level-order-traversal", "title": "Binary Tree Zigzag Level Order Traversal", "difficulty": "Medium", "topic": "Trees" },
+            { "slug": "maximum-width-of-binary-tree", "title": "Maximum Width of Binary Tree", "difficulty": "Medium", "topic": "Trees" },
+            { "slug": "minimum-knight-moves", "title": "Minimum Knight Moves", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "rotting-oranges", "title": "Rotting Oranges", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "01-matrix", "title": "01 Matrix", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "bus-routes", "title": "Bus Routes", "difficulty": "Hard", "topic": "Graphs" }
           ]
         },
         {
           "name": "Backtracking",
-          "slugs": [
-            "word-search",
-            "subsets",
-            "generate-parentheses",
-            "combination-sum",
-            "palindrome-partitioning",
-            "n-queens"
+          "problems": [
+            { "slug": "word-search", "title": "Word Search", "difficulty": "Medium", "topic": "Backtracking" },
+            { "slug": "subsets", "title": "Subsets", "difficulty": "Medium", "topic": "Backtracking" },
+            { "slug": "generate-parentheses", "title": "Generate Parentheses", "difficulty": "Medium", "topic": "Stack" },
+            { "slug": "combination-sum", "title": "Combination Sum", "difficulty": "Medium", "topic": "Backtracking" },
+            { "slug": "palindrome-partitioning", "title": "Palindrome Partitioning", "difficulty": "Medium", "topic": "Backtracking" },
+            { "slug": "n-queens", "title": "N-Queens", "difficulty": "Hard", "topic": "Backtracking" }
           ]
         },
         {
           "name": "Graphs",
-          "slugs": [
-            "course-schedule",
-            "course-schedule-ii",
-            "network-delay-time",
-            "cheapest-flights-within-k-stops",
-            "path-with-minimum-effort",
-            "find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance"
+          "problems": [
+            { "slug": "course-schedule", "title": "Course Schedule", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "course-schedule-ii", "title": "Course Schedule II", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "network-delay-time", "title": "Network Delay Time", "difficulty": "Medium", "topic": "Advanced Graphs" },
+            { "slug": "cheapest-flights-within-k-stops", "title": "Cheapest Flights Within K Stops", "difficulty": "Medium", "topic": "Advanced Graphs" },
+            { "slug": "path-with-minimum-effort", "title": "Path With Minimum Effort", "difficulty": "Medium", "topic": "Graphs" },
+            { "slug": "find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance", "title": "Find the City With the Smallest Number of Neighbors at a Threshold Distance", "difficulty": "Medium", "topic": "Advanced Graphs" }
           ]
         },
         {
           "name": "Dynamic Programming",
-          "slugs": [
-            "counting-bits",
-            "decode-ways",
-            "unique-paths",
-            "maximal-square",
-            "longest-increasing-subsequence",
-            "word-break",
-            "maximum-profit-in-job-scheduling",
-            "paint-house",
-            "paint-house-ii",
-            "minimum-window-subsequence"
+          "problems": [
+            { "slug": "counting-bits", "title": "Counting Bits", "difficulty": "Easy", "topic": "Bit Manipulation" },
+            { "slug": "decode-ways", "title": "Decode Ways", "difficulty": "Medium", "topic": "1-D Dynamic Programming" },
+            { "slug": "unique-paths", "title": "Unique Paths", "difficulty": "Medium", "topic": "2-D Dynamic Programming" },
+            { "slug": "maximal-square", "title": "Maximal Square", "difficulty": "Medium", "topic": "2-D Dynamic Programming" },
+            { "slug": "longest-increasing-subsequence", "title": "Longest Increasing Subsequence", "difficulty": "Medium", "topic": "1-D Dynamic Programming" },
+            { "slug": "word-break", "title": "Word Break", "difficulty": "Medium", "topic": "1-D Dynamic Programming" },
+            { "slug": "maximum-profit-in-job-scheduling", "title": "Maximum Profit in Job Scheduling", "difficulty": "Hard", "topic": "1-D Dynamic Programming" },
+            { "slug": "paint-house", "title": "Paint House", "difficulty": "Medium", "topic": "1-D Dynamic Programming" },
+            { "slug": "paint-house-ii", "title": "Paint House II", "difficulty": "Hard", "topic": "1-D Dynamic Programming" },
+            { "slug": "minimum-window-subsequence", "title": "Minimum Window Subsequence", "difficulty": "Hard", "topic": "1-D Dynamic Programming" }
           ]
         },
         {
           "name": "Greedy",
-          "slugs": [
-            "best-time-to-buy-and-sell-stock",
-            "gas-station",
-            "jump-game",
-            "jump-game-ii",
-            "partition-labels"
+          "problems": [
+            { "slug": "best-time-to-buy-and-sell-stock", "title": "Best Time to Buy and Sell Stock", "difficulty": "Easy", "topic": "Sliding Window" },
+            { "slug": "gas-station", "title": "Gas Station", "difficulty": "Medium", "topic": "Greedy" },
+            { "slug": "jump-game", "title": "Jump Game", "difficulty": "Medium", "topic": "Greedy" },
+            { "slug": "jump-game-ii", "title": "Jump Game II", "difficulty": "Medium", "topic": "Greedy" },
+            { "slug": "partition-labels", "title": "Partition Labels", "difficulty": "Medium", "topic": "Greedy" }
           ]
         },
         {
           "name": "Trie",
-          "slugs": [
-            "implement-trie-prefix-tree"
+          "problems": [
+            { "slug": "implement-trie-prefix-tree", "title": "Implement Trie (Prefix Tree)", "difficulty": "Medium", "topic": "Tries" }
           ]
         },
         {
           "name": "Prefix Sum",
-          "slugs": [
-            "subarray-sum-equals-k"
+          "problems": [
+            { "slug": "subarray-sum-equals-k", "title": "Subarray Sum Equals K", "difficulty": "Medium", "topic": "Arrays & Hashing" }
           ]
         },
         {
           "name": "Matrices",
-          "slugs": [
-            "spiral-matrix",
-            "rotate-image",
-            "set-matrix-zeroes"
+          "problems": [
+            { "slug": "spiral-matrix", "title": "Spiral Matrix", "difficulty": "Medium", "topic": "Math & Geometry" },
+            { "slug": "rotate-image", "title": "Rotate Image", "difficulty": "Medium", "topic": "Math & Geometry" },
+            { "slug": "set-matrix-zeroes", "title": "Set Matrix Zeroes", "difficulty": "Medium", "topic": "Math & Geometry" }
           ]
         }
       ]
