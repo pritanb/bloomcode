@@ -243,6 +243,19 @@ export function practiceAfter(
     : null;
 }
 
+/** What each due check is served as today, skipping problems in `exclude` (see practiceAfter). */
+export function checkPicks(db: Db, list: Shortlist, exclude: Set<string>) {
+  const used = new Set(exclude);
+  return new Map(
+    list.checks.flatMap((check) => {
+      const spec = practiceAfter(db, list, check, used);
+      if (!spec) return [];
+      used.add(spec.problemId);
+      return [[check.problemId, spec] as const];
+    }),
+  );
+}
+
 /** The day without a model: due checks first, then the weakest topics, one problem each. */
 export function defaultPicks(
   db: Db,
