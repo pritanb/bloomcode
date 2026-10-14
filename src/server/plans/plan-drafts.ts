@@ -34,6 +34,7 @@ import {
 } from './shortlist.js';
 import { scoredAttempts, trainingLevels } from '../topics/training-levels.js';
 import { problemRating } from '../topics/ratings.js';
+import { listedIds } from './study-list.js';
 import type { BloomPlanStatus } from '../../shared/plan-drafts.js';
 
 const LEASE_MS = 240_000;
@@ -115,10 +116,14 @@ export class PlanDrafts implements BloomPlanner {
       settings = readSettings(db),
       items = planItems(db, 'WHERE i.planId = ?', planId),
       startedItems = items.filter((i) => isStarted(db, i)),
-      started = new Set(startedItems.map((i) => i.problemId)),
+      // Study-list problems stay on the plan; Bloom fills only the slots left.
+      listed = listedIds(db),
+      fromList = items.filter((i) => !isStarted(db, i) && listed.has(i.problemId)),
+      kept = [...startedItems, ...fromList],
+      started = new Set(kept.map((i) => i.problemId)),
       served = new Set(startedItems.flatMap((i) => (i.reviewOf ? [i.reviewOf] : []))),
       slots = slotsFor(settings),
-      done = startedItems.filter((i) => i.status !== 'skipped').length,
+      done = kept.filter((i) => i.status !== 'skipped').length,
       list = shortlist(db, now, { exclude: started }),
       candidates = list.topics.flatMap((t) => t.problems.map((p) => ({ ...p, topic: t.topic }))),
       checks = list.checks.filter((c) => !served.has(c.problemId)),
@@ -172,6 +177,7 @@ export class PlanDrafts implements BloomPlanner {
            ORDER BY o.createdAt DESC LIMIT 5`,
         ).map((o) => o.summary.slice(0, 300)),
         alreadyStartedToday: startedItems.map((i) => ({ title: i.title, status: i.status })),
+        fromStudyList: fromList.map((i) => i.title),
         checks: checks.map((c, index) => ({
           checkNumber: index + 1,
           kind: c.kind,
@@ -302,7 +308,8 @@ export class PlanDrafts implements BloomPlanner {
       // Superseded meanwhile (the rules or a confirmed chat change took over): drop it.
       const row = this.row(work.planId);
       if (row?.claimId !== work.claimId || row.status !== 'running') return;
-      applyPlanChange(db, work.planId, 'replace', specs);
+      const listed = listedIds(db);
+      applyPlanChange(db, work.planId, 'replace', specs, (i) => listed.has(i.problemId));
       run(
         db,
         "UPDATE plan_drafts SET status = 'applied', summary = ?, items = ?, error = NULL WHERE planId = ?",

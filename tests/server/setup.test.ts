@@ -159,7 +159,7 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   old.exec(`ALTER TABLE settings ADD COLUMN budgetMinutes INTEGER NOT NULL DEFAULT 40;
     ALTER TABLE plan_items ADD COLUMN suggestedMinutes INTEGER NOT NULL DEFAULT 13;`);
   old.exec(
-    'DROP TABLE tutor_notes; DROP TABLE learning_goals; DROP TABLE tutor_preferences; DROP TABLE plan_drafts; DROP TABLE rating_estimates; DROP TABLE problem_popularity; DROP TABLE attempt_signals; ALTER TABLE plan_items DROP COLUMN reviewOf',
+    'DROP TABLE study_list; ALTER TABLE settings DROP COLUMN planSource; ALTER TABLE settings DROP COLUMN studyListName; DROP TABLE tutor_notes; DROP TABLE learning_goals; DROP TABLE tutor_preferences; DROP TABLE plan_drafts; DROP TABLE rating_estimates; DROP TABLE problem_popularity; DROP TABLE attempt_signals; ALTER TABLE plan_items DROP COLUMN reviewOf',
   );
   old.pragma('user_version = 7');
   old.close();
@@ -189,7 +189,7 @@ it('drops the unused minute budgets from a version 7 workspace and keeps plannin
   const db = openDb(dbPath);
   const columns = (table: string) =>
     (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name);
-  expect(db.pragma('user_version', { simple: true })).toBe(13);
+  expect(db.pragma('user_version', { simple: true })).toBe(14);
   expect(columns('plan_drafts')).toContain('items');
   expect(columns('tutor_notes')).toContain('topic');
   expect(columns('settings')).not.toContain('budgetMinutes');

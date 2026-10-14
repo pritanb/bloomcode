@@ -7,7 +7,7 @@ import { createApp } from '../../src/server/core/app.js';
 import { callTool } from '../../src/integrations/mcp.js';
 import type { LocalApi } from '../../src/integrations/local-api.js';
 
-let app: Awaited<ReturnType<typeof createApp>>, dir: string, scoped: string;
+let app: Awaited<ReturnType<typeof createApp>>, dir: string, scoped: string, now: Date;
 const request = (
   method: 'GET' | 'POST',
   url: string,
@@ -23,8 +23,8 @@ const request = (
   });
 // The adapter as the tutor runs it: scoped credential, real routes.
 const tutorApi = {
-  request: async (method: 'GET' | 'POST', url: string) =>
-    (await request(method, url.replace(/^\/?/, '/'), undefined, scoped)).json(),
+  request: async (method: 'GET' | 'POST', url: string, body?: unknown) =>
+    (await request(method, url.replace(/^\/?/, '/'), body, scoped)).json(),
 } as unknown as LocalApi;
 const tool = async (name: string, args: unknown) =>
   JSON.parse((await callTool(tutorApi, name, args)).content[0]!.text);
@@ -33,10 +33,11 @@ const easy = ['Search One', 'Search Two', 'Search Three', 'Search Four'];
 const slug = (title: string) => title.toLowerCase().replaceAll(' ', '-');
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'bloom-plan-'));
+  now = new Date('2026-10-01T09:00:00Z');
   app = await createApp({
     dbPath: join(dir, 'study.sqlite'),
     token: 'host',
-    clock: () => new Date('2026-10-01T09:00:00Z'),
+    clock: () => now,
   });
   scoped = readFileSync(join(dir, 'tutor-token'), 'utf8').trim();
   // A fresh learner's Binary Search window is 1,150–1,350: Easy (≈1,252) fits, Hard doesn't.
@@ -378,3 +379,204 @@ test('an idea is checked at most once a day, even when Bloom repeats a problem',
 async function draftFailure(run: (answer: () => object) => Promise<boolean>) {
   await run(() => ({ summary: 'x', items: [] }));
 }
+
+async function finish(problemId: string, planItemId?: string) {
+  const a = (
+    await request('POST', '/api/attempts', { problemId, planItemId, context: 'targeted' })
+  ).json();
+  await request(
+    'POST',
+    `/api/attempts/${a.id}/finish`,
+    { version: a.version, outcome: 'solved', help: 'none', activeSeconds: 600 },
+    'host',
+    `finish-${a.id}`,
+  );
+}
+const planFrom = (planSource: 'bloom' | 'list') =>
+  app.inject({
+    method: 'PATCH',
+    url: '/api/settings',
+    headers: { authorization: 'Bearer host' },
+    payload: { planSource },
+  });
+async function setList(slugs: string[]) {
+  await planFrom('list');
+  return (await request('POST', '/api/study-list', { entries: slugs })).json();
+}
+
+test('a study list fills the day first, repeats included, and the rules fill the rest', async () => {
+  const one = (await request('GET', '/api/problems?search=Search%20One')).json().items[0];
+  await finish(one.id); // solved before it was listed: still on the list
+  now = new Date('2026-10-01T10:00:00Z');
+  expect(await setList(['search-hard', 'search-one', 'not-in-library', 'search-two'])).toEqual({
+    planSource: 'list',
+    name: null,
+    slugs: ['search-hard', 'search-one', 'not-in-library', 'search-two'],
+    remaining: ['Search Hard', 'Search One', 'Search Two'],
+    finished: [],
+    notInLibrary: ['not-in-library'],
+    unmatched: [],
+  });
+  const day1 = (await request('POST', '/api/daily-plan/ensure', {})).json();
+  expect(titles(day1.items)).toEqual(['Search Hard', 'Search One']);
+  expect(day1.items[0]).toMatchObject({ status: 'active', reason: 'From your study list' });
+  await finish(day1.items[0].problemId, day1.items[0].id);
+  expect((await request('GET', '/api/study-list')).json().finished).toEqual(['Search Hard']);
+
+  // The next day: unfinished problems carry over; a shorter list leaves room for the rules.
+  now = new Date('2026-10-02T09:00:00Z');
+  await setList(['search-two', 'search-hard']);
+  const day2 = (await request('POST', '/api/daily-plan/ensure', {})).json();
+  expect(day2.items).toHaveLength(2);
+  expect(day2.items[0]).toMatchObject({ title: 'Search Two', reason: 'From your study list' });
+  expect(day2.items[1].reason).not.toBe('From your study list');
+  expect(titles(day2.items)).not.toContain('Search Hard');
+  // Rebuilding the day keeps the list's problem.
+  const rebuilt = (
+    await request('POST', `/api/daily-plans/${day2.id}/rebuild`, { version: day2.version })
+  ).json();
+  expect(rebuilt.items[0].title).toBe('Search Two');
+
+  // Switched to Bloom's plan, a rebuild drops the list's unstarted problem; the list waits.
+  await planFrom('bloom');
+  const bloomDay = (
+    await request('POST', `/api/daily-plans/${day2.id}/rebuild`, { version: rebuilt.version })
+  ).json();
+  expect(bloomDay.items.map((i: { reason: string }) => i.reason)).not.toContain(
+    'From your study list',
+  );
+  expect((await request('GET', '/api/study-list')).json()).toMatchObject({
+    remaining: ['Search Two'],
+    finished: ['Search Hard'],
+  });
+  // Switched back, the next rebuild puts it first again.
+  await planFrom('list');
+  const listDay = (
+    await request('POST', `/api/daily-plans/${day2.id}/rebuild`, { version: bloomDay.version })
+  ).json();
+  expect(listDay.items[0]).toMatchObject({ title: 'Search Two', status: 'active' });
+});
+
+test('Bloom fills only the slots the study list leaves, and its re-plans keep the list', async () => {
+  await setList(['search-one']);
+  const { run } = await bloomOn();
+  const waiting = (await request('POST', '/api/daily-plan/ensure', {})).json();
+  expect(titles(waiting.items)).toEqual(['Search One']);
+  let fromList: unknown;
+  const pick = (context: Parameters<Parameters<typeof run>[0]>[0]) => {
+    fromList = (context as unknown as { fromStudyList: string[] }).fromStudyList;
+    expect(context.picksRequired).toBe(1);
+    expect(context.candidates.map((c) => c.title)).not.toContain('Search One');
+    return { summary: 'Your list, then binary search.', items: [item(1, null)] };
+  };
+  expect(await run(pick)).toBe(true);
+  expect(fromList).toEqual(['Search One']);
+  const planned = (await request('POST', '/api/daily-plan/ensure', {})).json();
+  expect(planned.items).toHaveLength(2);
+  expect(planned.items[0]).toMatchObject({ title: 'Search One', status: 'active' });
+  await request('POST', '/api/plan-drafts/today/refresh', {});
+  expect(await run(pick)).toBe(true);
+  const replanned = (await request('POST', '/api/daily-plan/ensure', {})).json();
+  expect(titles(replanned.items)[0]).toBe('Search One');
+  expect(replanned.items).toHaveLength(2);
+});
+
+test('Bloom proposes following a bundled course and handing planning back; only the host confirms', async () => {
+  const courses = (await tool('get_study_list', {})).courses;
+  expect(courses.map((c: { id: string }) => c.id)).toEqual([
+    'hello-interview',
+    'blind-75',
+    'neetcode-150',
+  ]);
+  const blind = courses.find((c: { id: string }) => c.id === 'blind-75');
+  expect(blind.sections.reduce((n: number, x: { problems: number }) => n + x.problems, 0)).toBe(75);
+  // Nothing from the course in the library yet: no proposal.
+  expect(
+    await tool('propose_study_list', { planSource: 'list', set: 'hello-interview' }),
+  ).toMatchObject({ saved: false });
+  for (const title of ['Valid Parentheses', 'Decode String', 'Two Sum'])
+    await request('POST', '/api/problems', {
+      title,
+      url: `https://leetcode.com/problems/${slug(title)}/`,
+      difficulty: 'Medium',
+    });
+  expect(
+    (
+      await tool('propose_study_list', {
+        planSource: 'list',
+        set: 'hello-interview',
+        from: 'Heaps',
+      })
+    ).saved,
+  ).toBe(false); // unknown section: an error, not a proposal
+  const { proposal } = await tool('propose_study_list', {
+    planSource: 'list',
+    set: 'hello-interview',
+    from: 'stack',
+  });
+  expect(proposal).toMatchObject({
+    planSource: 'list',
+    name: 'Hello Interview',
+    preview: { inLibrary: 2, firstUp: ['Valid Parentheses', 'Decode String'] },
+  });
+  expect(proposal.slugs[0]).toBe('valid-parentheses');
+  const body = { change: proposal, sourceConversation: 'conversation-1' };
+  expect((await request('POST', '/api/study-list/changes', body, scoped, 'tutor')).statusCode).toBe(
+    403,
+  );
+  const following = (await request('POST', '/api/study-list/changes', body)).json();
+  expect(following.list).toMatchObject({ planSource: 'list', name: 'Hello Interview' });
+  expect(titles(following.plan.items).slice(0, 2)).toEqual(['Valid Parentheses', 'Decode String']);
+
+  // A new list replaces today's unstarted list problems with its own next ones.
+  const reordered = (
+    await tool('propose_study_list', {
+      planSource: 'list',
+      // As pasted from a web page: numbered titles, a link, and a problem not in the library.
+      problems: [
+        '1. Decode String',
+        'https://leetcode.com/problems/valid-parentheses/description/',
+        '3. Min Stack',
+      ],
+      name: 'Stack drill',
+    })
+  ).proposal;
+  expect(reordered.slugs).toEqual(['decode-string', 'valid-parentheses', 'min-stack']);
+  const drill = (
+    await request(
+      'POST',
+      '/api/study-list/changes',
+      { change: reordered, sourceConversation: 'conversation-1' },
+      'host',
+      'k3',
+    )
+  ).json();
+  expect(drill.list.name).toBe('Stack drill');
+  expect(titles(drill.plan.items).slice(0, 2)).toEqual(['Decode String', 'Valid Parentheses']);
+
+  // A NeetCode course from a section, matched loosely.
+  const neet = (
+    await tool('propose_study_list', { planSource: 'list', set: 'blind-75', from: 'stack' })
+  ).proposal;
+  expect(neet).toMatchObject({ name: 'Blind 75', preview: { firstUp: ['Valid Parentheses'] } });
+  expect(neet.slugs[0]).toBe('valid-parentheses');
+
+  // Back to Bloom: today's list problems go, the list waits; "list" alone resumes it.
+  const back = (await tool('propose_study_list', { planSource: 'bloom' })).proposal;
+  const bloom = (
+    await request(
+      'POST',
+      '/api/study-list/changes',
+      { change: back, sourceConversation: 'conversation-1' },
+      'host',
+      'k2',
+    )
+  ).json();
+  expect(bloom.list.planSource).toBe('bloom');
+  expect(bloom.plan.items.map((i: { reason: string }) => i.reason)).not.toContain(
+    'From your study list',
+  );
+  expect((await tool('get_study_list', {})).next).toEqual(['Decode String', 'Valid Parentheses']);
+  const resume = (await tool('propose_study_list', { planSource: 'list' })).proposal;
+  expect(resume).toMatchObject({ planSource: 'list', name: 'Stack drill', slugs: null });
+});

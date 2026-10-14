@@ -51,6 +51,7 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
     expect(tools.tools.map((t) => t.name).sort()).toEqual([
       'confirm_learning_goal',
       'confirm_plan_change',
+      'confirm_study_list',
       'confirm_tutor_note',
       'confirm_tutor_preferences',
       'finish_attempt',
@@ -59,6 +60,7 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
       'get_learning_insights',
       'get_recent_attempts',
       'get_shortlist',
+      'get_study_list',
       'get_today',
       'get_today_plan',
       'get_topic_scores',
@@ -68,6 +70,7 @@ test('stdio SDK client can search, inspect and save a reviewed attempt with a ve
       'get_tutor_preferences',
       'propose_learning_goal',
       'propose_plan_change',
+      'propose_study_list',
       'propose_tutor_note',
       'propose_tutor_preferences',
       'retrieve_learning_evidence',

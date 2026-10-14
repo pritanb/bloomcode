@@ -35,6 +35,8 @@ INSTRUCTIONS = (
     "Reason may be empty for transfer checks. "
     "tutorNotes are lessons the learner confirmed about your past picks and explanations, general or for one "
     "topic: apply them when choosing and wording picks. "
+    "fromStudyList names problems from the learner's own study list, already on today's plan; "
+    "picksRequired counts only the slots left. When a check is due, use a remaining pick for it. "
     "Decide what today targets: active goals first, then weak topics and recent struggles (topicLevels, "
     "recentAttempts with results strong/ok/struggled, recentDifficulties). Include due checks, up to "
     "about half the day, oldest checks first. Keep picks near each topic's level and keep some breadth unless "

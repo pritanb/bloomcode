@@ -1,0 +1,180 @@
+{
+  "sets": [
+    {
+      "id": "hello-interview",
+      "name": "Hello Interview",
+      "source": "https://www.hellointerview.com/learn/code",
+      "retrievedAt": "2026-10-14",
+      "sections": [
+        {
+          "name": "Sliding Window",
+          "slugs": [
+            "maximum-points-you-can-obtain-from-cards",
+            "maximum-sum-of-distinct-subarrays-with-length-k",
+            "longest-substring-without-repeating-characters",
+            "longest-repeating-character-replacement"
+          ]
+        },
+        {
+          "name": "Two Pointers",
+          "slugs": [
+            "container-with-most-water",
+            "two-sum-ii-input-array-is-sorted",
+            "3sum",
+            "valid-triangle-number",
+            "move-zeroes",
+            "sort-colors",
+            "trapping-rain-water"
+          ]
+        },
+        {
+          "name": "Intervals",
+          "slugs": [
+            "meeting-rooms",
+            "insert-interval",
+            "non-overlapping-intervals",
+            "merge-intervals",
+            "employee-free-time"
+          ]
+        },
+        {
+          "name": "Stack",
+          "slugs": [
+            "valid-parentheses",
+            "decode-string",
+            "longest-valid-parentheses",
+            "daily-temperatures",
+            "largest-rectangle-in-histogram"
+          ]
+        },
+        {
+          "name": "Linked List",
+          "slugs": [
+            "linked-list-cycle",
+            "palindrome-linked-list",
+            "remove-nth-node-from-end-of-list",
+            "reorder-list",
+            "swap-nodes-in-pairs"
+          ]
+        },
+        {
+          "name": "Binary Search",
+          "slugs": [
+            "koko-eating-bananas",
+            "search-in-rotated-sorted-array",
+            "split-array-largest-sum",
+            "kth-smallest-element-in-a-sorted-matrix",
+            "capacity-to-ship-packages-within-d-days"
+          ]
+        },
+        {
+          "name": "Heap",
+          "slugs": [
+            "kth-largest-element-in-an-array",
+            "k-closest-points-to-origin",
+            "find-k-closest-elements",
+            "merge-k-sorted-lists",
+            "find-median-from-data-stream"
+          ]
+        },
+        {
+          "name": "Depth-First Search",
+          "slugs": [
+            "maximum-depth-of-binary-tree",
+            "path-sum",
+            "validate-binary-search-tree",
+            "binary-tree-tilt",
+            "diameter-of-binary-tree",
+            "path-sum-ii",
+            "longest-univalue-path",
+            "clone-graph",
+            "graph-valid-tree",
+            "flood-fill",
+            "number-of-islands",
+            "surrounded-regions",
+            "pacific-atlantic-water-flow"
+          ]
+        },
+        {
+          "name": "Breadth-First Search",
+          "slugs": [
+            "binary-tree-right-side-view",
+            "binary-tree-zigzag-level-order-traversal",
+            "maximum-width-of-binary-tree",
+            "minimum-knight-moves",
+            "rotting-oranges",
+            "01-matrix",
+            "bus-routes"
+          ]
+        },
+        {
+          "name": "Backtracking",
+          "slugs": [
+            "word-search",
+            "subsets",
+            "generate-parentheses",
+            "combination-sum",
+            "palindrome-partitioning",
+            "n-queens"
+          ]
+        },
+        {
+          "name": "Graphs",
+          "slugs": [
+            "course-schedule",
+            "course-schedule-ii",
+            "network-delay-time",
+            "cheapest-flights-within-k-stops",
+            "path-with-minimum-effort",
+            "find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance"
+          ]
+        },
+        {
+          "name": "Dynamic Programming",
+          "slugs": [
+            "counting-bits",
+            "decode-ways",
+            "unique-paths",
+            "maximal-square",
+            "longest-increasing-subsequence",
+            "word-break",
+            "maximum-profit-in-job-scheduling",
+            "paint-house",
+            "paint-house-ii",
+            "minimum-window-subsequence"
+          ]
+        },
+        {
+          "name": "Greedy",
+          "slugs": [
+            "best-time-to-buy-and-sell-stock",
+            "gas-station",
+            "jump-game",
+            "jump-game-ii",
+            "partition-labels"
+          ]
+        },
+        {
+          "name": "Trie",
+          "slugs": [
+            "implement-trie-prefix-tree"
+          ]
+        },
+        {
+          "name": "Prefix Sum",
+          "slugs": [
+            "subarray-sum-equals-k"
+          ]
+        },
+        {
+          "name": "Matrices",
+          "slugs": [
+            "spiral-matrix",
+            "rotate-image",
+            "set-matrix-zeroes"
+          ]
+        }
+      ]
+    }
+  ]
+}

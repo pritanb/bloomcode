@@ -234,19 +234,21 @@ export function TutorChat({
                   <Panel
                     key={proposal.key}
                     title={
-                      proposal.kind === 'goal'
-                        ? 'Review goal change'
-                        : proposal.kind === 'plan'
-                          ? proposal.change.mode === 'replace'
-                            ? "Replace today's plan"
-                            : "Add to today's plan"
-                          : proposal.kind === 'note'
-                            ? {
-                                create: 'Remember this?',
-                                update: 'Update this lesson?',
-                                retire: 'Forget this lesson?',
-                              }[proposal.change.action as string]
-                            : 'Review teaching preferences'
+                      proposal.kind === 'studyList'
+                        ? studyListTitle(proposal.change)
+                        : proposal.kind === 'goal'
+                          ? 'Review goal change'
+                          : proposal.kind === 'plan'
+                            ? proposal.change.mode === 'replace'
+                              ? "Replace today's plan"
+                              : "Add to today's plan"
+                            : proposal.kind === 'note'
+                              ? {
+                                  create: 'Remember this?',
+                                  update: 'Update this lesson?',
+                                  retire: 'Forget this lesson?',
+                                }[proposal.change.action as string]
+                              : 'Review teaching preferences'
                     }
                   >
                     {proposal.kind === 'note' ? (
@@ -274,6 +276,8 @@ export function TutorChat({
                           </div>
                         )}
                       </dl>
+                    ) : proposal.kind === 'studyList' ? (
+                      <StudyListPreview change={proposal.change} />
                     ) : proposal.kind === 'plan' ? (
                       <ul className="mb-4 space-y-2">
                         {(proposal.change.items as { title: string; reason: string }[]).map(
@@ -310,11 +314,15 @@ export function TutorChat({
                       </dl>
                     )}
                     <p className="mb-3 text-sm text-muted-foreground">
-                      {proposal.kind !== 'plan'
-                        ? 'Nothing is saved until you confirm.'
-                        : proposal.change.mode === 'replace'
-                          ? 'Unstarted questions are swapped for these; started and finished work stays. Nothing changes until you confirm.'
-                          : 'Nothing is added until you confirm.'}
+                      {proposal.kind === 'studyList'
+                        ? proposal.change.planSource === 'bloom'
+                          ? 'Bloom picks each day at your level again; your list and its progress are kept. Today’s unstarted questions are re-planned once you confirm.'
+                          : 'Each day starts with the next unfinished problems, including ones you’ve solved before, and Bloom fills the rest. Today’s unstarted questions are re-planned once you confirm.'
+                        : proposal.kind !== 'plan'
+                          ? 'Nothing is saved until you confirm.'
+                          : proposal.change.mode === 'replace'
+                            ? 'Unstarted questions are swapped for these; started and finished work stays. Nothing changes until you confirm.'
+                            : 'Nothing is added until you confirm.'}
                     </p>
                     <div className="flex gap-2">
                       {[true, false].map((approved) => (
@@ -335,13 +343,17 @@ export function TutorChat({
                           }
                         >
                           {approved
-                            ? proposal.kind === 'plan'
-                              ? proposal.change.mode === 'replace'
-                                ? 'Use this plan'
-                                : 'Add to plan'
-                              : proposal.kind === 'note' && proposal.change.action === 'retire'
-                                ? 'Forget lesson'
-                                : 'Confirm and save'
+                            ? proposal.kind === 'studyList'
+                              ? proposal.change.planSource === 'bloom'
+                                ? 'Let Bloom plan'
+                                : 'Follow this list'
+                              : proposal.kind === 'plan'
+                                ? proposal.change.mode === 'replace'
+                                  ? 'Use this plan'
+                                  : 'Add to plan'
+                                : proposal.kind === 'note' && proposal.change.action === 'retire'
+                                  ? 'Forget lesson'
+                                  : 'Confirm and save'
                             : 'Discard'}
                         </Button>
                       ))}
@@ -439,5 +451,34 @@ export function TutorChat({
         )}
       </div>
     </>
+  );
+}
+
+function studyListTitle(change: Record<string, unknown>) {
+  if (change.planSource === 'bloom') return 'Let Bloom plan your days?';
+  const name = (change.name as string | null) ?? 'this study list';
+  return change.slugs ? `Follow ${name}?` : `Resume ${name}?`;
+}
+function StudyListPreview({ change }: { change: Record<string, unknown> }) {
+  const preview = change.preview as
+    { total: number; inLibrary: number; firstUp: string[] } | undefined;
+  if (change.planSource === 'bloom' || !preview) return null;
+  const missing = preview.total - preview.inLibrary;
+  return (
+    <dl className="mb-4 space-y-2">
+      <div>
+        <dt className="text-xs text-muted-foreground">Problems</dt>
+        <dd>
+          {preview.total}
+          {missing > 0 && ` · ${missing} not in your library yet (they join once added)`}
+        </dd>
+      </div>
+      {preview.firstUp.length > 0 && (
+        <div>
+          <dt className="text-xs text-muted-foreground">First up</dt>
+          <dd>{preview.firstUp.join(', ')}</dd>
+        </div>
+      )}
+    </dl>
   );
 }

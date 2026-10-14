@@ -96,8 +96,11 @@ export async function registerLocalAuth(
               '/api/daily-plan/lookup',
               '/api/training-levels',
               '/api/recommendations/shortlist',
+              '/api/study-list',
+              '/api/study-sets',
             ].includes(path) || /^\/api\/attempts\/[a-zA-Z0-9_-]+\/context$/.test(path)
-          : req.method === 'POST' && path === '/api/insights/retrieve';
+          : req.method === 'POST' &&
+            ['/api/insights/retrieve', '/api/study-list/preview'].includes(path);
       if (!allowed)
         throw new ApiError(403, 'TUTOR_SCOPE', 'This tutor credential cannot perform that action');
       return;

@@ -10,6 +10,7 @@ import {
   PREFERENCE_SCHEMA,
   PLAN_DRAFT_SCHEMA,
   TUTOR_NOTE_SCHEMA,
+  STUDY_LIST_SCHEMA,
 } from './schema.js';
 
 export type Db = Database.Database;
@@ -31,6 +32,7 @@ export type Table =
   | 'daily_plans'
   | 'plan_items'
   | 'plan_drafts'
+  | 'study_list'
   | 'rating_estimates'
   | 'problem_popularity'
   | 'attempt_signals'
@@ -51,8 +53,8 @@ export function openDb(path: string): Db {
   const version = db.pragma('user_version', { simple: true });
   if (!version)
     db.transaction(() => {
-      db.exec(SCHEMA + PLAN_DRAFT_SCHEMA + TUTOR_NOTE_SCHEMA);
-      db.pragma('user_version = 13');
+      db.exec(SCHEMA + PLAN_DRAFT_SCHEMA + TUTOR_NOTE_SCHEMA + STUDY_LIST_SCHEMA);
+      db.pragma('user_version = 14');
     })();
   // One-off: version 7 kept unused minute budgets. Delete once the live database is at 8.
   else if (version === 7)
@@ -87,6 +89,15 @@ export function openDb(path: string): Db {
     db.transaction(() => {
       retagTrieDp(db);
       db.pragma('user_version = 13');
+    })();
+  if (db.pragma('user_version', { simple: true }) === 13)
+    db.transaction(() => {
+      db.exec(STUDY_LIST_SCHEMA);
+      db.exec(
+        `ALTER TABLE settings ADD COLUMN planSource TEXT CHECK (planSource IS NULL OR planSource IN ('bloom', 'list'));
+         ALTER TABLE settings ADD COLUMN studyListName TEXT;`,
+      );
+      db.pragma('user_version = 14');
     })();
   db.prepare(
     `INSERT OR IGNORE INTO settings (id, timezone, primaryCount, optionalCount, onboardingComplete)

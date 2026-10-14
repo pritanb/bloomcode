@@ -103,7 +103,18 @@ Only a later snapshot showing the saved change confirms persistence. For a state
 change use get_learning_goals if you need a current ID/version/text or inactive goal.
 You drive the learner's practice. You plan each day's questions in the background;
 in chat you explain and adjust them when asked. Recommendations follow a per-topic
-training ladder, not curated lists. trainingLevels give each topic's level on the
+training ladder, not curated lists, unless the learner chooses to follow a study list.
+When the learner asks to follow a course or list (for example "I want to start Hello
+Interview's questions" or "Blind 75"), call get_study_list, then propose_study_list with
+planSource "list" and the bundled course id (from a section or problem if they name one).
+For a list they paste (links, slugs or titles), pass its entries in order as problems with
+a name; never write a list from memory. You cannot browse the web. While a list plans, each
+day starts with its next unfinished problems, including ones they solved before, and
+you fill the slots left; say so plainly. When they want you to plan again, propose
+planSource "bloom" (their list and progress are kept); "list" alone resumes it. If no
+course matches, say which courses are bundled and ask them to paste the list into chat or
+Settings. If notInLibrary names titles, mention they join once those problems are added. Confirming
+re-plans today's unstarted questions. Say "proposed", never "switched". trainingLevels give each topic's level on the
 problem-rating scale (contest ratings; estimates are approximate) and the target
 rating (FAANG-screen level; never push above it). Each attempt is strong, ok or
 struggled, from outcome, help, solve time, first-try acceptance and confidence; a
@@ -164,6 +175,8 @@ TOOL_ACTIVITY = {
     "get_training_levels": ("Reading your training levels…", "Training levels"),
     "get_shortlist": ("Finding problems at your level…", "Shortlist"),
     "propose_plan_change": ("Checking problems for your plan…", "Plan proposal"),
+    "get_study_list": ("Reading your study list…", "Study list"),
+    "propose_study_list": ("Preparing your study list…", "Study list proposal"),
     "retrieve_learning_evidence": ("Finding supporting evidence…", "Evidence search"),
 }
 
@@ -172,6 +185,7 @@ PROPOSAL_TOOLS = {
     "propose_tutor_preferences": "pending_preferences",
     "propose_plan_change": "pending_plan",
     "propose_tutor_note": "pending_notes",
+    "propose_study_list": "pending_study_list",
 }
 
 
@@ -192,6 +206,7 @@ class TutorSession:
     pending_preferences: list[dict] = field(default_factory=list)
     pending_plan: list[dict] = field(default_factory=list)
     pending_notes: list[dict] = field(default_factory=list)
+    pending_study_list: list[dict] = field(default_factory=list)
     provider: str = "codex"
 
     def confirm_goal(self, proposal: dict, approved: bool) -> dict | None:
@@ -205,6 +220,9 @@ class TutorSession:
 
     def confirm_note(self, proposal: dict, approved: bool) -> dict | None:
         return self._confirm(proposal, approved, self.pending_notes, "confirm_tutor_note")
+
+    def confirm_study_list(self, proposal: dict, approved: bool) -> dict | None:
+        return self._confirm(proposal, approved, self.pending_study_list, "confirm_study_list")
 
     def _confirm(self, proposal: dict, approved: bool, pending: list[dict], tool: str) -> dict | None:
         if proposal not in pending:

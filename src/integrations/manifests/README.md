@@ -15,3 +15,5 @@ The app uses its `neetcode150` and `blind75` flags and each row's category. Othe
 - License: MIT, see `LICENSE-zerotrac.txt`
 
 Problems without a contest rating get an estimate fitted on these ratings when the learner downloads the problem bank; LeetCode's own metadata is fetched on their machine and never committed here.
+
+`study-sets.json` lists courses a learner can follow as their study list (Settings or Bloom's chat), by LeetCode slug in course order and grouped by section. It is hand-made from each course's public table of contents (Hello Interview: retrieved 2026-10-14); course originals with no LeetCode problem (Level Order Sum, Prefix Matching, Count Vowels in Substrings, Maximum Sum of Subarrays of Size K) are left out. No course content is copied.

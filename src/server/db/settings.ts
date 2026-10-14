@@ -11,6 +11,7 @@ interface SettingsRow {
   autoScore: number | null;
   recommendations: string | null;
   lastBackupAt: string | null;
+  planSource: Settings['planSource'] | null;
 }
 /** The singleton settings row. Settings older installations never set stay absent. */
 export function readSettings(db: Db): Settings {
@@ -28,6 +29,7 @@ export function readSettings(db: Db): Settings {
     ...(r.questionsPerDay !== null ? { questionsPerDay: r.questionsPerDay } : {}),
     ...(r.onboardingComplete !== null ? { onboardingComplete: !!r.onboardingComplete } : {}),
     ...(r.autoScore !== null ? { autoScore: !!r.autoScore } : {}),
+    ...(r.planSource ? { planSource: r.planSource } : {}),
     ...(recommendations ? { recommendations } : {}),
   };
 }

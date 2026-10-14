@@ -1,6 +1,8 @@
 import { Disclosure } from '@/components/disclosure';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { SelectField, SelectOption } from '@/components/select-field';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, Database, HardDriveDownload, Palette, RefreshCw, Save } from 'lucide-react';
 import { useState } from 'react';
@@ -14,6 +16,26 @@ import { AccentPicker } from '../../app/theme';
 import { Icon, dateLabel, ErrorNotice, Field, Loading, useAction } from '../../components/ui';
 import { FillPage, IconTile, PageHeader, Panel, ScrollRegion } from '../../components/kit';
 import { Help, SettingsGroup } from './settings-parts';
+
+type StudyList = {
+  name: string | null;
+  slugs: string[];
+  remaining: string[];
+  finished: string[];
+  notInLibrary: string[];
+};
+/** One LeetCode link, slug or title per line, in order; the app resolves them on save. */
+const listEntries = (text: string) =>
+  text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+function listStatus(list: StudyList) {
+  const parts = [`${list.remaining.length} to go`, `${list.finished.length} finished`];
+  if (list.notInLibrary.length)
+    parts.push(`${list.notInLibrary.length} not in your library yet (they join once added)`);
+  return (list.name ? `${list.name}: ` : '') + parts.join(' · ');
+}
 
 type BankStatus = {
   state: 'idle' | 'running' | 'done' | 'failed';
@@ -65,19 +87,24 @@ export function Settings() {
     queryKey: ['settings'],
     queryFn: () => api.get<SettingsData>('/settings'),
   });
-  if (query.isPending) return <Loading />;
+  const list = useQuery({
+    queryKey: ['study-list'],
+    queryFn: () => api.get<StudyList>('/study-list'),
+  });
+  if (query.isPending || list.isPending) return <Loading />;
   if (query.isError) return <ErrorNotice error={query.error} retry={() => void query.refetch()} />;
+  if (list.isError) return <ErrorNotice error={list.error} retry={() => void list.refetch()} />;
   return (
     <>
       <PageHeader
         title="Settings & data"
         description="A workload that fits your day, with your records backed up."
       />
-      <SettingsForm settings={query.data} />
+      <SettingsForm settings={query.data} list={list.data} />
     </>
   );
 }
-function SettingsForm({ settings }: { settings: SettingsData }) {
+function SettingsForm({ settings, list }: { settings: SettingsData; list: StudyList }) {
   const [questions, setQuestions] = useState(
     settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount,
   );
@@ -85,7 +112,13 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
     settings.recommendations ?? defaultRecommendations,
   );
   const [autoScore, setAutoScore] = useState(settings.autoScore ?? true);
+  const [planSource, setPlanSource] = useState(settings.planSource ?? 'bloom');
+  const [listText, setListText] = useState(list.slugs.join('\n'));
+  const [unmatched, setUnmatched] = useState<string[]>([]);
+  const listChanged = listEntries(listText).join('\n') !== list.slugs.join('\n');
   const unsaved =
+    planSource !== (settings.planSource ?? 'bloom') ||
+    listChanged ||
     questions !== (settings.questionsPerDay ?? settings.primaryCount + settings.optionalCount) ||
     autoScore !== (settings.autoScore ?? true) ||
     JSON.stringify(recommendations) !==
@@ -97,13 +130,21 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
       version: current.plan.version,
     });
   });
-  const save = useAction(() =>
-    api.send<SettingsData>('/settings', 'PATCH', {
+  const save = useAction(async () => {
+    if (listChanged) {
+      const saved = await api.send<StudyList & { unmatched: string[] }>('/study-list', 'POST', {
+        entries: listEntries(listText),
+      });
+      setListText(saved.slugs.join('\n'));
+      setUnmatched(saved.unmatched);
+    }
+    return api.send<SettingsData>('/settings', 'PATCH', {
       questionsPerDay: questions,
       autoScore,
       recommendations,
-    }),
-  );
+      planSource,
+    });
+  });
 
   return (
     <FillPage className="min-[901px]:grid min-[901px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] min-[901px]:grid-rows-[minmax(0,1fr)]">
@@ -135,6 +176,42 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
               </Help>
             </SettingsGroup>
             <SettingsGroup title="Which questions">
+              <Field label="Daily plan from">
+                <SelectField
+                  value={planSource}
+                  onValueChange={(v) => setPlanSource(v as typeof planSource)}
+                >
+                  <SelectOption value="bloom">Bloom’s picks at your level</SelectOption>
+                  <SelectOption value="list">My study list, then Bloom</SelectOption>
+                </SelectField>
+              </Field>
+              {planSource === 'list' && (
+                <>
+                  <Field label="Study list">
+                    <Textarea
+                      className="max-h-56 min-h-28 overflow-auto font-mono text-[0.8125rem]"
+                      placeholder={
+                        'https://leetcode.com/problems/two-sum/\nvalid-parentheses\nContainer With Most Water'
+                      }
+                      value={listText}
+                      onChange={(e) => setListText(e.target.value)}
+                      aria-describedby="list-help"
+                    />
+                  </Field>
+                  <Help id="list-help">
+                    LeetCode links, slugs or titles, one per line, in order. Each day starts with
+                    the next unfinished ones, including problems you’ve solved before; Bloom fills
+                    the rest. A problem leaves the list once you finish it.
+                  </Help>
+                  {list.slugs.length > 0 && <Help role="status">{listStatus(list)}</Help>}
+                  {unmatched.length > 0 && (
+                    <Help>
+                      Not in your library, saved by their usual LeetCode name:{' '}
+                      {unmatched.join(', ')}.
+                    </Help>
+                  )}
+                </>
+              )}
               <Field label="Target rating">
                 <Input
                   className="w-28"
@@ -151,7 +228,7 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
               <Help id="target-help">
                 Bloom trains each topic up to this problem rating, then keeps it fresh with reviews.
                 1,850 covers most Mediums asked in FAANG screens; Hards usually start around 2,100.
-                Questions come from the LeetCode problem bank, not from lists.
+                Bloom’s picks come from the LeetCode problem bank.
               </Help>
               <ProblemBank />
             </SettingsGroup>
@@ -199,9 +276,10 @@ function SettingsForm({ settings }: { settings: SettingsData }) {
       <ScrollRegion className="flex flex-col gap-4">
         <Panel title="Today’s plan" icon={RefreshCw}>
           <Help>
-            Plans today’s unstarted questions again: Bloom re-plans them when the tutor is on,
-            otherwise the built-in rules do. In-progress drafts, finished and skipped items stay.
-            Saved attempts, scores and review choices are never changed.
+            Plans today’s unstarted questions again: your study list first when it plans the day,
+            then Bloom when the tutor is on, otherwise the built-in rules. In-progress drafts,
+            finished and skipped items stay. Saved attempts, scores and review choices are never
+            changed.
           </Help>
           <div className="flex flex-wrap items-center gap-3">
             <Button

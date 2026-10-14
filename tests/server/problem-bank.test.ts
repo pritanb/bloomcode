@@ -177,6 +177,9 @@ test('a database from before the Trie + DP rule moves those bank problems to DP 
     `UPDATE problem_tags SET tagId = (SELECT id FROM tags WHERE name = 'Tries')
      WHERE problemId = (SELECT id FROM problems WHERE slug = 'extra-characters-in-a-string')`,
   );
+  app.tutorJobs.db.exec(
+    'DROP TABLE study_list; ALTER TABLE settings DROP COLUMN planSource; ALTER TABLE settings DROP COLUMN studyListName',
+  );
   app.tutorJobs.db.pragma('user_version = 12');
   await app.close();
   app = await createApp({ dbPath: join(dir, 'study.sqlite'), token: 'host' });

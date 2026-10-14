@@ -147,6 +147,8 @@ export interface Settings {
   autoScore?: boolean;
   recommendations?: import('./recommendations.js').RecommendationSettings;
   questionsPerDay?: number;
+  /** Who fills the day first: Bloom (the default) or the learner's own study list. */
+  planSource?: 'bloom' | 'list';
   timezone: string;
   primaryCount: number;
   optionalCount: number;

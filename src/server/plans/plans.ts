@@ -32,6 +32,7 @@ import {
 import { defaultPicks, shortlist, type PlanSpec } from './shortlist.js';
 import { targetRating, trainingLevels } from '../topics/training-levels.js';
 import { problemRating } from '../topics/ratings.js';
+import { listedIds, listPicks } from './study-list.js';
 
 /**
  * Bloom planning today's questions (the tutor features provide it). While it plans,
@@ -88,14 +89,15 @@ export const isStarted = (db: Db, i: ItemRecord) =>
 type ChangeSpec = Pick<PlanSpec, 'problemId' | 'title' | 'reason'> &
   Partial<Pick<PlanSpec, 'kind' | 'reviewOf'>>;
 /**
- * Apply picks to a plan. "add" appends; "replace" first removes unstarted items.
- * Problems already on the plan (and not skipped) are never added twice.
+ * Apply picks to a plan. "add" appends; "replace" first removes unstarted items (except
+ * those `keep` holds). Problems already on the plan (and not skipped) are never added twice.
  */
 export function applyPlanChange(
   db: Db,
   planId: string,
   mode: 'add' | 'replace',
   picks: ChangeSpec[],
+  keep: (item: ItemRecord) => boolean = () => false,
 ) {
   const plan = getPlan(db, planId);
   let items = planItems(db, 'WHERE i.planId = ?', plan.id);
@@ -103,7 +105,7 @@ export function applyPlanChange(
   // A replaced item picked again keeps what it was checking (and a transfer check its label).
   const was = new Map<string, ItemRecord>();
   if (mode === 'replace')
-    for (const item of items.filter((i) => !isStarted(db, i))) {
+    for (const item of items.filter((i) => !isStarted(db, i) && !keep(i))) {
       run(db, 'DELETE FROM plan_items WHERE id = ?', item.id);
       removed.push(item.title);
       was.set(item.problemId, item);
@@ -152,15 +154,23 @@ export function applyPlanChange(
     plan: planView(db, getPlan(db, plan.id)),
   };
 }
-/** Fill an untouched plan with the built-in rules (Bloom off, failed or superseded). */
+/**
+ * Fill an untouched plan (nothing on it but study-list problems) with the built-in rules
+ * (Bloom off, failed or superseded).
+ */
 export function fillWithRules(db: Db, clock: () => Date, planId: string) {
   const plan = getPlan(db, planId);
-  if (maybe(db, 'SELECT 1 FROM plan_items WHERE planId = ?', plan.id)) return;
-  const picks = rulePicks(db, clock(), slotsFor(readSettings(db)), new Set(), plan.date);
+  const items = planItems(db, 'WHERE i.planId = ?', plan.id);
+  const listed = listedIds(db);
+  if (items.some((i) => !listed.has(i.problemId))) return;
+  const slots = slotsFor(readSettings(db)) - items.filter((i) => i.status !== 'skipped').length;
+  const picks = rulePicks(db, clock(), slots, new Set(items.map((i) => i.problemId)), plan.date);
   if (!picks.length) return;
   bumpPlan(db, plan.id);
+  const hasActive = items.some((i) => i.status === 'active');
+  const position = Math.max(-1, ...items.map((i) => i.position)) + 1;
   for (const [i, p] of picks.entries())
-    newItem(db, getPlan(db, plan.id), p, i === 0 ? 'active' : 'queued', i);
+    newItem(db, getPlan(db, plan.id), p, !hasActive && i === 0 ? 'active' : 'queued', position + i);
 }
 /** Today's plan (or the one holding the active attempt), generating it on first use. */
 export function ensurePlan(
@@ -206,10 +216,62 @@ export function ensurePlan(
       newItem(db, plan, p, 'queued', i + 1);
     return planView(db, plan);
   }
-  // Bloom decides today's plan when the tutor is on; it stays empty while Bloom plans.
+  // The learner's study list comes first, keeping one slot for an idea due a check.
+  const slots = slotsFor(settings);
+  let listed = listPicks(db, slots);
+  if (listed.length === slots && slots > 1 && shortlist(db, clock(), { day }).checks.length)
+    listed = listed.slice(0, -1);
+  for (const [i, p] of listed.entries()) newItem(db, plan, p, i === 0 ? 'active' : 'queued', i);
+  if (listed.length && listed.length === slots) {
+    planner?.supersede(plan.id);
+    bumpPlan(db, plan.id);
+    return planView(db, getPlan(db, plan.id));
+  }
+  // Bloom decides the rest of today's plan when the tutor is on; it waits while Bloom plans.
   if (day === today && planner?.active() && planner.request(plan.id)) return planView(db, plan);
   planner?.supersede(plan.id);
   fillWithRules(db, clock, plan.id);
+  return planView(db, getPlan(db, plan.id));
+}
+/**
+ * Plan a current plan's unstarted questions again: the study list (when it plans) first,
+ * then Bloom when the tutor is on, otherwise the rules. Started and finished work stays.
+ */
+export function replan(db: Db, clock: () => Date, planner: BloomPlanner | null, plan: PlanRecord) {
+  const settings = readSettings(db);
+  const items = planItems(db, 'WHERE i.planId = ?', plan.id);
+  const listed = listedIds(db);
+  const keep = items.filter((i) => isStarted(db, i));
+  const retained = keep.filter((i) => i.status !== 'skipped');
+  const slots = slotsFor(settings);
+  // The study list (when it plans) takes the free slots first, with its next problems now.
+  const fromList = listPicks(db, slots - retained.length, new Set(keep.map((i) => i.problemId)));
+  const bloom = planner?.active();
+  // Bloom decides the plan when the tutor is on: ask it to plan unstarted questions again.
+  // Its picks stay visible meanwhile, unless the list needs their places now.
+  if (bloom && !listed.size) {
+    planner!.replan(plan.id);
+    return planView(db, plan);
+  }
+  const available = [
+    ...fromList,
+    ...(bloom
+      ? []
+      : rulePicks(
+          db,
+          clock(),
+          Math.max(0, slots - retained.length - fromList.length),
+          new Set([...keep, ...fromList].map((i) => i.problemId)),
+        )),
+  ];
+  for (const item of items.filter((i) => !keep.includes(i)))
+    run(db, 'DELETE FROM plan_items WHERE id = ?', item.id);
+  const position = Math.max(-1, ...keep.map((i) => i.position)) + 1;
+  const hasActive = keep.some((i) => i.status === 'active');
+  for (const [index, p] of available.entries())
+    newItem(db, plan, p, !hasActive && index === 0 ? 'active' : 'queued', position + index);
+  bumpPlan(db, plan.id);
+  if (bloom) planner!.replan(plan.id);
   return planView(db, getPlan(db, plan.id));
 }
 export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
@@ -369,34 +431,7 @@ export function registerPlans(app: FastifyInstance, db: Db, clock: () => Date) {
         : plan.date === studyDate(clock(), settings.timezone) &&
           plan.timezone === settings.timezone;
       if (!current) throw conflict('Only the current plan can be rebuilt');
-      // Bloom decides the plan when the tutor is on: ask it to plan unstarted questions again.
-      if (app.bloomPlanner?.active()) {
-        app.bloomPlanner.replan(plan.id);
-        return planView(db, plan);
-      }
-      const items = planItems(db, 'WHERE i.planId = ?', plan.id);
-      const keep = items.filter(
-        (i) =>
-          i.attemptId ||
-          ['completed', 'skipped'].includes(i.status) ||
-          maybe(db, 'SELECT 1 FROM attempts WHERE planItemId = ?', i.id),
-      );
-      const retained = keep.filter((i) => i.status !== 'skipped');
-      const slots = slotsFor(settings);
-      const available = rulePicks(
-        db,
-        clock(),
-        Math.max(0, slots - retained.length),
-        new Set(keep.map((i) => i.problemId)),
-      );
-      for (const item of items.filter((i) => !keep.includes(i)))
-        run(db, 'DELETE FROM plan_items WHERE id = ?', item.id);
-      const position = Math.max(-1, ...keep.map((i) => i.position)) + 1;
-      const hasActive = keep.some((i) => i.status === 'active');
-      for (const [index, p] of available.entries())
-        newItem(db, plan, p, !hasActive && index === 0 ? 'active' : 'queued', position + index);
-      bumpPlan(db, plan.id);
-      return planView(db, getPlan(db, plan.id));
+      return replan(db, clock, app.bloomPlanner, plan);
     });
   });
   app.get('/api/dashboard', (req) =>

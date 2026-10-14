@@ -34,6 +34,7 @@ def state(tutor):
         {"kind": kind, **proposal} for kind, pending in [
             ("goal", tutor.pending_goals), ("preferences", tutor.pending_preferences),
             ("plan", tutor.pending_plan), ("note", tutor.pending_notes),
+            ("studyList", tutor.pending_study_list),
         ] for proposal in pending
     ]}
 
@@ -78,10 +79,13 @@ def main():
                         "preferences": (tutor.pending_preferences, tutor.confirm_preferences, "Teaching preferences"),
                         "plan": (tutor.pending_plan, tutor.confirm_plan, "Plan"),
                         "note": (tutor.pending_notes, tutor.confirm_note, "Lesson"),
+                        "studyList": (tutor.pending_study_list, tutor.confirm_study_list, "Study list"),
                     }[kind]
                     proposal = next(p for p in pending if p["key"] == request["key"])
                     saved = confirm(proposal, request["approved"] is True)
-                    if kind == "plan" and saved is not None:
+                    if kind == "studyList" and saved is not None:
+                        activity = "Updated today's plan."
+                    elif kind == "plan" and saved is not None:
                         activity = ("Updated today's plan." if saved["added"] or saved["removed"]
                                     else "Today's plan already had those problems.")
                     else:

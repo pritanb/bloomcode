@@ -40,6 +40,14 @@ CREATE UNIQUE INDEX active_note_text ON tutor_notes(lower(trim(text))) WHERE sta
  * Bloom planning each day, fitted rating estimates, popularity and the learner's extra
  * attempt signals. Plan items may check the idea of an earlier problem (reviewOf).
  */
+// The learner's own ordered study list, by LeetCode slug (problems may join the library later).
+export const STUDY_LIST_SCHEMA = `
+CREATE TABLE study_list (
+  slug TEXT PRIMARY KEY,
+  position INTEGER NOT NULL,
+  addedAt TEXT NOT NULL
+);
+`;
 export const PLAN_DRAFT_SCHEMA = `
 CREATE TABLE plan_drafts (
   planId TEXT PRIMARY KEY REFERENCES daily_plans (id),
@@ -83,7 +91,9 @@ CREATE TABLE settings (
   autoScore INTEGER,
   recommendations TEXT CHECK (recommendations IS NULL OR json_valid(recommendations)),
   lastBackupAt TEXT,
-  insightsEnabled INTEGER NOT NULL DEFAULT 0
+  insightsEnabled INTEGER NOT NULL DEFAULT 0,
+  planSource TEXT CHECK (planSource IS NULL OR planSource IN ('bloom', 'list')),
+  studyListName TEXT
 );
 CREATE TABLE problems (
   id TEXT PRIMARY KEY,
