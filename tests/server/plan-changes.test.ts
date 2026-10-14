@@ -81,6 +81,49 @@ test('tutor proposes only shortlisted library problems and cannot add them itsel
   expect(titles(proposal.items)).toEqual(['Search One']);
   const body = { change: proposal, sourceConversation: 'conversation-1' };
   expect((await request('POST', '/api/daily-plan/changes', body, scoped)).statusCode).toBe(403);
+
+  // The learner named it: proposed as asked, flagged for the tutor to mention.
+  const named = await tool('propose_plan_change', {
+    items: [{ title: 'Search Hard', reason: 'You asked for it', requested: true }],
+  });
+  expect(titles(named.proposal.items)).toEqual(['Search Hard']);
+  expect(named.outsideShortlist).toEqual([{ title: 'Search Hard', attempted: false }]);
+  const applied = (
+    await request('POST', '/api/daily-plan/changes', {
+      change: named.proposal,
+      sourceConversation: 'conversation-1',
+    })
+  ).json();
+  expect(applied.added).toEqual(['Search Hard']);
+});
+
+test('chat proposes a due check as its served problem, linked to the idea it checks', async () => {
+  const attempted = await dueIdea();
+  const check = (await request('GET', '/api/recommendations/shortlist', undefined, scoped))
+    .json()
+    .checks.find((c: { title: string }) => c.title === 'Search One');
+  expect(check.serveAs).toBeTruthy();
+  expect(check.serveAs).not.toBe('Search One');
+  // The original is a redo: refused unless the learner named it.
+  expect(
+    await tool('propose_plan_change', { items: [{ title: 'Search One', reason: 'Review' }] }),
+  ).toMatchObject({ notOnShortlist: ['Search One'] });
+  const { proposal } = await tool('propose_plan_change', {
+    items: [{ title: check.serveAs, reason: 'Revisit the idea' }],
+  });
+  expect(proposal.items[0]).toMatchObject({ title: check.serveAs, reviewOf: attempted.id });
+  const { plan } = (
+    await request('POST', '/api/daily-plan/changes', {
+      change: proposal,
+      sourceConversation: 'conversation-1',
+    })
+  ).json();
+  expect(plan.items.find((i: { title: string }) => i.title === check.serveAs).reviewOf).toBe(
+    attempted.id,
+  );
+  // Served today, so it is no longer due in chat.
+  const after = (await request('GET', '/api/recommendations/shortlist', undefined, scoped)).json();
+  expect(after.checks.map((c: { title: string }) => c.title)).not.toContain('Search One');
 });
 
 test('confirmed additions join today’s plan once and retries are safe', async () => {

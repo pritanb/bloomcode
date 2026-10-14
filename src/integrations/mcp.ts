@@ -46,6 +46,7 @@ const schemas = {
         z.strictObject({
           title: z.string().trim().min(1).max(200),
           reason: z.string().trim().min(1).max(500),
+          requested: z.boolean().optional(),
         }),
       )
       .min(1)
@@ -161,11 +162,11 @@ const descriptions: Record<keyof typeof schemas, string> = {
   get_training_levels:
     "Read the learner's per-topic training level on the problem-rating scale (Elo-like; contest ratings, estimates marked), their target rating, which topics are at target, and the last change with its result (strong, ok or struggled). Hidden during mixed assessments.",
   get_shortlist:
-    'Read what fits the learner now: for each topic below target (weakest first), unseen problems near their level with ratings and popularity, plus ideas due for a check (repair after a struggle, or a transfer check served as a different problem). Optional topic narrows it. Propose ONLY candidates from this list; propose_plan_change refuses others. Hidden during mixed assessments.',
+    'Read what fits the learner now: for each topic below target (weakest first), unseen problems near their level with ratings and popularity, plus ideas due for a check (repair after a struggle, or a transfer check served as a different problem). Optional topic narrows it. Each due check has serveAs: the different problem to propose for it (null if none fits today). Recommend ONLY candidates and serveAs problems from this list; propose_plan_change refuses others unless the learner named them. Hidden during mixed assessments.',
   get_today_plan:
     "Read today's plan without creating it: items in order with status, reason and whether each is started, plus the learner's questions-per-day setting. Null plan means none generated yet. Hidden during mixed assessments.",
   propose_plan_change:
-    "Propose problems for today's plan by exact library title, each with a one-sentence reason addressed to the learner. mode 'add' (default) appends; 'replace' swaps every unstarted item for these picks, keeping started and finished work. Up to ten items. This does NOT change anything; the host asks the learner to confirm. Unmatched titles return close library titles instead of a proposal. Problems already on the plan are reported, not proposed again (in replace mode, unstarted ones stay proposed so they are kept).",
+    "Propose problems for today's plan by exact library title, each with a one-sentence reason addressed to the learner. mode 'add' (default) appends; 'replace' swaps every unstarted item for these picks, keeping started and finished work. Up to ten items. Set requested: true only on a problem the learner named themselves; it may be off the shortlist (done before, above their level). Your own picks must come from get_shortlist. This does NOT change anything; the host asks the learner to confirm. Unmatched titles return close library titles instead of a proposal. Problems already on the plan are reported, not proposed again (in replace mode, unstarted ones stay proposed so they are kept).",
   confirm_plan_change:
     'Host-only: apply a confirmed plan change AFTER explicit learner confirmation, using the full credential. Retry uncertain writes with the SAME key and payload.',
   get_study_list:
@@ -295,13 +296,17 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
           onPlan?: boolean;
           started?: boolean;
           onShortlist?: boolean;
+          attempted?: boolean;
+          reviewOf?: string | null;
           candidates?: string[];
         }[];
       };
       const unmatched = results.filter((r) => !r.problemId);
-      // Only the app's shortlist fits the learner's level. Problems already on today's plan
+      // The tutor's own picks must come from the shortlist, which fits the learner's level;
+      // problems the learner named are theirs to choose. Problems already on today's plan
       // are skipped or kept below, never refused.
-      const unfit = results.filter((r) => r.problemId && !r.onShortlist && !r.onPlan);
+      const offList = results.filter((r) => r.problemId && !r.onShortlist && !r.onPlan);
+      const unfit = offList.filter((r) => !items[results.indexOf(r)]!.requested);
       // Replacing keeps unstarted picks only if they stay in the proposal.
       const skip = (r: (typeof results)[number]) => (mode === 'add' ? r.onPlan : r.started);
       const alreadyOnPlan = results.filter(skip).map((r) => r.title!);
@@ -310,13 +315,22 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
         const r = results[i]!;
         if (!r.problemId || skip(r) || seen.has(r.problemId)) return [];
         seen.add(r.problemId);
-        return [{ problemId: r.problemId, title: r.title!, reason: item.reason }];
+        // A served due check carries the idea it checks, so finishing it moves that schedule on.
+        return [
+          {
+            problemId: r.problemId,
+            title: r.title!,
+            reason: item.reason,
+            ...(r.reviewOf ? { reviewOf: r.reviewOf } : {}),
+          },
+        ];
       });
+      const outsideShortlist = offList.map((r) => ({ title: r.title!, attempted: !!r.attempted }));
       result = unfit.length
         ? {
             saved: false,
             notOnShortlist: unfit.map((r) => r.title),
-            note: "No proposal was made. These don't fit the learner's current training levels or were done recently. Choose from get_shortlist.",
+            note: "No proposal was made. These don't fit the learner's current training levels or were done recently. Choose from get_shortlist, or set requested only for problems the learner named.",
           }
         : unmatched.length
           ? {
@@ -325,7 +339,17 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
               note: 'No proposal was made. Use exact library titles or ask the learner.',
             }
           : proposed.length
-            ? { proposal: { mode, items: proposed }, alreadyOnPlan, saved: false }
+            ? {
+                proposal: { mode, items: proposed },
+                alreadyOnPlan,
+                saved: false,
+                ...(outsideShortlist.length
+                  ? {
+                      outsideShortlist,
+                      note: 'The learner chose these outside the shortlist. Proposed as asked; mention in one line if one was attempted before or is above their level.',
+                    }
+                  : {}),
+              }
             : { saved: false, alreadyOnPlan, note: "These are already on today's plan." };
     } else if (name === 'confirm_plan_change') {
       const { idempotencyKey, ...body } = schemas.confirm_plan_change.parse(args);
