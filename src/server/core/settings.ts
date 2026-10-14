@@ -21,6 +21,7 @@ const settingsUpdate = z
     questionsPerDay: z.number().int().min(1).max(20).optional(),
     primaryCount: z.number().int().min(1).max(10).optional(),
     optionalCount: z.number().int().min(0).max(10).optional(),
+    planSource: z.enum(['bloom', 'list']).optional(),
   })
   .strict();
 

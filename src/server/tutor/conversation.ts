@@ -27,7 +27,7 @@ const result = z.object({
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string() })).max(100),
   proposals: z.array(
     z.object({
-      kind: z.enum(['goal', 'preferences', 'plan', 'note']),
+      kind: z.enum(['goal', 'preferences', 'plan', 'note', 'studyList']),
       key: z.string(),
       change: z.record(z.string(), z.unknown()),
     }),
@@ -354,7 +354,7 @@ export function registerConversation(
       .object({
         id: z.string().uuid(),
         key: z.string().uuid(),
-        kind: z.enum(['goal', 'preferences', 'plan', 'note']),
+        kind: z.enum(['goal', 'preferences', 'plan', 'note', 'studyList']),
         approved: z.boolean(),
       })
       .strict()

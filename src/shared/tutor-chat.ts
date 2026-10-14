@@ -1,6 +1,6 @@
 export type ChatMessage = { role: 'user' | 'assistant'; text: string };
 export type ChatProposal = {
-  kind: 'goal' | 'preferences' | 'plan' | 'note';
+  kind: 'goal' | 'preferences' | 'plan' | 'note' | 'studyList';
   key: string;
   change: Record<string, unknown>;
 };

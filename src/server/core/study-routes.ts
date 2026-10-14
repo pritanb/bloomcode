@@ -14,6 +14,7 @@ import { registerConversation, type TutorConversation } from '../tutor/conversat
 import { registerStudyTools } from '../topics/study-tools.js';
 import { registerScoring } from '../scoring/scoring.js';
 import { registerPlans } from '../plans/plans.js';
+import { registerStudyList } from '../plans/study-list-routes.js';
 import { registerTransfer } from '../transfer/transfer.js';
 import { ProblemBankService, registerProblemBank } from '../catalogue/problem-bank.js';
 
@@ -51,6 +52,7 @@ export function registerStudyRoutes(
   registerConversation(app, db, dbPath, conversationWorker);
   registerScoring(app, db, clock);
   registerPlans(app, db, clock);
+  registerStudyList(app, db, clock);
   registerStudyTools(app, db, clock);
   registerTransfer(app, db, clock, dbPath, dailyBackup);
 }

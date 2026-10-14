@@ -8,6 +8,7 @@ import { goalChange, confirmedGoalChange } from '../shared/learning-goals.js';
 import { preferenceChange, confirmedPreferenceChange } from '../shared/tutor-preferences.js';
 import { confirmedPlanChange } from '../shared/plan-changes.js';
 import { noteChange, confirmedNoteChange } from '../shared/tutor-notes.js';
+import { confirmedStudyListChange } from '../shared/study-list.js';
 import { neetcodeCategories } from '../server/topics/neetcode-category.js';
 const id = z
   .string()
@@ -52,6 +53,15 @@ const schemas = {
       .max(10),
   }),
   confirm_plan_change: confirmedPlanChange.extend({ idempotencyKey: key }),
+  get_study_list: z.strictObject({}),
+  propose_study_list: z.strictObject({
+    planSource: z.enum(['list', 'bloom']),
+    set: z.string().trim().min(1).max(100).optional(),
+    from: z.string().trim().min(1).max(200).optional(),
+    problems: z.array(z.string().trim().min(1).max(300)).min(1).max(500).optional(),
+    name: z.string().trim().min(1).max(100).optional(),
+  }),
+  confirm_study_list: confirmedStudyListChange.extend({ idempotencyKey: key }),
   get_topic_scores: z.strictObject({ limit: z.number().int().min(1).max(50).optional() }),
   get_recent_attempts: z.strictObject({
     startedAfter: z.iso.datetime({ offset: true }).optional(),
@@ -159,6 +169,12 @@ const descriptions: Record<keyof typeof schemas, string> = {
     "Propose problems for today's plan by exact library title, each with a one-sentence reason addressed to the learner. mode 'add' (default) appends; 'replace' swaps every unstarted item for these picks, keeping started and finished work. Up to ten items. Set requested: true only on a problem the learner named themselves; it may be off the shortlist (done before, above their level). Your own picks must come from get_shortlist. This does NOT change anything; the host asks the learner to confirm. Unmatched titles return close library titles instead of a proposal. Problems already on the plan are reported, not proposed again (in replace mode, unstarted ones stay proposed so they are kept).",
   confirm_plan_change:
     'Host-only: apply a confirmed plan change AFTER explicit learner confirmation, using the full credential. Retry uncertain writes with the SAME key and payload.',
+  get_study_list:
+    "Read who plans the learner's days (planSource bloom or list), their study list's name and progress (next titles, counts finished and not yet in the library), and the courses bundled with the app with their sections.",
+  propose_study_list:
+    "Propose who plans the learner's days, for the learner to confirm; does not save. planSource 'list' with set (a bundled course id from get_study_list, optionally from a section name or a slug in it) or problems (in order, each a LeetCode link, slug or exact title, as the learner gave them; with a name) replaces their study list; 'list' alone resumes the saved list; 'bloom' hands planning back to you and keeps the list and its progress. While the list plans, each day starts with its next unfinished problems (including ones solved before) and you fill the rest. Confirming re-plans today's unstarted questions.",
+  confirm_study_list:
+    'Host-only: apply a confirmed study-list change AFTER explicit learner confirmation, using the full credential. Retry uncertain writes with the SAME key and payload.',
   get_topic_scores:
     'Read topic scores, lowest scored topics first and unscored topics last. Limit 1–50 (default 20). Includes provisional flags, coverage counts and hasMore; null scores mean unknown, not weak. No notes or attempt history. Hidden during mixed assessments.',
   get_recent_attempts:
@@ -196,6 +212,8 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
       'get_training_levels',
       'get_shortlist',
       'propose_plan_change',
+      'get_study_list',
+      'propose_study_list',
       'get_topic_scores',
       'get_tutor_access',
       'get_recent_attempts',
@@ -208,6 +226,14 @@ export const toolDefinitions = Object.entries(schemas).map(([name, schema]) => (
     openWorldHint: false,
   },
 }));
+type StudyListView = {
+  planSource: 'bloom' | 'list';
+  name: string | null;
+  slugs: string[];
+  remaining: string[];
+  finished: string[];
+  notInLibrary: string[];
+};
 export async function callTool(api: LocalApi, name: string, args: unknown) {
   try {
     let result: unknown;
@@ -328,6 +354,75 @@ export async function callTool(api: LocalApi, name: string, args: unknown) {
     } else if (name === 'confirm_plan_change') {
       const { idempotencyKey, ...body } = schemas.confirm_plan_change.parse(args);
       result = await api.request('POST', '/api/daily-plan/changes', body, idempotencyKey);
+    } else if (name === 'get_study_list') {
+      schemas.get_study_list.parse(args);
+      const list = (await api.request('GET', '/api/study-list')) as StudyListView;
+      result = {
+        planSource: list.planSource,
+        name: list.name,
+        next: list.remaining.slice(0, 10),
+        remaining: list.remaining.length,
+        finished: list.finished.length,
+        notInLibrary: list.notInLibrary.length,
+        courses: await api.request('GET', '/api/study-sets'),
+      };
+    } else if (name === 'propose_study_list') {
+      const input = schemas.propose_study_list.parse(args);
+      if (input.planSource === 'bloom') {
+        result = { proposal: { planSource: 'bloom', name: null, slugs: null }, saved: false };
+      } else if (!input.set && !input.problems) {
+        const list = (await api.request('GET', '/api/study-list')) as StudyListView;
+        result = list.slugs.length
+          ? {
+              proposal: {
+                planSource: 'list',
+                name: list.name,
+                slugs: null,
+                preview: {
+                  total: list.slugs.length,
+                  inLibrary: list.remaining.length + list.finished.length,
+                  firstUp: list.remaining.slice(0, 3),
+                },
+              },
+              saved: false,
+            }
+          : { saved: false, note: 'No saved study list. Propose a course or slugs.' };
+      } else {
+        const preview = (await api.request('POST', '/api/study-list/preview', {
+          set: input.set,
+          from: input.from,
+          problems: input.problems,
+        })) as {
+          name: string | null;
+          slugs: string[];
+          inLibrary: number;
+          firstUp: string[];
+          unmatched: string[];
+        };
+        result = !preview.inLibrary
+          ? {
+              saved: false,
+              note: "None of these problems are in the learner's library yet. Suggest downloading the problem bank in Settings first.",
+            }
+          : {
+              proposal: {
+                planSource: 'list',
+                name: input.name ?? preview.name,
+                slugs: preview.slugs,
+                preview: {
+                  total: preview.slugs.length,
+                  inLibrary: preview.inLibrary,
+                  firstUp: preview.firstUp,
+                },
+              },
+              // Titles not in the library: kept under LeetCode's usual slug, joining once added.
+              notInLibrary: preview.unmatched,
+              saved: false,
+            };
+      }
+    } else if (name === 'confirm_study_list') {
+      const { idempotencyKey, ...body } = schemas.confirm_study_list.parse(args);
+      result = await api.request('POST', '/api/study-list/changes', body, idempotencyKey);
     } else if (name === 'get_topic_scores') {
       const { limit = 20 } = schemas.get_topic_scores.parse(args);
       result = await api.request('GET', `/api/topics/scores?limit=${limit}`);
