@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../../src/server/core/app.js';
 import { callTool } from '../../src/integrations/mcp.js';
+import { openDb } from '../../src/server/db/db.js';
 import type { LocalApi } from '../../src/integrations/local-api.js';
 
 let app: Awaited<ReturnType<typeof createApp>>, dir: string, scoped: string, now: Date;
@@ -458,7 +459,7 @@ test('a study list fills the day first, repeats included, and the rules fill the
     remaining: ['Search Hard', 'Search One', 'Search Two'],
     finished: [],
     notInLibrary: ['not-in-library'],
-    unmatched: [],
+    unmatched: ['not-in-library'],
   });
   const day1 = (await request('POST', '/api/daily-plan/ensure', {})).json();
   expect(titles(day1.items)).toEqual(['Search Hard', 'Search One']);
@@ -533,9 +534,9 @@ test('Bloom proposes following a bundled course and handing planning back; only 
   ]);
   const blind = courses.find((c: { id: string }) => c.id === 'blind-75');
   expect(blind.sections.reduce((n: number, x: { problems: number }) => n + x.problems, 0)).toBe(75);
-  // Nothing from the course in the library yet: no proposal.
+  // Nothing they paste is known: no proposal.
   expect(
-    await tool('propose_study_list', { planSource: 'list', set: 'hello-interview' }),
+    await tool('propose_study_list', { planSource: 'list', problems: ['Made Up Problem'] }),
   ).toMatchObject({ saved: false });
   for (const title of ['Valid Parentheses', 'Decode String', 'Two Sum'])
     await request('POST', '/api/problems', {
@@ -557,11 +558,13 @@ test('Bloom proposes following a bundled course and handing planning back; only 
     set: 'hello-interview',
     from: 'stack',
   });
+  // Course problems the library lacks are added on confirmation, so all of them count.
   expect(proposal).toMatchObject({
     planSource: 'list',
     name: 'Hello Interview',
-    preview: { inLibrary: 2, firstUp: ['Valid Parentheses', 'Decode String'] },
+    preview: { firstUp: ['Valid Parentheses', 'Decode String', 'Longest Valid Parentheses'] },
   });
+  expect(proposal.preview.inLibrary).toBe(proposal.preview.total);
   expect(proposal.slugs[0]).toBe('valid-parentheses');
   const body = { change: proposal, sourceConversation: 'conversation-1' };
   expect((await request('POST', '/api/study-list/changes', body, scoped, 'tutor')).statusCode).toBe(
@@ -601,7 +604,8 @@ test('Bloom proposes following a bundled course and handing planning back; only 
   const neet = (
     await tool('propose_study_list', { planSource: 'list', set: 'blind-75', from: 'stack' })
   ).proposal;
-  expect(neet).toMatchObject({ name: 'Blind 75', preview: { firstUp: ['Valid Parentheses'] } });
+  expect(neet).toMatchObject({ name: 'Blind 75' });
+  expect(neet.preview.firstUp[0]).toBe('Valid Parentheses');
   expect(neet.slugs[0]).toBe('valid-parentheses');
 
   // Back to Bloom: today's list problems go, the list waits; "list" alone resumes it.
@@ -619,7 +623,46 @@ test('Bloom proposes following a bundled course and handing planning back; only 
   expect(bloom.plan.items.map((i: { reason: string }) => i.reason)).not.toContain(
     'From your study list',
   );
-  expect((await tool('get_study_list', {})).next).toEqual(['Decode String', 'Valid Parentheses']);
+  expect((await tool('get_study_list', {})).next).toEqual([
+    'Decode String',
+    'Valid Parentheses',
+    'Min Stack',
+  ]);
   const resume = (await tool('propose_study_list', { planSource: 'list' })).proposal;
   expect(resume).toMatchObject({ planSource: 'list', name: 'Stack drill', slugs: null });
+});
+
+test('a list adds the course problems the library lacks and plans them in course order', async () => {
+  // Employee Free Time is a Hello Interview Hard no library here has; pasted by title.
+  const saved = await setList(['search-one', '2. Employee Free Time', 'search-two']);
+  expect(saved).toMatchObject({
+    slugs: ['search-one', 'employee-free-time', 'search-two'],
+    notInLibrary: [],
+    unmatched: [],
+  });
+  // Read the file directly: listing a problem with its tags would itself reveal it.
+  const db = openDb(join(dir, 'study.sqlite'));
+  const added = db
+    .prepare(
+      `SELECT p.title, p.difficulty, p.exposed, t.name AS topic FROM problems p
+       JOIN problem_tags pt ON pt.problemId = p.id JOIN tags t ON t.id = pt.tagId
+       WHERE p.slug = 'employee-free-time'`,
+    )
+    .all();
+  db.close();
+  expect(added).toEqual([
+    { title: 'Employee Free Time', difficulty: 'Hard', exposed: 0, topic: 'Heap / Priority Queue' },
+  ]);
+  const day = (await request('POST', '/api/daily-plan/ensure', {})).json();
+  expect(titles(day.items)).toEqual(['Search One', 'Employee Free Time']); // not Search Two
+});
+
+test('a pasted title no library or course knows is reported, not guessed into the library', async () => {
+  const saved = await setList(['Search One', 'Made Up Problem']);
+  expect(saved).toMatchObject({
+    slugs: ['search-one', 'made-up-problem'],
+    notInLibrary: ['made-up-problem'],
+    unmatched: ['Made Up Problem'],
+  });
+  expect((await request('GET', '/api/problems?search=Made%20Up')).json().items).toEqual([]);
 });

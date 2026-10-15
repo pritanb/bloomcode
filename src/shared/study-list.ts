@@ -9,7 +9,7 @@ export const slug = z
  * Who plans the learner's days, as Bloom proposes it in chat. "list" with slugs replaces the
  * study list (finished problems stay finished); "list" without slugs resumes the saved one;
  * "bloom" hands the days back to Bloom and keeps the list. `preview` is only shown on the
- * confirmation card.
+ * confirmation card; its `inLibrary` counts problems in the library or added on confirmation.
  */
 export const studyListChange = z
   .object({

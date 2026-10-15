@@ -206,8 +206,8 @@ function SettingsForm({ settings, list }: { settings: SettingsData; list: StudyL
                   {list.slugs.length > 0 && <Help role="status">{listStatus(list)}</Help>}
                   {unmatched.length > 0 && (
                     <Help>
-                      Not in your library, saved by their usual LeetCode name:{' '}
-                      {unmatched.join(', ')}.
+                      Couldn’t add these to your library (unknown title or difficulty); they’re
+                      planned once you add them: {unmatched.join(', ')}.
                     </Help>
                   )}
                 </>
