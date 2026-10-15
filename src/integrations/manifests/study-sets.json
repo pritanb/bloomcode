@@ -62,7 +62,7 @@
           "problems": [
             { "slug": "koko-eating-bananas", "title": "Koko Eating Bananas", "difficulty": "Medium", "topic": "Binary Search" },
             { "slug": "search-in-rotated-sorted-array", "title": "Search in Rotated Sorted Array", "difficulty": "Medium", "topic": "Binary Search" },
-            { "slug": "split-array-largest-sum", "title": "Split Array Largest Sum", "difficulty": "Hard", "topic": "1-D Dynamic Programming" },
+            { "slug": "split-array-largest-sum", "title": "Split Array Largest Sum", "difficulty": "Hard", "topic": "Binary Search" },
             { "slug": "kth-smallest-element-in-a-sorted-matrix", "title": "Kth Smallest Element in a Sorted Matrix", "difficulty": "Medium", "topic": "Heap / Priority Queue" },
             { "slug": "capacity-to-ship-packages-within-d-days", "title": "Capacity To Ship Packages Within D Days", "difficulty": "Medium", "topic": "Binary Search" }
           ]
