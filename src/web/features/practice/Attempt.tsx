@@ -20,9 +20,10 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import CodeMirror, { EditorView } from '@uiw/react-codemirror';
+import CodeMirror, { EditorView, type Extension } from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { java } from '@codemirror/lang-java';
+import { go } from '@codemirror/lang-go';
 import type { Attempt, Help, Outcome } from '../../../shared/contracts';
 import { api, ApiError } from '../../app/api';
 import { AttemptQueue } from './attemptQueue';
@@ -56,6 +57,9 @@ export function AttemptPage() {
   if (query.isError) return <ErrorNotice error={query.error} retry={() => void query.refetch()} />;
   return <AttemptWorkspace key={query.data.id} initial={query.data} />;
 }
+/** Editor syntax highlighting; other languages edit as plain text. */
+const highlighters: Record<string, () => Extension> = { python, java, go };
+
 function AttemptWorkspace({ initial }: { initial: Attempt }) {
   const openTutor = useTutor();
   const dark = useDarkMode();
@@ -127,10 +131,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, saving, submitting]);
-  const extensions = [
-    EditorView.lineWrapping,
-    ...(draft.language === 'python' ? [python()] : draft.language === 'java' ? [java()] : []),
-  ];
+  const extensions: Extension[] = [EditorView.lineWrapping, highlighters[draft.language]?.() ?? []];
   async function retry() {
     if (retryRef.current)
       try {
@@ -214,7 +215,7 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
         disabled={submitting || !!error}
         onValueChange={(language) => setDraft((old) => ({ ...old, language }))}
       >
-        {['python', 'java', 'javascript', 'typescript', 'cpp', 'other'].map((language) => (
+        {['python', 'java', 'javascript', 'typescript', 'cpp', 'go', 'other'].map((language) => (
           <SelectOption key={language} value={language}>
             {languageLabel(language)}
           </SelectOption>

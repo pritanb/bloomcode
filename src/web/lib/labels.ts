@@ -28,6 +28,7 @@ export function languageLabel(value: string): string {
         javascript: 'JavaScript',
         typescript: 'TypeScript',
         cpp: 'C++',
+        go: 'Go',
         other: 'Other',
       } as Record<string, string>
     )[value] ?? enumLabel(value)
