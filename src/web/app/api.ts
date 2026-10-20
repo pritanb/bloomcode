@@ -35,20 +35,33 @@ export function createApi() {
     method = 'GET',
     body?: unknown,
     key?: string,
+    renewed = false,
   ): Promise<T> {
-    const csrf = await ensureSession();
-    return parse<T>(
-      await fetch(`/api${path}`, {
-        method,
-        credentials: 'same-origin',
-        headers: {
-          Accept: 'application/json',
-          ...(method !== 'GET' ? { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf } : {}),
-          ...(key ? { 'Idempotency-Key': key } : {}),
-        },
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      }),
-    );
+    const current = ensureSession();
+    const csrf = await current;
+    const response = await fetch(`/api${path}`, {
+      method,
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        ...(method !== 'GET' ? { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf } : {}),
+        ...(key ? { 'Idempotency-Key': key } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    // Sessions expire after a day or vanish when the server restarts. The server
+    // rejects these before running the handler, so renewing and replaying once is safe.
+    if (response.status === 401 && !renewed) {
+      const data = await response
+        .clone()
+        .json()
+        .catch(() => null);
+      if (data?.error?.code === 'UNAUTHENTICATED') {
+        if (session === current) session = undefined;
+        return request<T>(path, method, body, key, true);
+      }
+    }
+    return parse<T>(response);
   }
   return {
     get: <T>(path: string) => request<T>(path),
