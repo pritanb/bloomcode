@@ -27,6 +27,7 @@ import { go } from '@codemirror/lang-go';
 import type { Attempt, Help, Outcome } from '../../../shared/contracts';
 import { api, ApiError } from '../../app/api';
 import { AttemptQueue } from './attemptQueue';
+import { detectLanguage } from './detectLanguage';
 import { AttemptComparison } from './AttemptComparison';
 import { AttemptReflection } from './AttemptReflection';
 import { AttemptSignals } from './AttemptSignals';
@@ -72,6 +73,8 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
   });
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  // The language follows the code until the learner picks one; "Other" is always a deliberate pick.
+  const languagePicked = useRef(false);
   const [queue] = useState(() => new AttemptQueue(initial));
   const [error, setError] = useState<unknown>(null);
   const retryRef = useRef<(() => Promise<void>) | null>(null);
@@ -213,7 +216,10 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
       <SelectField
         value={draft.language}
         disabled={submitting || !!error}
-        onValueChange={(language) => setDraft((old) => ({ ...old, language }))}
+        onValueChange={(language) => {
+          languagePicked.current = true;
+          setDraft((old) => ({ ...old, language }));
+        }}
       >
         {['python', 'java', 'javascript', 'typescript', 'cpp', 'go', 'other'].map((language) => (
           <SelectOption key={language} value={language}>
@@ -248,7 +254,16 @@ function AttemptWorkspace({ initial }: { initial: Attempt }) {
           height="100%"
           extensions={extensions}
           editable={!completed && !submitting && !error}
-          onChange={(code) => setDraft((old) => ({ ...old, code }))}
+          onChange={(code) =>
+            setDraft((old) => ({
+              ...old,
+              code,
+              language:
+                languagePicked.current || old.language === 'other'
+                  ? old.language
+                  : (detectLanguage(code) ?? old.language),
+            }))
+          }
         />
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t bg-muted/60 px-3 py-2 text-xs">
